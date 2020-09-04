@@ -148,6 +148,94 @@ Module Preliminary.
                 tauto.
     Qed.
 
+    Theorem ordering_property :
+      forall lhs rhs : nat,
+      (LT = compare lhs rhs <-> lhs < rhs) /\
+      (EQ = compare lhs rhs <-> lhs = rhs) /\
+      (GT = compare lhs rhs <-> lhs > rhs).
+    Proof.
+      intros lhs rhs.
+      assert ((compare lhs rhs = LT /\ lhs < rhs) \/ (compare lhs rhs = EQ /\ lhs = rhs) \/ (compare lhs rhs = GT /\ lhs > rhs)).
+        apply (compare_property lhs lhs rhs).
+          lia.
+      constructor.
+        constructor.
+          intro.
+          destruct H.
+            tauto.
+          destruct H.
+          destruct H.
+          elimtype False.
+            assert (LT = EQ).
+              rewrite H in H0.
+              apply H0.
+            discriminate H2.
+          destruct H.
+          elimtype False.
+            assert (LT = GT).
+              rewrite H in H0.
+              apply H0.
+            discriminate H2.
+        intro.
+        assert (~ lhs = rhs).
+          lia.
+        assert (~ lhs > rhs).
+          lia.
+        assert (lhs < rhs).
+          lia.
+        intuition.
+      constructor.
+        constructor.
+            intro.
+            destruct H.
+            destruct H.
+            elimtype False.
+              assert (EQ = LT).
+                rewrite H in H0.
+                apply H0.
+              discriminate H2.
+            destruct H.
+            destruct H.
+            tauto.
+            destruct H.
+            elimtype False.
+              assert (EQ = GT).
+                rewrite H in H0.
+                apply H0.
+              discriminate H2.
+          intro.
+          assert (~ lhs < rhs).
+            lia.
+          assert (~ lhs > rhs).
+            lia.
+          assert (lhs = rhs).
+            lia.
+          intuition.
+        constructor.
+            intro.
+            destruct H.
+            destruct H.
+            elimtype False.
+              assert (GT = LT).
+                rewrite H in H0.
+                apply H0.
+              discriminate H2.
+            destruct H.
+            elimtype False.
+              destruct H.
+              assert (GT = EQ).
+                rewrite H in H0.
+                apply H0.
+              discriminate H2.
+              tauto.
+          intro.
+          assert (~ lhs < rhs).
+            lia.
+          assert (~ lhs = rhs).
+            lia.
+          intuition.  
+    Qed.
+
   End Ordering.
 
 End Preliminary.
