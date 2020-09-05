@@ -1,7 +1,152 @@
-Require Export Omega.
 Require Export List.
+Require Export Bool.
+Require Export Lia.
+Require Export Peano_dec.
 
-Axiom classic : forall P : Prop, P \/ not P.
+Module Classic.
+
+  Axiom ex_middle : forall P : Prop, P \/ ~P.
+
+End Classic.
+
+Module Ordering.
+
+  Inductive ordering : Set :=
+  | LT : ordering
+  | EQ : ordering
+  | GT : ordering
+  .
+
+  Fixpoint compareNats (lhs : nat) (rhs : nat) : ordering :=
+    match lhs, rhs with
+    | 0, 0 => EQ
+    | 0, S rhs' => LT
+    | S lhs', 0 => GT
+    | S lhs', S rhs' => compareNats lhs' rhs'
+    end
+  .
+
+  Lemma property_compareNats :
+    forall lhs rhs : nat,
+    (lhs < rhs /\ compareNats lhs rhs = LT) \/
+    (lhs = rhs /\ compareNats lhs rhs = EQ) \/
+    (lhs > rhs /\ compareNats lhs rhs = GT).
+  Proof.
+    intros lhs.
+    induction lhs.
+    - destruct rhs.
+      * simpl.
+        tauto.
+      * simpl.
+        assert (0 < S rhs).
+          lia.
+        tauto.
+    - destruct rhs.
+      * simpl.
+        assert (S lhs > 0).
+          lia.
+        tauto.
+      * simpl.
+        assert
+          ( lhs < rhs /\ compareNats lhs rhs = LT \/
+            lhs = rhs /\ compareNats lhs rhs = EQ \/
+            lhs > rhs /\ compareNats lhs rhs = GT
+          ).
+        apply (IHlhs rhs).
+        intuition.
+  Qed.
+
+  Theorem property_LT :
+    forall lhs rhs : nat,
+    LT = compareNats lhs rhs <-> lhs < rhs.
+  Proof.
+    intros lhs rhs.
+    assert
+      ( lhs < rhs /\ compareNats lhs rhs = LT \/
+        lhs = rhs /\ compareNats lhs rhs = EQ \/
+        lhs > rhs /\ compareNats lhs rhs = GT
+      ).
+      apply (property_compareNats lhs rhs).
+    constructor.
+      intro.
+      intuition.
+      assert (LT = EQ).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H.
+      assert (LT = GT).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H.
+      intro.
+      assert (~lhs = rhs).
+        lia.
+      assert (~lhs > rhs).
+        lia.
+      intuition.
+  Qed.
+
+  Theorem property_EQ :
+    forall lhs rhs : nat,
+    EQ = compareNats lhs rhs <-> lhs = rhs.
+  Proof.
+    intros lhs rhs.
+    assert
+      ( lhs < rhs /\ compareNats lhs rhs = LT \/
+        lhs = rhs /\ compareNats lhs rhs = EQ \/
+        lhs > rhs /\ compareNats lhs rhs = GT
+      ).
+      apply (property_compareNats lhs rhs).
+    constructor.
+      intro.
+      intuition.
+      assert (EQ = LT).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H1.
+      assert (EQ = GT).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H.
+      intro.
+      assert (~lhs < rhs).
+        lia.
+      assert (~lhs > rhs).
+        lia.
+      intuition.
+  Qed.
+
+  Theorem property_GT :
+    forall lhs rhs : nat,
+    GT = compareNats lhs rhs <-> lhs > rhs.
+  Proof.
+    intros lhs rhs.
+    assert
+      ( lhs < rhs /\ compareNats lhs rhs = LT \/
+        lhs = rhs /\ compareNats lhs rhs = EQ \/
+        lhs > rhs /\ compareNats lhs rhs = GT
+      ).
+      apply (property_compareNats lhs rhs).
+    constructor.
+      intro.
+      intuition.
+      assert (GT = LT).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H1.
+      assert (GT = EQ).
+        rewrite <- H0 in H2.
+        apply H2.
+      discriminate H.
+      intro.
+      assert (~lhs < rhs).
+        lia.
+      assert (~lhs = rhs).
+        lia.
+      intuition.
+  Qed.
+
+End Ordering.
 
 Module ListTheory.
 
@@ -9,14 +154,20 @@ Module ListTheory.
 
     Import ListNotations.
 
-    Fixpoint AreAllDistinct {A : Type} (xs : list A) : Prop :=
+    Variable A : Type.
+
+    Variable eq_A_dec : forall x y : A, {x = y} + {x <> y}.
+
+    Variable B : Type.
+
+    Fixpoint areAllDistinct (xs : list A) : Prop :=
       match xs with
       | [] => True
-      | x :: xs' => not (In x xs') /\ AreAllDistinct xs'
+      | x :: xs' => not (In x xs') /\ areAllDistinct xs'
       end
     .
 
-    Lemma len_append {A : Type} :
+    Lemma len_append :
       forall (xs ys : list A),
       length (xs ++ ys) = length xs + length ys.
     Proof.
@@ -25,10 +176,10 @@ Module ListTheory.
       - simpl.
         reflexivity.
       - simpl.
-        omega.
+        lia.
     Qed.
 
-    Lemma len_map {A : Type} {B : Type} :
+    Lemma len_map :
       forall f : A -> B,
       forall xs : list A,
       length xs = length (map f xs).
@@ -38,10 +189,28 @@ Module ListTheory.
       - simpl.
         tauto.
       - simpl.
-        omega.
+        lia.
     Qed.
 
-    Lemma in_append {A : Type} :
+    Lemma in_or_not_in :
+      forall xs : list A,
+      forall x : A,
+      In x xs \/ ~ In x xs.
+    Proof.
+      intros xs.
+      induction xs.
+      simpl.
+      tauto.
+      simpl.
+      intro x.
+      destruct (eq_A_dec a x).
+      tauto.
+      destruct (IHxs x).
+      tauto.
+      tauto.
+    Qed.
+
+    Lemma in_append :
       forall x : A,
       forall (xs ys : list A),
       In x (xs ++ ys) <-> (In x xs \/ In x ys).
@@ -69,7 +238,7 @@ Module ListTheory.
           + tauto.
     Qed.
 
-    Lemma in_map {A : Type} {B : Type} :
+    Lemma in_map :
       forall f : A -> B,
       forall xs : list A,
       forall x : A,
@@ -88,7 +257,7 @@ Module ListTheory.
         * apply (or_intror (IHxs x H)).
     Qed.
 
-    Lemma in_middle {A : Type} :
+    Lemma in_middle :
       forall (x y : A),
       forall (xs ys : list A),
       In x (xs ++ y :: ys) <-> (x = y \/ In x (xs ++ ys)).
@@ -114,7 +283,7 @@ Module ListTheory.
           tauto.
     Qed.
 
-    Lemma in_map_in {A : Type} {B : Type} :
+    Lemma in_map_in :
       forall f : A -> B,
       forall xs : list A,
       forall y : B,
@@ -138,7 +307,7 @@ Module ListTheory.
           tauto.
     Qed.
 
-    Lemma in_map_inj {A : Type} {B : Type} :
+    Lemma in_map_inj :
       forall f : A -> B,
       (forall x1 x2 : A, f x1 = f x2 -> x1 = x2) ->
       forall xs : list A,
@@ -160,7 +329,7 @@ Module ListTheory.
         * apply (or_intror (IHxs x H0)).
     Qed.
 
-    Lemma split_middle {A : Type} :
+    Lemma split_middle :
       forall x : A,
       forall xs : list A,
       In x xs ->
@@ -190,18 +359,18 @@ Module ListTheory.
           reflexivity.
     Qed.
 
-    Theorem pigeon_hole {A : Type} :
+    Theorem pigeon_hole :
       forall (xs xs' : list A),
       (forall x : A, In x xs -> In x xs') ->
       length xs' < length xs ->
-      not (AreAllDistinct xs).
+      not (areAllDistinct xs).
     Proof.
       intros xs.
       induction xs.
       - intros xs'.
         simpl.
         intro.
-        omega.
+        lia.
       - intros xs'.
         simpl.
         intro.
@@ -225,7 +394,7 @@ Module ListTheory.
         * intros x.
           intro.
           apply (proj2 (in_append x ls rs)).
-          destruct (classic (a = x)).
+          destruct (eq_A_dec a x).
           + subst.
             elimtype False.
             apply (H2 H4).
@@ -239,14 +408,14 @@ Module ListTheory.
             subst.
             reflexivity.
             apply or_intror.
-            apply H7.
+            apply H5.
             destruct H7.
             elimtype False.
-            apply (H5 H7).
-            apply H7.
+            apply (n H5).
+            apply H5.
         * assert (H4 : length (ls ++ rs) = length ls + length rs).
           apply (len_append ls rs).
-          omega.
+          lia.
         * apply H3.
     Qed.
   End General.
@@ -255,13 +424,15 @@ Module ListTheory.
 
     Import ListNotations.
 
+    Import Classic.
+
     Lemma enum_exists :
       forall from : nat,
       forall to : nat,
       forall f_le_t : from <= to,
       exists enum : list nat,
       (from + length enum = to) /\
-      (AreAllDistinct enum) /\
+      (areAllDistinct nat enum) /\
       forall n : nat,
       In n enum <->
       (from <= n /\ n < to)
@@ -272,18 +443,18 @@ Module ListTheory.
       - exists [].
         constructor.
         simpl.
-        omega.
+        lia.
         simpl.
         constructor.
         trivial.
         intros n.
-        omega.
+        lia.
       - destruct IHf_le_t as [enum H].
         destruct H.
         exists (to :: enum).
         constructor.
         simpl.
-        omega.
+        lia.
         simpl.
         destruct H0.
         constructor.
@@ -291,23 +462,23 @@ Module ListTheory.
         intro.
         assert (from <= to < to).
         apply (proj1 (H1 to) H2).
-        omega.
+        lia.
         apply H0.
         intros n.
         constructor.
         intro.
         destruct H2.
         subst.
-        omega.
+        lia.
         assert (from <= n /\ n < to).
         apply (proj1 (H1 n) H2).
-        omega.
+        lia.
         intro.
-        destruct (classic (to = n)).
+        destruct (ex_middle (to = n)).
         simpl.
         tauto.
         assert (from <= n /\ n < to).
-        omega.
+        lia.
         simpl.
         apply or_intror.
         apply (proj2 (H1 n) H4).
@@ -317,44 +488,44 @@ Module ListTheory.
       forall size : nat,
       forall ns : list nat,
       (forall n : nat, In n ns <-> n < size) ->
-      AreAllDistinct ns ->
+      areAllDistinct nat ns ->
       length ns = size.
     Proof.
       intros size ns.
       destruct (enum_exists 0 size) as [enum H].
-      omega.
+      lia.
       intro.
       intro.
       assert (not (length ns > size)).
       intro.
-      apply (pigeon_hole ns enum).
+      apply (pigeon_hole nat eq_nat_dec ns enum).
       destruct H.
       destruct H3.
       intros n.
       assert (n < size <-> 0 <= n < size).
-      omega.
+      lia.
       intro.
       apply (proj2 (H4 n)).
       apply (proj1 H5).
       apply (proj1 (H0 n) H6).
       destruct H.
-      omega.
+      lia.
       apply H1.
       destruct H.
       destruct H3.
       assert (not (length ns < size)).
       intro.
-      apply (pigeon_hole enum ns).
+      apply (pigeon_hole nat eq_nat_dec enum ns).
       intros n.
       assert (n < size <-> 0 <= n < size).
-      omega.
+      lia.
       intro.
       apply (proj2 (H0 n)).
       apply (proj2 H6).
       apply (proj1 (H4 n) H7).
-      omega.
+      lia.
       apply H3.
-      omega.
+      lia.
     Qed.
   End Nat.
 End ListTheory.
@@ -368,6 +539,8 @@ Module GraphTheory.
   .
 
   Variable g : Graph.
+
+  Variable eq_gVertex_dec : forall v1 v2 : g.(Vertex), {v1 = v2} + {v1 <> v2}.
 
   Section General.
 
@@ -441,7 +614,7 @@ Module GraphTheory.
       exists [beg].
       apply (PZ beg).
       destruct IHWalk as [visiteds].
-      destruct (classic (In next visiteds)).
+      destruct (in_or_not_in g.(Vertex) eq_gVertex_dec visiteds next).
       apply (subpath_exist visiteds beg cur H1 next H2).
       exists (next :: visiteds).
       apply (PS beg cur next visiteds H H2 H1).
@@ -451,7 +624,7 @@ Module GraphTheory.
       forall visiteds : list g.(Vertex),
       forall beg cur : g.(Vertex),
       Path visiteds beg cur ->
-      AreAllDistinct visiteds.
+      areAllDistinct g.(Vertex) visiteds.
     Proof.
       intros visiteds beg cur.
       intro.
@@ -473,7 +646,7 @@ Module GraphTheory.
 
     Variable size : nat.
 
-    Variable can_enum_vertices : (exists vertices : list g.(Vertex), AreAllDistinct vertices /\ length vertices = size /\ (forall v : g.(Vertex), In v vertices)).
+    Variable can_enum_vertices : (exists vertices : list g.(Vertex), areAllDistinct g.(Vertex) vertices /\ length vertices = size /\ (forall v : g.(Vertex), In v vertices)).
 
     Proposition len_path_leq_size : 
       forall visiteds : list g.(Vertex),
@@ -488,13 +661,13 @@ Module GraphTheory.
         intro.
         destruct H0.
         destruct H2.
-        apply (pigeon_hole visiteds vertices).
+        apply (pigeon_hole g.(Vertex) eq_gVertex_dec visiteds vertices).
           intros v.
           intro.
           apply (H3 v).
-          omega.
+          lia.
           apply (visiteds_are_all_distinct visiteds beg cur H).
-      omega.
+        lia.
     Qed.
   End Finite.
 End GraphTheory.
