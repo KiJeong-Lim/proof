@@ -424,8 +424,6 @@ Module ListTheory.
 
     Import ListNotations.
 
-    Import Classic.
-
     Lemma enum_exists :
       forall from : nat,
       forall to : nat,
@@ -474,14 +472,14 @@ Module ListTheory.
         apply (proj1 (H1 n) H2).
         lia.
         intro.
-        destruct (ex_middle (to = n)).
+        destruct (eq_nat_dec to n).
         simpl.
         tauto.
         assert (from <= n /\ n < to).
         lia.
         simpl.
         apply or_intror.
-        apply (proj2 (H1 n) H4).
+        apply (proj2 (H1 n) H3).
     Qed.
 
     Theorem pigeon_hole_nat :
@@ -538,15 +536,15 @@ Module GraphTheory.
     }
   .
 
-  Variable g : Graph.
-
-  Variable eq_gVertex_dec : forall v1 v2 : g.(Vertex), {v1 = v2} + {v1 <> v2}.
-
   Section General.
 
     Import ListNotations.
 
     Import ListTheory.
+    
+    Variable g : Graph.
+  
+    Variable eq_gVertex_dec : forall v1 v2 : g.(Vertex), {v1 = v2} + {v1 <> v2}.
 
     Inductive Path : list g.(Vertex) -> g.(Vertex) -> g.(Vertex) -> Prop :=
     | PZ :
@@ -644,6 +642,10 @@ Module GraphTheory.
 
     Import ListTheory.
 
+    Variable g : Graph.
+  
+    Variable eq_gVertex_dec : forall v1 v2 : g.(Vertex), {v1 = v2} + {v1 <> v2}.
+
     Variable size : nat.
 
     Variable can_enum_vertices : (exists vertices : list g.(Vertex), areAllDistinct g.(Vertex) vertices /\ length vertices = size /\ (forall v : g.(Vertex), In v vertices)).
@@ -651,7 +653,7 @@ Module GraphTheory.
     Proposition len_path_leq_size : 
       forall visiteds : list g.(Vertex),
       forall beg cur : g.(Vertex),
-      Path visiteds beg cur ->
+      Path g visiteds beg cur ->
       length visiteds <= size.
     Proof.
       intros visiteds beg cur.
@@ -666,7 +668,7 @@ Module GraphTheory.
           intro.
           apply (H3 v).
           lia.
-          apply (visiteds_are_all_distinct visiteds beg cur H).
+          apply (visiteds_are_all_distinct g visiteds beg cur H).
         lia.
     Qed.
   End Finite.
