@@ -1,5 +1,6 @@
 Require Export List.
 Require Export Bool.
+Require Export PeanoNat.
 
 Module PropositionalLogic.
 
@@ -21,38 +22,38 @@ Module PropositionalLogic.
 
   Section Semantics.
 
-    Fixpoint satisfy (assignment : nat -> bool) (p : formula) : bool :=
+    Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
       match p with
       | PropVar n => assignment n
       | Contradiction => false
       | Negation p1 =>
-        match satisfy assignment p1 with
+        match satisfies assignment p1 with
         | true => false
         | false => true
         end
       | Conjunction p1 p2 =>
-        match satisfy assignment p1, satisfy assignment p2 with
+        match satisfies assignment p1, satisfies assignment p2 with
         | true, true => true
         | true, false => false
         | false, true => false
         | false, false => false
         end
       | Disjunction p1 p2 =>
-        match satisfy assignment p1, satisfy assignment p2 with
+        match satisfies assignment p1, satisfies assignment p2 with
         | true, true => true
         | true, false => true
         | false, true => true
         | false, false => false
         end
       | Implication p1 p2 =>
-        match satisfy assignment p1, satisfy assignment p2 with
+        match satisfies assignment p1, satisfies assignment p2 with
         | true, true => true
         | true, false => false
         | false, true => true
         | false, false => true
         end
       | Biconditional p1 p2 =>
-        match satisfy assignment p1, satisfy assignment p2 with
+        match satisfies assignment p1, satisfies assignment p2 with
         | true, true => true
         | true, false => false
         | false, true => false
@@ -61,16 +62,56 @@ Module PropositionalLogic.
       end
     .
 
-    Fixpoint is_model (assignment : nat -> bool) (premises : list formula) : bool :=
-      match premises with
-      | [] => true
-      | premise :: premises' => andb (satisfy assignment premise) (is_model assignment premises')
-      end
+    Definition entails (premises : list formula) (consequence : formula) : Prop :=
+      forall assignment : nat -> bool,
+      (forall premise : formula, In premise premises -> satisfies assignment premise = true) ->
+      satisfies assignment consequence = true
     .
 
-    Definition entails (premises : list formula) (consequence : formula) : Prop :=
-      forall assignment : nat -> bool, is_model assignment premises = true -> satisfy assignment consequence = true
-    .
+    Lemma premise_more_then_still_entails :
+      forall hs1 : list formula,
+      forall a : formula,
+      entails hs1 a ->
+      forall hs2 : list formula,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      entails hs2 a.
+    Proof.
+      intros hs1 a.
+      intro.
+      intros hs2.
+      intro.
+      intros assignment.
+      intro.
+      apply (H assignment).
+      intros premise.
+      intro.
+      apply (H1 premise (H0 premise H2)).
+    Qed.
+
+    Theorem always_entails_premise :
+      forall premises : list formula,
+      forall consequence : formula,
+      In consequence premises ->
+      entails premises consequence.
+    Proof.
+      intros premises consequence.
+      assert (In consequence [consequence]).
+        simpl.
+        intuition.
+      assert (entails [consequence] consequence).
+        intros assignment.
+        intro.
+        apply (H0 consequence H).
+      intro.
+      apply (premise_more_then_still_entails [consequence] consequence H0 premises).
+      intro.
+      simpl.
+      intro.
+      destruct H2.
+      subst.
+      apply H1.
+      inversion H2.
+    Qed.
 
   End Semantics.
   
@@ -167,7 +208,7 @@ Module PropositionalLogic.
       infers hs a
     .
 
-    Lemma assume_more_then_also_derivable :
+    Lemma assume_more_then_still_proves :
       forall hs1 : list formula,
       forall a : formula,
       infers hs1 a ->
@@ -284,7 +325,7 @@ Module PropositionalLogic.
           apply (Assumption (a :: hs) a).
           simpl.
           tauto.
-          apply (assume_more_then_also_derivable hs (Implication a b) H (a :: hs)).
+          apply (assume_more_then_still_proves hs (Implication a b) H (a :: hs)).
           simpl.
           intuition.
       intros hs a b.
@@ -297,7 +338,7 @@ Module PropositionalLogic.
 
   Section Soundness.
 
-(*  Theorem soundness_of_propositional_logic :
+(* Theorem soundness_of_propositional_logic :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
