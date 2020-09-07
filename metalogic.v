@@ -917,6 +917,16 @@ Module PropositionalLogic.
 
   Section Completeness.
 
+(*  Lemma consistent_iff_has_a_model :
+      forall hs : list formula,
+      not (infers hs Contradiction) <-> (exists assignment : nat -> bool, forall h : formula, In h hs -> satisfies assignment h = true).
+    Proof.
+      intros.
+      constructor.
+      - intro.
+    Qed.
+*)
+
 (*  Theorem completeness_of_propositional_logic :
       forall consequence : formula,
       forall premises : list formula,
