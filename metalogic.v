@@ -921,9 +921,6 @@ Module PropositionalLogic.
       forall hs : list formula,
       not (infers hs Contradiction) <-> (exists assignment : nat -> bool, forall h : formula, In h hs -> satisfies assignment h = true).
     Proof.
-      intros.
-      constructor.
-      - intro.
     Qed.
 *)
 
