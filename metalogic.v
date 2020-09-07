@@ -886,7 +886,7 @@ Module PropositionalLogic.
 
   Section Soundness.
 
-   Theorem soundness_of_propositional_logic :
+   Theorem soundness :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
@@ -924,7 +924,7 @@ Module PropositionalLogic.
     Qed.
 *)
 
-(*  Theorem completeness_of_propositional_logic :
+(*  Theorem completeness :
       forall consequence : formula,
       forall premises : list formula,
       entails premises consequence ->
