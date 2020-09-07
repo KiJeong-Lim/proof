@@ -240,6 +240,307 @@ Module PropositionalLogic.
         * apply (H0 premise H3).
     Qed.
 
+    Proposition and_intro_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs a ->
+      entails hs b ->
+      entails hs (Conjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H1).
+      assert (
+        satisfies assignment b = true
+      ).
+        apply (H0 assignment H1).
+      simpl.
+      rewrite H2.
+      rewrite H3.
+      intuition.
+    Qed.
+
+    Proposition and_elim1_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs (Conjunction a b) ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment (Conjunction a b) = true
+      ).
+        apply (H assignment H0).
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies assignment b = true \/ satisfies assignment b = false
+      ).
+        induction (satisfies assignment b).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Proposition and_elim2_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs (Conjunction a b) ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment (Conjunction a b) = true
+      ).
+        apply (H assignment H0).
+      assert (
+        satisfies assignment b = true \/ satisfies assignment b = false
+      ).
+        induction (satisfies assignment b).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Proposition or_intro1_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs a ->
+      entails hs (Disjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H0).
+      cut (satisfies assignment b = true \/ satisfies assignment b = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies assignment b).
+        tauto.
+        tauto.
+    Qed.
+
+    Proposition or_intros2_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs b ->
+      entails hs (Disjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment b = true
+      ).
+        apply (H assignment H0).
+      cut (satisfies assignment a = true \/ satisfies assignment a = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies assignment a).
+        tauto.
+        tauto.
+    Qed.
+
+    Proposition or_elim_preserves :
+      forall hs : list formula,
+      forall a b c : formula,
+      entails hs (Disjunction a b) ->
+      entails (a :: hs) c ->
+      entails (b :: hs) c ->
+      entails hs c.
+    Proof.
+      intros hs a b c.
+      unfold entails in *.
+      intro.
+      intro.
+      intro.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment b = true).
+        assert (satisfies assignment (Disjunction a b) = true).
+          apply (H assignment H2).
+        inversion H3.
+        cut (satisfies assignment a = true \/ satisfies assignment a = false).
+          intro.
+          destruct H4.
+            rewrite H4 in *.
+            apply or_introl.
+            rewrite H5.
+            tauto.
+            cut (satisfies assignment b = true \/ satisfies assignment b = false).
+              intro.
+              rewrite H4 in *.
+              destruct H6.
+                rewrite H6 in *.
+                tauto.
+                rewrite H6 in *.
+                inversion H5.
+            induction (satisfies assignment b).
+              tauto.
+              tauto.
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      destruct H3.
+      - apply (H0 assignment).
+        intros premise.
+        simpl.
+        intro.
+        destruct H4.
+        * rewrite H4 in H3.
+          apply H3.
+        * apply (H2 premise H4).
+      - apply (H1 assignment).
+        intros premise.
+        simpl.
+        intro.
+        destruct H4.
+        * rewrite H4 in H3.
+          apply H3.
+        * apply (H2 premise H4).
+    Qed.
+
+    Proposition ifthen_intro_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails (a :: hs) b ->
+      entails hs (Implication a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H1.
+      - destruct H2.
+        * simpl.
+          rewrite H1.
+          rewrite H2.
+          tauto.
+        * assert (satisfies assignment b = true).
+            apply (H assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct H3.
+              rewrite <- H3.
+              apply H1.
+              apply (H0 premise H3).
+          rewrite H3 in H2.
+          inversion H2.
+      - simpl.
+        destruct H2.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+    Qed.
+
+    Proposition ifthen_elim_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs (Implication a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true).
+        apply (H0 assignment H1).
+      cut (satisfies assignment (Implication a b) = true).
+        intro.
+        cut (satisfies assignment b = true \/ satisfies assignment b = false).
+          intro.
+          destruct H4.
+            apply H4.
+            cut (satisfies assignment (Implication a b) = false).
+              intro.
+              rewrite H3 in H5.
+              inversion H5.
+            simpl.
+            rewrite H2.
+            rewrite H4.
+            tauto.
+        destruct (satisfies assignment b).
+          tauto.
+          tauto.
+      apply (H assignment H1).
+    Qed.
+
   End Semantics.
   
   Section InferenceRules.
