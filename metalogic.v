@@ -68,7 +68,9 @@ Module PropositionalLogic.
       end
     .
 
-    Definition entails (premises : list formula) (consequence : formula) : Prop := forall assignment : nat -> bool, is_model assignment premises = true -> satisfy assignment consequence = true.
+    Definition entails (premises : list formula) (consequence : formula) : Prop :=
+      forall assignment : nat -> bool, is_model assignment premises = true -> satisfy assignment consequence = true
+    .
 
   End Semantics.
   
