@@ -372,7 +372,7 @@ Module PropositionalLogic.
         tauto.
     Qed.
 
-    Proposition or_intros2_preserves :
+    Proposition or_intro2_preserves :
       forall hs : list formula,
       forall a b : formula,
       entails hs b ->
@@ -539,6 +539,126 @@ Module PropositionalLogic.
           tauto.
           tauto.
       apply (H assignment H1).
+    Qed.
+
+    Proposition iff_intro_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails (a :: hs) b ->
+      entails (b :: hs) a ->
+      entails hs (Biconditional a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H2.
+      - destruct H3.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+        * assert (satisfies assignment b = true).
+            apply (H assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct H4.
+              rewrite <- H4.
+              apply H2.
+              apply (H1 premise H4).
+          rewrite H4 in H3.
+          inversion H3.
+      - destruct H3.
+        * assert (satisfies assignment a = true).
+            apply (H0 assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct H4.
+              rewrite <- H4.
+              apply H3.
+              apply (H1 premise H4).
+          rewrite H4 in H2.
+          inversion H2.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+    Qed.
+
+    Proposition iff_elim1_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs (Biconditional a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies assignment a = true).
+        apply (H0 assignment H1).
+      assert (satisfies assignment (Biconditional a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies assignment (Biconditional a b) = true).
+        apply (H assignment H1).
+      rewrite H4 in H5.
+      inversion H5.
+    Qed.
+
+    Proposition iff_elim2_preserves :
+      forall hs : list formula,
+      forall a b : formula,
+      entails hs (Biconditional a b) ->
+      entails hs b ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies assignment b = true).
+        apply (H0 assignment H1).
+      assert (satisfies assignment (Biconditional a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies assignment (Biconditional a b) = true).
+        apply (H assignment H1).
+      rewrite H4 in H5.
+      inversion H5.
     Qed.
 
   End Semantics.
@@ -766,14 +886,32 @@ Module PropositionalLogic.
 
   Section Soundness.
 
-(* Theorem soundness_of_propositional_logic :
+   Theorem soundness_of_propositional_logic :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
       entails hypotheses conclusion.
     Proof.
+      intros hs c.
+      intro.
+      induction H.
+      - apply (always_entails_premise hypotheses conclusion H).
+      - apply (bottom_intro_preserves hs a IHinfers1 IHinfers2).
+      - apply (bottom_elim_preserves hs a IHinfers).
+      - apply (not_intro_preserves hs a IHinfers).
+      - apply (not_elim_preserves hs a IHinfers).
+      - apply (and_intro_preserves hs a b IHinfers1 IHinfers2).
+      - apply (and_elim1_preserves hs a b IHinfers).
+      - apply (and_elim2_preserves hs a b IHinfers).
+      - apply (or_intro1_preserves hs a b IHinfers).
+      - apply (or_intro2_preserves hs a b IHinfers).
+      - apply (or_elim_preserves hs a b c IHinfers1 IHinfers2 IHinfers3).
+      - apply (ifthen_intro_preserves hs a b IHinfers).
+      - apply (ifthen_elim_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_intro_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_elim1_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_elim2_preserves hs a b IHinfers1 IHinfers2).
     Qed.
-*)
 
   End Soundness.
 
