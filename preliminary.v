@@ -418,6 +418,7 @@ Module ListTheory.
           lia.
         * apply H3.
     Qed.
+
   End General.
 
   Section Nat.
@@ -525,7 +526,9 @@ Module ListTheory.
       apply H3.
       lia.
     Qed.
+
   End Nat.
+
 End ListTheory.
 
 Module GraphTheory.
@@ -634,6 +637,7 @@ Module GraphTheory.
         simpl.
         tauto.
     Qed.
+
   End General.
 
   Section Finite.
@@ -671,5 +675,7 @@ Module GraphTheory.
           apply (visiteds_are_all_distinct g visiteds beg cur H).
         lia.
     Qed.
+
   End Finite.
+
 End GraphTheory.
