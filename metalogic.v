@@ -113,6 +113,133 @@ Module PropositionalLogic.
       inversion H2.
     Qed.
 
+    Proposition bottom_intro_preserves :
+      forall hs : list formula,
+      forall a : formula,
+      entails hs a ->
+      entails hs (Negation a) ->
+      entails hs Contradiction.
+    Proof.
+      intros hs a.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H1).
+      assert (
+        satisfies assignment (Negation a) = true
+      ).
+        apply (H0 assignment H1).
+      inversion H3.
+      rewrite H2 in H5.
+      inversion H5.
+    Qed.
+
+    Proposition bottom_elim_preserves :
+      forall hs : list formula,
+      forall a : formula,
+      entails hs Contradiction ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment H0).
+      inversion H1.
+    Qed.
+
+    Proposition not_intro_preserves :
+      forall hs : list formula,
+      forall a : formula,
+      entails (a :: hs) Contradiction ->
+      entails hs (Negation a).
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        (forall premise : formula, In premise (a :: hs) -> satisfies assignment premise = true) ->
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment).
+      cut (
+        satisfies assignment a = false
+      ).
+        intro.
+        simpl.
+        rewrite H2.
+        intuition.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+      - elimtype False.
+        cut (satisfies assignment Contradiction = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct H3.
+        * rewrite H3 in H2.
+          apply H2.
+        * apply (H0 premise H3).
+      - apply H2.
+    Qed.
+
+    Proposition not_elim_preserves :
+      forall hs : list formula,
+      forall a : formula,
+      entails (Negation a :: hs) Contradiction ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        (forall premise : formula, In premise (Negation a :: hs) -> satisfies assignment premise = true) ->
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment).
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+      - apply H2.
+      - elimtype False.
+        cut (satisfies assignment Contradiction = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct H3.
+        * rewrite <- H3.
+          simpl.
+          rewrite H2.
+          intuition.
+        * apply (H0 premise H3).
+    Qed.
+
   End Semantics.
   
   Section InferenceRules.
