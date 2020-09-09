@@ -113,6 +113,231 @@ Module PropositionalLogic.
       inversion H2.
     Qed.
 
+  End Semantics.
+  
+  Section InferenceRules.
+
+    Inductive infers : list formula -> formula -> Prop :=
+    | Assumption :
+      forall hypotheses : list formula,
+      forall conclusion : formula,
+      In conclusion hypotheses ->
+      infers hypotheses conclusion
+    | BottomIntro :
+      forall hs : list formula,
+      forall a : formula,
+      infers hs a ->
+      infers hs (Negation a) ->
+      infers hs Contradiction
+    | BottomElim :
+      forall hs : list formula,
+      forall a : formula,
+      infers hs Contradiction ->
+      infers hs a
+    | NotIntro :
+      forall hs : list formula,
+      forall a : formula,
+      infers (a :: hs) Contradiction ->
+      infers hs (Negation a)
+    | NotElim :
+      forall hs : list formula,
+      forall a : formula,
+      infers (Negation a :: hs) Contradiction ->
+      infers hs a
+    | AndIntro :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs a ->
+      infers hs b ->
+      infers hs (Conjunction a b)
+    | AndElim1 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Conjunction a b) ->
+      infers hs a
+    | AndElim2 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Conjunction a b) ->
+      infers hs b
+    | OrIntro1 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs a ->
+      infers hs (Disjunction a b)
+    | OrIntro2 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs b ->
+      infers hs (Disjunction a b)
+    | OrElim :
+      forall hs : list formula,
+      forall a b c : formula,
+      infers hs (Disjunction a b) ->
+      infers (a :: hs) c ->
+      infers (b :: hs) c ->
+      infers hs c
+    | IfthenIntro :
+      forall hs : list formula,
+      forall a b : formula,
+      infers (a :: hs) b ->
+      infers hs (Implication a b)
+    | IfthenElim :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Implication a b) ->
+      infers hs a ->
+      infers hs b
+    | IffIntro :
+      forall hs : list formula,
+      forall a b : formula,
+      infers (a :: hs) b ->
+      infers (b :: hs) a ->
+      infers hs (Biconditional a b)
+    | IffElim1 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Biconditional a b) ->
+      infers hs a ->
+      infers hs b
+    | IffElim2 :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Biconditional a b) ->
+      infers hs b ->
+      infers hs a
+    .
+
+    Lemma assume_more_then_still_proves :
+      forall hs1 : list formula,
+      forall a : formula,
+      infers hs1 a ->
+      forall hs2 : list formula,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      infers hs2 a.
+    Proof.
+      intros hs1 a.
+      intro.
+      induction H.
+      - intros hs2.
+        intro.
+        apply (Assumption hs2 conclusion).
+        apply (H0 conclusion H).
+      - intros hs2.
+        intro.
+        apply (BottomIntro hs2 a).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BottomElim hs2 a).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (NotIntro hs2 a).
+        apply (IHinfers (a :: hs2)).
+        simpl.
+        intuition.
+      - intros hs2.
+        intro.
+        apply (NotElim hs2 a).
+        apply (IHinfers (Negation a :: hs2)).
+        simpl.
+        intuition.
+      - intros hs2.
+        intro.
+        apply (AndIntro hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (AndElim1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (AndElim2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrIntro1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrIntro2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrElim hs2 a b c).
+        apply (IHinfers1 hs2 H2).
+        apply (IHinfers2 (a :: hs2)).
+        simpl.
+        intuition.
+        apply (IHinfers3 (b :: hs2)).
+        simpl.
+        intuition.
+      - intros hs2.
+        intro.
+        apply (IfthenIntro hs2 a b).
+        apply (IHinfers (a :: hs2)).
+        simpl.
+        intuition.
+      - intros hs2.
+        intro.
+        apply (IfthenElim hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (IffIntro hs2 a b).
+        apply (IHinfers1 (a :: hs2)).
+        simpl.
+        intuition.
+        apply (IHinfers2 (b :: hs2)).
+        simpl.
+        intuition.
+      - intros hs2.
+        intro.
+        apply (IffElim1 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (IffElim2 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+    Qed.
+
+    Theorem implication_is_equal_to_assumption :
+      forall hs : list formula,
+      forall a b : formula,
+      infers hs (Implication a b) <-> infers (a :: hs) b.
+    Proof.
+      assert (
+        forall hs : list formula,
+        forall a b : formula,
+        infers hs (Implication a b) -> infers (a :: hs) b
+      ).
+        intros hs a b.
+        intro.
+        cut (infers (a :: hs) (Implication a b)).
+          intro.
+          apply (IfthenElim (a :: hs) a b H0).
+          apply (Assumption (a :: hs) a).
+          simpl.
+          tauto.
+          apply (assume_more_then_still_proves hs (Implication a b) H (a :: hs)).
+          simpl.
+          intuition.
+      intros hs a b.
+      constructor.
+        apply (H hs a b).
+        apply (IfthenIntro hs a b).
+    Qed.
+
+  End InferenceRules.
+
+  Section Soundness.
+
     Proposition bottom_intro_preserves :
       forall hs : list formula,
       forall a : formula,
@@ -661,231 +886,6 @@ Module PropositionalLogic.
       inversion H5.
     Qed.
 
-  End Semantics.
-  
-  Section InferenceRules.
-
-    Inductive infers : list formula -> formula -> Prop :=
-    | Assumption :
-      forall hypotheses : list formula,
-      forall conclusion : formula,
-      In conclusion hypotheses ->
-      infers hypotheses conclusion
-    | BottomIntro :
-      forall hs : list formula,
-      forall a : formula,
-      infers hs a ->
-      infers hs (Negation a) ->
-      infers hs Contradiction
-    | BottomElim :
-      forall hs : list formula,
-      forall a : formula,
-      infers hs Contradiction ->
-      infers hs a
-    | NotIntro :
-      forall hs : list formula,
-      forall a : formula,
-      infers (a :: hs) Contradiction ->
-      infers hs (Negation a)
-    | NotElim :
-      forall hs : list formula,
-      forall a : formula,
-      infers (Negation a :: hs) Contradiction ->
-      infers hs a
-    | AndIntro :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs a ->
-      infers hs b ->
-      infers hs (Conjunction a b)
-    | AndElim1 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Conjunction a b) ->
-      infers hs a
-    | AndElim2 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Conjunction a b) ->
-      infers hs b
-    | OrIntro1 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs a ->
-      infers hs (Disjunction a b)
-    | OrIntro2 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs b ->
-      infers hs (Disjunction a b)
-    | OrElim :
-      forall hs : list formula,
-      forall a b c : formula,
-      infers hs (Disjunction a b) ->
-      infers (a :: hs) c ->
-      infers (b :: hs) c ->
-      infers hs c
-    | IfthenIntro :
-      forall hs : list formula,
-      forall a b : formula,
-      infers (a :: hs) b ->
-      infers hs (Implication a b)
-    | IfthenElim :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Implication a b) ->
-      infers hs a ->
-      infers hs b
-    | IffIntro :
-      forall hs : list formula,
-      forall a b : formula,
-      infers (a :: hs) b ->
-      infers (b :: hs) a ->
-      infers hs (Biconditional a b)
-    | IffElim1 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Biconditional a b) ->
-      infers hs a ->
-      infers hs b
-    | IffElim2 :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Biconditional a b) ->
-      infers hs b ->
-      infers hs a
-    .
-
-    Lemma assume_more_then_still_proves :
-      forall hs1 : list formula,
-      forall a : formula,
-      infers hs1 a ->
-      forall hs2 : list formula,
-      (forall h : formula, In h hs1 -> In h hs2) ->
-      infers hs2 a.
-    Proof.
-      intros hs1 a.
-      intro.
-      induction H.
-      - intros hs2.
-        intro.
-        apply (Assumption hs2 conclusion).
-        apply (H0 conclusion H).
-      - intros hs2.
-        intro.
-        apply (BottomIntro hs2 a).
-        apply (IHinfers1 hs2 H1).
-        apply (IHinfers2 hs2 H1).
-      - intros hs2.
-        intro.
-        apply (BottomElim hs2 a).
-        apply (IHinfers hs2 H0).
-      - intros hs2.
-        intro.
-        apply (NotIntro hs2 a).
-        apply (IHinfers (a :: hs2)).
-        simpl.
-        intuition.
-      - intros hs2.
-        intro.
-        apply (NotElim hs2 a).
-        apply (IHinfers (Negation a :: hs2)).
-        simpl.
-        intuition.
-      - intros hs2.
-        intro.
-        apply (AndIntro hs2 a b).
-        apply (IHinfers1 hs2 H1).
-        apply (IHinfers2 hs2 H1).
-      - intros hs2.
-        intro.
-        apply (AndElim1 hs2 a b).
-        apply (IHinfers hs2 H0).
-      - intros hs2.
-        intro.
-        apply (AndElim2 hs2 a b).
-        apply (IHinfers hs2 H0).
-      - intros hs2.
-        intro.
-        apply (OrIntro1 hs2 a b).
-        apply (IHinfers hs2 H0).
-      - intros hs2.
-        intro.
-        apply (OrIntro2 hs2 a b).
-        apply (IHinfers hs2 H0).
-      - intros hs2.
-        intro.
-        apply (OrElim hs2 a b c).
-        apply (IHinfers1 hs2 H2).
-        apply (IHinfers2 (a :: hs2)).
-        simpl.
-        intuition.
-        apply (IHinfers3 (b :: hs2)).
-        simpl.
-        intuition.
-      - intros hs2.
-        intro.
-        apply (IfthenIntro hs2 a b).
-        apply (IHinfers (a :: hs2)).
-        simpl.
-        intuition.
-      - intros hs2.
-        intro.
-        apply (IfthenElim hs2 a b).
-        apply (IHinfers1 hs2 H1).
-        apply (IHinfers2 hs2 H1).
-      - intros hs2.
-        intro.
-        apply (IffIntro hs2 a b).
-        apply (IHinfers1 (a :: hs2)).
-        simpl.
-        intuition.
-        apply (IHinfers2 (b :: hs2)).
-        simpl.
-        intuition.
-      - intros hs2.
-        intro.
-        apply (IffElim1 hs2 a b).
-        apply (IHinfers1 hs2 H1).
-        apply (IHinfers2 hs2 H1).
-      - intros hs2.
-        intro.
-        apply (IffElim2 hs2 a b).
-        apply (IHinfers1 hs2 H1).
-        apply (IHinfers2 hs2 H1).
-    Qed.
-
-    Theorem implication_is_equal_to_assumption :
-      forall hs : list formula,
-      forall a b : formula,
-      infers hs (Implication a b) <-> infers (a :: hs) b.
-    Proof.
-      assert (
-        forall hs : list formula,
-        forall a b : formula,
-        infers hs (Implication a b) -> infers (a :: hs) b
-      ).
-        intros hs a b.
-        intro.
-        cut (infers (a :: hs) (Implication a b)).
-          intro.
-          apply (IfthenElim (a :: hs) a b H0).
-          apply (Assumption (a :: hs) a).
-          simpl.
-          tauto.
-          apply (assume_more_then_still_proves hs (Implication a b) H (a :: hs)).
-          simpl.
-          intuition.
-      intros hs a b.
-      constructor.
-        apply (H hs a b).
-        apply (IfthenIntro hs a b).
-    Qed.
-
-  End InferenceRules.
-
-  Section Soundness.
-
    Theorem soundness :
       forall hypotheses : list formula,
       forall conclusion : formula,
@@ -917,18 +917,30 @@ Module PropositionalLogic.
 
   Section Completeness.
 
-(*  Lemma consistent_iff_has_a_model :
-      forall hs : list formula,
-      not (infers hs Contradiction) <-> (exists assignment : nat -> bool, forall h : formula, In h hs -> satisfies assignment h = true).
+    Proposition proof_of_ex_middle :
+      forall p : formula,
+      infers [] (Disjunction p (Negation p)).
     Proof.
+      intros c.
+      apply (NotElim [] (Disjunction c (Negation c))).
+      apply (BottomIntro [Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
+      apply (OrIntro2 [Negation (Disjunction c (Negation c))] c (Negation c)).
+      apply (NotIntro [Negation (Disjunction c (Negation c))] c).
+      apply (BottomIntro [c; Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
+      apply (OrIntro1 [c; Negation (Disjunction c (Negation c))] c ((Negation c))).
+      apply (Assumption [c; Negation (Disjunction c (Negation c))] c).
+      intuition.
+      apply (Assumption [c; Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
+      intuition.
+      apply (Assumption [Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
+      intuition.
     Qed.
-*)
 
 (*  Theorem completeness :
-      forall consequence : formula,
       forall premises : list formula,
-      entails premises consequence ->
-      infers premises consequence.
+      forall consequence : formula,
+      not (infers premises consequence) ->
+      not (entails premises consequence).
     Proof.
     Qed.
 *)
