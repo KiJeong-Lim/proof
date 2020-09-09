@@ -5,8 +5,8 @@ Require Export Peano_dec.
 Require Export Lia.
 
 (* THANKS_TO:
-  "1. Paul Sohn"
-  "2. Junyoung Clare Jang"
+  "1. Taeseung Sohn": https://github.com/paulsohn
+  "2. Junyoung Clare Jang": https://github.com/Ailrun
 *)
 
 Module PropositionalLogic.
