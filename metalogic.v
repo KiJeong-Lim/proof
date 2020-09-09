@@ -1,6 +1,8 @@
 Require Export List.
 Require Export Bool.
 Require Export PeanoNat.
+Require Export Peano_dec.
+Require Export Lia.
 
 Module PropositionalLogic.
 
@@ -17,6 +19,268 @@ Module PropositionalLogic.
     | Implication : formula -> formula -> formula
     | Biconditional : formula -> formula -> formula
     .
+
+    Proposition eq_formula_dec :
+      forall p1 p2 : formula,
+      {p1 = p2} + {p1 <> p2}.
+    Proof.
+      intros p1.
+      induction p1.
+      - intros p2.
+        destruct p2.
+        * destruct (Nat.eq_dec n n0).
+          + intuition.
+          + assert (PropVar n <> PropVar n0).
+              intro.
+              inversion H.
+              intuition.
+            intuition.
+        * assert (PropVar n <> Contradiction).
+            intro.
+            inversion H.
+          intuition.
+        * assert (PropVar n <> Negation p2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (PropVar n <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (PropVar n <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (PropVar n <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (PropVar n <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+      - intros p2.
+        induction p2.
+        * assert (Contradiction <> PropVar n).
+            intro.
+            inversion H.
+          intuition.
+        * intuition.
+        * assert (Contradiction <> Negation p2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Contradiction <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Contradiction <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Contradiction <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Contradiction <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+      - intros p2.
+        destruct p2.
+        * assert (Negation p1 <> PropVar n).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Negation p1 <> Contradiction).
+            intro.
+            inversion H.
+          intuition.
+        * destruct (IHp1 p2).
+            subst.
+            tauto.
+            assert (Negation p1 <> Negation p2).
+              intro.
+              inversion H.
+              apply (n H1).
+            intuition.
+        * assert (Negation p1 <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Negation p1 <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Negation p1 <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Negation p1 <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          intuition.
+      - intros p2.
+        destruct p2.
+        * assert (Conjunction p1_1 p1_2 <> PropVar n).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Conjunction p1_1 p1_2 <> Contradiction).
+            intro.
+            inversion H.
+          intuition.
+        * assert (Conjunction p1_1 p1_2 <> Negation p2).
+            intro.
+            inversion H.
+          intuition.
+        * destruct (IHp1_1 p2_1).
+            destruct (IHp1_2 p2_2).
+              subst.
+              intuition.
+              assert (Conjunction p1_1 p1_2 <> Conjunction p2_1 p2_2).
+                intro.
+                inversion H.
+                tauto.
+              tauto.
+            assert (Conjunction p1_1 p1_2 <> Conjunction p2_1 p2_2).
+              intro.
+              inversion H.
+              tauto.
+            tauto.
+        * assert (Conjunction p1_1 p1_2 <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Conjunction p1_1 p1_2 <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Conjunction p1_1 p1_2 <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+      - intros p2.
+        destruct p2.
+        * assert (Disjunction p1_1 p1_2 <> PropVar n).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Disjunction p1_1 p1_2 <> Contradiction).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Disjunction p1_1 p1_2 <> Negation p2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Disjunction p1_1 p1_2 <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * destruct (IHp1_1 p2_1).
+            destruct (IHp1_2 p2_2).
+              subst.
+              intuition.
+              assert (Disjunction p1_1 p1_2 <> Disjunction p2_1 p2_2).
+                intro.
+                inversion H.
+                tauto.
+              tauto.
+            assert (Disjunction p1_1 p1_2 <> Disjunction p2_1 p2_2).
+              intro.
+              inversion H.
+              tauto.
+            tauto.
+        * assert (Disjunction p1_1 p1_2 <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Disjunction p1_1 p1_2 <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+      - intros p2.
+        induction p2.
+        * assert (Implication p1_1 p1_2 <> PropVar n).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Implication p1_1 p1_2 <> Contradiction).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Implication p1_1 p1_2 <> Negation p2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Implication p1_1 p1_2 <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Implication p1_1 p1_2 <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * destruct (IHp1_1 p2_1).
+            destruct (IHp1_2 p2_2).
+              subst.
+              intuition.
+              assert (Implication p1_1 p1_2 <> Implication p2_1 p2_2).
+                intro.
+                inversion H.
+                tauto.
+              tauto.
+            assert (Implication p1_1 p1_2 <> Implication p2_1 p2_2).
+              intro.
+              inversion H.
+              tauto.
+            tauto.
+        * assert (Implication p1_1 p1_2 <> Biconditional p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+      - intros p2.
+        destruct p2.
+        * assert (Biconditional p1_1 p1_2 <> PropVar n).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Biconditional p1_1 p1_2 <> Contradiction).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Biconditional p1_1 p1_2 <> Negation p2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Biconditional p1_1 p1_2 <> Conjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Biconditional p1_1 p1_2 <> Disjunction p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * assert (Biconditional p1_1 p1_2 <> Implication p2_1 p2_2).
+            intro.
+            inversion H.
+          tauto.
+        * destruct (IHp1_1 p2_1).
+            destruct (IHp1_2 p2_2).
+              subst.
+              intuition.
+              assert (Biconditional p1_1 p1_2 <> Biconditional p2_1 p2_2).
+                intro.
+                inversion H.
+                tauto.
+              tauto.
+            assert (Biconditional p1_1 p1_2 <> Biconditional p2_1 p2_2).
+              intro.
+              inversion H.
+              tauto.
+            tauto.
+    Qed.
 
   End Syntax.
 
@@ -916,25 +1180,6 @@ Module PropositionalLogic.
   End Soundness.
 
   Section Completeness.
-
-    Proposition proof_of_ex_middle :
-      forall p : formula,
-      infers [] (Disjunction p (Negation p)).
-    Proof.
-      intros c.
-      apply (NotElim [] (Disjunction c (Negation c))).
-      apply (BottomIntro [Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
-      apply (OrIntro2 [Negation (Disjunction c (Negation c))] c (Negation c)).
-      apply (NotIntro [Negation (Disjunction c (Negation c))] c).
-      apply (BottomIntro [c; Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
-      apply (OrIntro1 [c; Negation (Disjunction c (Negation c))] c ((Negation c))).
-      apply (Assumption [c; Negation (Disjunction c (Negation c))] c).
-      intuition.
-      apply (Assumption [c; Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
-      intuition.
-      apply (Assumption [Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
-      intuition.
-    Qed.
 
 (*  Theorem completeness :
       forall premises : list formula,
