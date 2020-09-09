@@ -4,7 +4,10 @@ Require Export PeanoNat.
 Require Export Peano_dec.
 Require Export Lia.
 
-(* THANKS_TO {"Paul Sohn", "Ailrun"} *)
+(* THANKS_TO:
+  "1. Paul Sohn"
+  "2. Junyoung Clare Jang"
+*)
 
 Module PropositionalLogic.
 
