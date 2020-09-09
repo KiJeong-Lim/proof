@@ -1488,7 +1488,7 @@ Module PropositionalLogic.
           ).
             apply (H2 assignment).
           destruct H3.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1531,7 +1531,7 @@ Module PropositionalLogic.
               apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
               intuition.
               intuition.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1618,7 +1618,7 @@ Module PropositionalLogic.
           ).
             apply (H2 assignment).
           destruct H3.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1643,7 +1643,7 @@ Module PropositionalLogic.
                 intuition.
               apply OrIntro1.
               apply H8.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1730,7 +1730,7 @@ Module PropositionalLogic.
           ).
             apply (H2 assignment).
           destruct H3.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1763,7 +1763,7 @@ Module PropositionalLogic.
               apply in_cons.
               apply in_or_app.
               intuition.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1836,7 +1836,7 @@ Module PropositionalLogic.
           ).
             apply (H2 assignment).
           destruct H3.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1875,7 +1875,7 @@ Module PropositionalLogic.
               apply in_cons.
               apply in_or_app.
               intuition.
-            destruct H4.
+          + destruct H4.
               simpl in *.
               rewrite H3 in *.
               rewrite H4 in *.
@@ -1923,16 +1923,6 @@ Module PropositionalLogic.
               apply in_or_app.
               intuition.
     Qed.
-
-  (*
-  assume_more_then_still_proves :
-      forall hs1 : list formula,
-      forall a : formula,
-      infers hs1 a ->
-      forall hs2 : list formula,
-      (forall h : formula, In h hs1 -> In h hs2) ->
-      infers hs2 a.
-  *)
 
 (*  Theorem completeness :
       forall premises : list formula,
