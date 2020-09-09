@@ -1321,6 +1321,619 @@ Module PropositionalLogic.
         apply (or_intror (proj2 (H0 n) H2)).
     Qed.
 
+    Fixpoint makeLine (ns : list nat) (assignment : nat -> bool) : list formula :=
+      match ns with
+      | [] => []
+      | n :: ns' =>
+        if assignment n
+        then PropVar n :: makeLine ns' assignment
+        else Negation (PropVar n) :: makeLine ns' assignment
+      end
+    .
+    
+    Lemma makeLine_app :
+      forall ns1 ns2 : list nat,
+      forall assignment : nat -> bool,
+      makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment.
+    Proof.
+      intros ns1.
+      induction ns1.
+      - intros ns2 assignment.
+        intuition.
+      - intros ns2 assignment.
+        simpl.
+        destruct (assignment a).
+        * assert (makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            apply (IHns1 ns2 assignment).
+          rewrite H.
+          reflexivity.
+        * assert (makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            apply (IHns1 ns2 assignment).
+          rewrite H.
+          reflexivity.
+    Qed.
+
+    Lemma assignment_property :
+      forall c : formula,
+      exists ns : list nat, (forall n : nat, In n ns <-> occurs n c) /\
+      forall assignment : nat -> bool,
+      let hs := makeLine ns assignment in
+      if satisfies assignment c
+      then infers hs c
+      else infers hs (Negation c).
+    Proof.
+      intros c.
+      induction c.
+      - exists [n].
+        constructor.
+        * intros n0.
+          simpl.
+          constructor.
+          + intro.
+            destruct H.
+              subst.
+              apply (occursPropVar n0).
+              inversion H.
+          + intro.
+            inversion H.
+            tauto.
+        * intros assignment.
+          assert (assignment n = true \/ assignment n = false).
+            destruct (assignment n).
+              intuition.
+              intuition.
+          destruct H.
+          + simpl in *.
+            rewrite H in *.
+            apply (Assumption [PropVar n] (PropVar n)).
+            intuition.
+          + simpl in *.
+            rewrite H in *.
+            apply (Assumption [Negation (PropVar n)] (Negation (PropVar n))).
+            intuition.
+      - exists [].
+        constructor.
+        * intros n.
+          simpl.
+          constructor.
+          intro.
+          destruct H.
+          intro.
+          inversion H.
+        * intros assignment.
+          simpl in *.
+          apply (NotIntro [] Contradiction).
+          apply (Assumption [Contradiction] Contradiction).
+          intuition.
+      - destruct IHc as [ns H].
+        destruct H.
+        exists ns.
+        constructor.
+        * intros n.
+          constructor.
+          + intro.
+            apply (occursNegation n c).
+            apply (proj1 (H n) H1).
+          + intro.
+            inversion H1.
+            subst.
+            apply (proj2 (H n) H4).
+        * intros assignment.
+          intros hs.
+          assert (satisfies assignment c = true \/ satisfies assignment c = false).
+            destruct (satisfies assignment c).
+              tauto.
+              tauto.
+          destruct H1.
+          + simpl.
+            assert (if satisfies assignment c then infers hs c else infers hs (Negation c)).
+              apply (H0 assignment).
+            rewrite H1 in *.
+            apply (NotIntro hs (Negation c)).
+            assert (infers (Negation c :: hs) c).
+              apply (assume_more_then_still_proves hs c H2 (Negation c :: hs)).
+              intuition.
+            assert (infers (Negation c :: hs) (Negation c)).
+              apply (Assumption (Negation c :: hs) (Negation c)).
+              intuition.
+            apply (BottomIntro (Negation c :: hs) c H3 H4).
+          + simpl.
+            assert (if satisfies assignment c then infers hs c else infers hs (Negation c)).
+              apply (H0 assignment).
+            rewrite H1 in *.
+            apply H2.
+      - destruct IHc1 as [ns1].
+        destruct IHc2 as [ns2].
+        exists (ns1 ++ ns2).
+        destruct H.
+        destruct H0.
+        constructor.
+        * intros n.
+          constructor.
+          + intro.
+            apply (occursConjunction n c1).
+            destruct (List.in_app_or ns1 ns2 n H3).
+            apply (or_introl (proj1 (H n) H4)).
+            apply (or_intror (proj1 (H0 n) H4)).
+          + intro.
+            inversion H3.
+            subst.
+            apply (List.in_or_app ns1 ns2 n).
+            destruct H6.
+            apply (or_introl (proj2 (H n) H4)).
+            apply (or_intror (proj2 (H0 n) H4)).
+        * intros assignment.
+          intros hs.
+          assert (satisfies assignment c1 = true \/ satisfies assignment c1 = false).
+            destruct (satisfies assignment c1).
+              tauto.
+              tauto.
+          assert (satisfies assignment c2 = true \/ satisfies assignment c2 = false).
+            destruct (satisfies assignment c2).
+              tauto.
+              tauto.
+          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            unfold hs.
+            apply (makeLine_app ns1 ns2 assignment).
+          assert (
+            if satisfies assignment c1
+            then infers (makeLine ns1 assignment) c1
+            else infers (makeLine ns1 assignment) (Negation c1)
+          ).
+            apply (H1 assignment).
+          assert (
+            if satisfies assignment c2
+            then infers (makeLine ns2 assignment) c2
+            else infers (makeLine ns2 assignment) (Negation c2)
+          ).
+            apply (H2 assignment).
+          destruct H3.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              apply AndIntro.
+              tauto.
+              tauto.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c2)).
+                apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_cons.
+                apply in_or_app.
+                intuition.
+              apply NotIntro.
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (AndElim2 ((Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              intuition.
+              intuition.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c1)).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_cons.
+                apply in_or_app.
+                intuition.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              apply NotIntro.
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (AndElim1 ((Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              intuition.
+              intuition.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply NotIntro.
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (AndElim1 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              intuition.
+              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c1)).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_cons.
+                apply in_or_app.
+                intuition.
+              apply H8.
+      - destruct IHc1 as [ns1].
+        destruct IHc2 as [ns2].
+        exists (ns1 ++ ns2).
+        destruct H.
+        destruct H0.
+        constructor.
+        * intros n.
+          constructor.
+          + intro.
+            apply (occursDisjunction n c1).
+            destruct (List.in_app_or ns1 ns2 n H3).
+            apply (or_introl (proj1 (H n) H4)).
+            apply (or_intror (proj1 (H0 n) H4)).
+          + intro.
+            inversion H3.
+            subst.
+            apply (List.in_or_app ns1 ns2 n).
+            destruct H6.
+            apply (or_introl (proj2 (H n) H4)).
+            apply (or_intror (proj2 (H0 n) H4)).
+        * intros assignment.
+          intros hs.
+          assert (satisfies assignment c1 = true \/ satisfies assignment c1 = false).
+            destruct (satisfies assignment c1).
+              tauto.
+              tauto.
+          assert (satisfies assignment c2 = true \/ satisfies assignment c2 = false).
+            destruct (satisfies assignment c2).
+              tauto.
+              tauto.
+          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            unfold hs.
+            apply (makeLine_app ns1 ns2 assignment).
+          assert (
+            if satisfies assignment c1
+            then infers (makeLine ns1 assignment) c1
+            else infers (makeLine ns1 assignment) (Negation c1)
+          ).
+            apply (H1 assignment).
+          assert (
+            if satisfies assignment c2
+            then infers (makeLine ns2 assignment) c2
+            else infers (makeLine ns2 assignment) (Negation c2)
+          ).
+            apply (H2 assignment).
+          destruct H3.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              apply OrIntro1.
+              apply H8.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              apply OrIntro1.
+              apply H8.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+                intros h.
+                intro.
+                apply in_or_app.
+                intuition.
+              apply OrIntro2.
+              apply H8.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply NotIntro.
+              apply (OrElim (Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2 Contradiction).
+              apply (Assumption (Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Disjunction c1 c2)).
+              intuition.
+              apply (BottomIntro (c1 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (Assumption (c1 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              intros h.
+              intro.
+              apply List.in_cons.
+              apply List.in_cons.
+              apply in_or_app.
+              intuition.
+              apply (BottomIntro (c2 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (Assumption (c2 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              intros h.
+              intro.
+              apply List.in_cons.
+              apply List.in_cons.
+              apply in_or_app.
+              intuition.
+      - destruct IHc1 as [ns1].
+        destruct IHc2 as [ns2].
+        exists (ns1 ++ ns2).
+        destruct H.
+        destruct H0.
+        constructor.
+        * intros n.
+          constructor.
+          + intro.
+            apply (occursImplication n c1).
+            destruct (List.in_app_or ns1 ns2 n H3).
+            apply (or_introl (proj1 (H n) H4)).
+            apply (or_intror (proj1 (H0 n) H4)).
+          + intro.
+            inversion H3.
+            subst.
+            apply (List.in_or_app ns1 ns2 n).
+            destruct H6.
+            apply (or_introl (proj2 (H n) H4)).
+            apply (or_intror (proj2 (H0 n) H4)).
+        * intros assignment.
+          intros hs.
+          assert (satisfies assignment c1 = true \/ satisfies assignment c1 = false).
+            destruct (satisfies assignment c1).
+              tauto.
+              tauto.
+          assert (satisfies assignment c2 = true \/ satisfies assignment c2 = false).
+            destruct (satisfies assignment c2).
+              tauto.
+              tauto.
+          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            unfold hs.
+            apply (makeLine_app ns1 ns2 assignment).
+          assert (
+            if satisfies assignment c1
+            then infers (makeLine ns1 assignment) c1
+            else infers (makeLine ns1 assignment) (Negation c1)
+          ).
+            apply (H1 assignment).
+          assert (
+            if satisfies assignment c2
+            then infers (makeLine ns2 assignment) c2
+            else infers (makeLine ns2 assignment) (Negation c2)
+          ).
+            apply (H2 assignment).
+          destruct H3.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply (IfthenIntro).
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply (NotIntro).
+              apply (BottomIntro (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (IfthenElim (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply (Assumption (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Implication c1 c2)).
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply (IfthenIntro).
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply (IfthenIntro).
+              apply (BottomElim (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (BottomIntro (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (Assumption (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+      - destruct IHc1 as [ns1].
+        destruct IHc2 as [ns2].
+        exists (ns1 ++ ns2).
+        destruct H.
+        destruct H0.
+        constructor.
+        * intros n.
+          constructor.
+          + intro.
+            apply (occursBiconditional n c1).
+            destruct (List.in_app_or ns1 ns2 n H3).
+            apply (or_introl (proj1 (H n) H4)).
+            apply (or_intror (proj1 (H0 n) H4)).
+          + intro.
+            inversion H3.
+            subst.
+            apply (List.in_or_app ns1 ns2 n).
+            destruct H6.
+            apply (or_introl (proj2 (H n) H4)).
+            apply (or_intror (proj2 (H0 n) H4)).
+        * intros assignment.
+          intros hs.
+          assert (satisfies assignment c1 = true \/ satisfies assignment c1 = false).
+            destruct (satisfies assignment c1).
+              tauto.
+              tauto.
+          assert (satisfies assignment c2 = true \/ satisfies assignment c2 = false).
+            destruct (satisfies assignment c2).
+              tauto.
+              tauto.
+          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+            unfold hs.
+            apply (makeLine_app ns1 ns2 assignment).
+          assert (
+            if satisfies assignment c1
+            then infers (makeLine ns1 assignment) c1
+            else infers (makeLine ns1 assignment) (Negation c1)
+          ).
+            apply (H1 assignment).
+          assert (
+            if satisfies assignment c2
+            then infers (makeLine ns2 assignment) c2
+            else infers (makeLine ns2 assignment) (Negation c2)
+          ).
+            apply (H2 assignment).
+          destruct H3.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply IffIntro.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply NotIntro.
+              apply (BottomIntro (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (IffElim1 (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply Assumption.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+            destruct H4.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply NotIntro.
+              apply (BottomIntro (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (IffElim2 (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply Assumption.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              simpl in *.
+              rewrite H3 in *.
+              rewrite H4 in *.
+              rewrite H5 in *.
+              apply IffIntro.
+              apply (BottomElim (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (BottomIntro (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply Assumption.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+              apply (BottomElim (c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (BottomIntro (c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply Assumption.
+              intuition.
+              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              intros h.
+              intro.
+              apply in_cons.
+              apply in_or_app.
+              intuition.
+    Qed.
+
+  (*
+  assume_more_then_still_proves :
+      forall hs1 : list formula,
+      forall a : formula,
+      infers hs1 a ->
+      forall hs2 : list formula,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      infers hs2 a.
+  *)
+
 (*  Theorem completeness :
       forall premises : list formula,
       forall consequence : formula,
