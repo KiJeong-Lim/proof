@@ -4,6 +4,8 @@ Require Export PeanoNat.
 Require Export Peano_dec.
 Require Export Lia.
 
+(* THANKS_TO {"Paul Sohn", "Ailrun"} *)
+
 Module PropositionalLogic.
 
   Import ListNotations.
@@ -1211,115 +1213,6 @@ Module PropositionalLogic.
       occurs n p1 \/ occurs n p2 ->
       occurs n (Biconditional p1 p2)
     .
-
-    Lemma occurences_exists :
-      forall p : formula,
-      exists ns : list nat,
-      forall n : nat,
-      In n ns <-> occurs n p.
-    Proof.
-      intros p.
-      induction p.
-      - exists [n].
-        intros n0.
-        simpl.
-        constructor.
-        intro.
-        destruct H.
-          subst.
-          apply (occursPropVar n0).
-          inversion H.
-        intro.
-        inversion H.
-        tauto.
-      - exists [].
-        intros n.
-        simpl.
-        constructor.
-        intro.
-        destruct H.
-        intro.
-        inversion H.
-      - destruct IHp as [ns H].
-        exists ns.
-        intros n.
-        constructor.
-        intro.
-        apply (occursNegation n p).
-        apply (proj1 (H n) H0).
-        intro.
-        inversion H0.
-        subst.
-        apply (proj2 (H n) H3).
-      - destruct IHp1 as [ns1].
-        destruct IHp2 as [ns2].
-        exists (ns1 ++ ns2).
-        intros n.
-        constructor.
-        intro.
-        apply (occursConjunction n p1).
-        destruct (List.in_app_or ns1 ns2 n H1).
-        apply (or_introl (proj1 (H n) H2)).
-        apply (or_intror (proj1 (H0 n) H2)).
-        intros.
-        inversion H1.
-        subst.
-        apply (List.in_or_app ns1 ns2 n).
-        destruct H4.
-        apply (or_introl (proj2 (H n) H2)).
-        apply (or_intror (proj2 (H0 n) H2)).
-      - destruct IHp1 as [ns1].
-        destruct IHp2 as [ns2].
-        exists (ns1 ++ ns2).
-        intros n.
-        constructor.
-        intro.
-        apply (occursDisjunction n p1).
-        destruct (List.in_app_or ns1 ns2 n H1).
-        apply (or_introl (proj1 (H n) H2)).
-        apply (or_intror (proj1 (H0 n) H2)).
-        intros.
-        inversion H1.
-        subst.
-        apply (List.in_or_app ns1 ns2 n).
-        destruct H4.
-        apply (or_introl (proj2 (H n) H2)).
-        apply (or_intror (proj2 (H0 n) H2)).
-      - destruct IHp1 as [ns1].
-        destruct IHp2 as [ns2].
-        exists (ns1 ++ ns2).
-        intros n.
-        constructor.
-        intro.
-        apply (occursImplication n p1).
-        destruct (List.in_app_or ns1 ns2 n H1).
-        apply (or_introl (proj1 (H n) H2)).
-        apply (or_intror (proj1 (H0 n) H2)).
-        intros.
-        inversion H1.
-        subst.
-        apply (List.in_or_app ns1 ns2 n).
-        destruct H4.
-        apply (or_introl (proj2 (H n) H2)).
-        apply (or_intror (proj2 (H0 n) H2)).
-      - destruct IHp1 as [ns1].
-        destruct IHp2 as [ns2].
-        exists (ns1 ++ ns2).
-        intros n.
-        constructor.
-        intro.
-        apply (occursBiconditional n p1).
-        destruct (List.in_app_or ns1 ns2 n H1).
-        apply (or_introl (proj1 (H n) H2)).
-        apply (or_intror (proj1 (H0 n) H2)).
-        intros.
-        inversion H1.
-        subst.
-        apply (List.in_or_app ns1 ns2 n).
-        destruct H4.
-        apply (or_introl (proj2 (H n) H2)).
-        apply (or_intror (proj2 (H0 n) H2)).
-    Qed.
 
     Fixpoint makeLine (ns : list nat) (assignment : nat -> bool) : list formula :=
       match ns with
