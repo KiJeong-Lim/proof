@@ -1155,7 +1155,7 @@ Module PropositionalLogic.
       inversion H5.
     Qed.
 
-   Theorem soundness :
+   Theorem soundness_thm :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
@@ -1185,6 +1185,15 @@ Module PropositionalLogic.
   End Soundness.
 
   Section Completeness.
+
+    Inductive is_literal : formula -> Prop :=
+    | literalPosVar :
+      forall n : nat,
+      is_literal (PropVar n)
+    | literalNegVar :
+      forall n : nat,
+      is_literal (Negation (PropVar n))
+    .
 
     Inductive occurs : nat -> formula -> Prop :=
     | occursPropVar :
@@ -1217,43 +1226,52 @@ Module PropositionalLogic.
       occurs n (Biconditional p1 p2)
     .
 
-    Fixpoint makeLine (ns : list nat) (assignment : nat -> bool) : list formula :=
-      match ns with
-      | [] => []
-      | n :: ns' =>
-        if assignment n
-        then PropVar n :: makeLine ns' assignment
-        else Negation (PropVar n) :: makeLine ns' assignment
-      end
+    Definition makeLine (assignment : nat -> bool) : list nat -> list formula :=
+      List.map
+        ( fun n : nat =>
+            if assignment n
+            then PropVar n
+            else Negation (PropVar n)
+        )
     .
-    
-    Lemma makeLine_app :
-      forall ns1 ns2 : list nat,
+
+    Lemma line_is_list_of_literals :
+      forall ns : list nat,
       forall assignment : nat -> bool,
-      makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment.
+      let hs := makeLine assignment ns in
+      forall h : formula,
+      In h hs -> is_literal h.
     Proof.
-      intros ns1.
-      induction ns1.
-      - intros ns2 assignment.
-        intuition.
-      - intros ns2 assignment.
+      intros ns.
+      induction ns as [| n ns].
+      - intros assignment.
         simpl.
-        destruct (assignment a).
-        * assert (makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment).
-            apply (IHns1 ns2 assignment).
-          rewrite H.
-          reflexivity.
-        * assert (makeLine (ns1 ++ ns2) assignment = makeLine ns1 assignment ++ makeLine ns2 assignment).
-            apply (IHns1 ns2 assignment).
-          rewrite H.
-          reflexivity.
+        intuition.
+      - intros assignment.
+        simpl.
+        destruct (assignment n).
+        * intros h.
+          simpl.
+          intro.
+          destruct H.
+          subst.
+          apply literalPosVar.
+          apply (IHns assignment h H).
+        * intros h.
+          simpl.
+          intro.
+          destruct H.
+          subst.
+          apply literalNegVar.
+          apply (IHns assignment h H).
     Qed.
 
-    Lemma assignment_property :
+    Lemma prove_line :
       forall c : formula,
-      exists ns : list nat, (forall n : nat, In n ns <-> occurs n c) /\
+      exists ns : list nat,
+      (forall n : nat, In n ns <-> occurs n c) /\
       forall assignment : nat -> bool,
-      let hs := makeLine ns assignment in
+      let hs := makeLine assignment ns in
       if satisfies assignment c
       then infers hs c
       else infers hs (Negation c).
@@ -1368,19 +1386,19 @@ Module PropositionalLogic.
             destruct (satisfies assignment c2).
               tauto.
               tauto.
-          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+          assert (hs = makeLine assignment ns1 ++ makeLine assignment ns2).
             unfold hs.
-            apply (makeLine_app ns1 ns2 assignment).
+            apply (map_app).
           assert (
             if satisfies assignment c1
-            then infers (makeLine ns1 assignment) c1
-            else infers (makeLine ns1 assignment) (Negation c1)
+            then infers (makeLine assignment ns1) c1
+            else infers (makeLine assignment ns1) (Negation c1)
           ).
             apply (H1 assignment).
           assert (
             if satisfies assignment c2
-            then infers (makeLine ns2 assignment) c2
-            else infers (makeLine ns2 assignment) (Negation c2)
+            then infers (makeLine assignment ns2) c2
+            else infers (makeLine assignment ns2) (Negation c2)
           ).
             apply (H2 assignment).
           destruct H3.
@@ -1389,14 +1407,14 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
                 intuition.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+                apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
@@ -1408,23 +1426,23 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
                 intuition.
-              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c2)).
-                apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Negation c2)).
+                apply (assume_more_then_still_proves (makeLine assignment ns2) (Negation c2) H7 (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_cons.
                 apply in_or_app.
                 intuition.
               apply NotIntro.
-              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (AndElim2 ((Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)) c1 c2).
-              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (AndElim2 ((Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2)) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Conjunction c1 c2)).
               intuition.
               intuition.
           + destruct H4.
@@ -1432,23 +1450,23 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c1)).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Negation c1)).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6 (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_cons.
                 apply in_or_app.
                 intuition.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+                apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
                 intuition.
               apply NotIntro.
-              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (AndElim1 ((Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)) c1 c2).
-              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (AndElim1 ((Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2)) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Conjunction c1 c2)).
               intuition.
               intuition.
               simpl in *.
@@ -1456,12 +1474,12 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply NotIntro.
-              apply (BottomIntro (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (AndElim1 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
-              apply (Assumption (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Conjunction c1 c2)).
+              apply (BottomIntro (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (AndElim1 (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1 c2).
+              apply (Assumption (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Conjunction c1 c2)).
               intuition.
-              assert (infers (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Negation c1)).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6 (Conjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Negation c1)).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6 (Conjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_cons.
@@ -1498,19 +1516,19 @@ Module PropositionalLogic.
             destruct (satisfies assignment c2).
               tauto.
               tauto.
-          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+          assert (hs = makeLine assignment ns1 ++ makeLine assignment ns2).
             unfold hs.
-            apply (makeLine_app ns1 ns2 assignment).
+            apply (map_app).
           assert (
             if satisfies assignment c1
-            then infers (makeLine ns1 assignment) c1
-            else infers (makeLine ns1 assignment) (Negation c1)
+            then infers (makeLine assignment ns1) c1
+            else infers (makeLine assignment ns1) (Negation c1)
           ).
             apply (H1 assignment).
           assert (
             if satisfies assignment c2
-            then infers (makeLine ns2 assignment) c2
-            else infers (makeLine ns2 assignment) (Negation c2)
+            then infers (makeLine assignment ns2) c2
+            else infers (makeLine assignment ns2) (Negation c2)
           ).
             apply (H2 assignment).
           destruct H3.
@@ -1519,8 +1537,8 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
@@ -1531,8 +1549,8 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-                apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+                apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
@@ -1544,8 +1562,8 @@ Module PropositionalLogic.
               rewrite H3 in *.
               rewrite H4 in *.
               rewrite H5 in *.
-              assert (infers (makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-                apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7 (makeLine ns1 assignment ++ makeLine ns2 assignment)).
+              assert (infers (makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+                apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7 (makeLine assignment ns1 ++ makeLine assignment ns2)).
                 intros h.
                 intro.
                 apply in_or_app.
@@ -1557,23 +1575,23 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply NotIntro.
-              apply (OrElim (Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2 Contradiction).
-              apply (Assumption (Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Disjunction c1 c2)).
+              apply (OrElim (Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1 c2 Contradiction).
+              apply (Assumption (Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Disjunction c1 c2)).
               intuition.
-              apply (BottomIntro (c1 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (Assumption (c1 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (BottomIntro (c1 :: Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (Assumption (c1 :: Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6).
               intros h.
               intro.
               apply List.in_cons.
               apply List.in_cons.
               apply in_or_app.
               intuition.
-              apply (BottomIntro (c2 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (Assumption (c2 :: Disjunction c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (BottomIntro (c2 :: Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (Assumption (c2 :: Disjunction c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) (Negation c2) H7).
               intros h.
               intro.
               apply List.in_cons.
@@ -1610,19 +1628,19 @@ Module PropositionalLogic.
             destruct (satisfies assignment c2).
               tauto.
               tauto.
-          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+          assert (hs = makeLine assignment ns1 ++ makeLine assignment ns2).
             unfold hs.
-            apply (makeLine_app ns1 ns2 assignment).
+            apply (map_app).
           assert (
             if satisfies assignment c1
-            then infers (makeLine ns1 assignment) c1
-            else infers (makeLine ns1 assignment) (Negation c1)
+            then infers (makeLine assignment ns1) c1
+            else infers (makeLine assignment ns1) (Negation c1)
           ).
             apply (H1 assignment).
           assert (
             if satisfies assignment c2
-            then infers (makeLine ns2 assignment) c2
-            else infers (makeLine ns2 assignment) (Negation c2)
+            then infers (makeLine assignment ns2) c2
+            else infers (makeLine assignment ns2) (Negation c2)
           ).
             apply (H2 assignment).
           destruct H3.
@@ -1632,7 +1650,7 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply (IfthenIntro).
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7).
               intros h.
               intro.
               apply in_cons.
@@ -1643,17 +1661,17 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply (NotIntro).
-              apply (BottomIntro (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (IfthenElim (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
-              apply (Assumption (Implication c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) (Implication c1 c2)).
+              apply (BottomIntro (Implication c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (IfthenElim (Implication c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1 c2).
+              apply (Assumption (Implication c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) (Implication c1 c2)).
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6).
               intros h.
               intro.
               apply in_cons.
               apply in_or_app.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) (Negation c2) H7).
               intros h.
               intro.
               apply in_cons.
@@ -1665,7 +1683,7 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply (IfthenIntro).
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7).
               intros h.
               intro.
               apply in_cons.
@@ -1676,11 +1694,11 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply (IfthenIntro).
-              apply (BottomElim (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (BottomIntro (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (Assumption (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (BottomElim (c1 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (BottomIntro (c1 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (Assumption (c1 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6).
               intros h.
               intro.
               apply in_cons.
@@ -1716,19 +1734,19 @@ Module PropositionalLogic.
             destruct (satisfies assignment c2).
               tauto.
               tauto.
-          assert (hs = makeLine ns1 assignment ++ makeLine ns2 assignment).
+          assert (hs = makeLine assignment ns1 ++ makeLine assignment ns2).
             unfold hs.
-            apply (makeLine_app ns1 ns2 assignment).
+            apply (map_app).
           assert (
             if satisfies assignment c1
-            then infers (makeLine ns1 assignment) c1
-            else infers (makeLine ns1 assignment) (Negation c1)
+            then infers (makeLine assignment ns1) c1
+            else infers (makeLine assignment ns1) (Negation c1)
           ).
             apply (H1 assignment).
           assert (
             if satisfies assignment c2
-            then infers (makeLine ns2 assignment) c2
-            else infers (makeLine ns2 assignment) (Negation c2)
+            then infers (makeLine assignment ns2) c2
+            else infers (makeLine assignment ns2) (Negation c2)
           ).
             apply (H2 assignment).
           destruct H3.
@@ -1738,13 +1756,13 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply IffIntro.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7).
               intros h.
               intro.
               apply in_cons.
               apply in_or_app.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6).
               intros h.
               intro.
               apply in_cons.
@@ -1755,17 +1773,17 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply NotIntro.
-              apply (BottomIntro (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (IffElim1 (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply (BottomIntro (Biconditional c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (IffElim1 (Biconditional c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1 c2).
               apply Assumption.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) c1 H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) c1 H6).
               intros h.
               intro.
               apply in_cons.
               apply in_or_app.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) (Negation c2) H7).
               intros h.
               intro.
               apply in_cons.
@@ -1777,17 +1795,17 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply NotIntro.
-              apply (BottomIntro (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (IffElim2 (Biconditional c1 c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1 c2).
+              apply (BottomIntro (Biconditional c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (IffElim2 (Biconditional c1 c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1 c2).
               apply Assumption.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) c2 H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) c2 H7).
               intros h.
               intro.
               apply in_cons.
               apply in_or_app.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6).
               intros h.
               intro.
               apply in_cons.
@@ -1798,21 +1816,21 @@ Module PropositionalLogic.
               rewrite H4 in *.
               rewrite H5 in *.
               apply IffIntro.
-              apply (BottomElim (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
-              apply (BottomIntro (c1 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
+              apply (BottomElim (c1 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
+              apply (BottomIntro (c1 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
               apply Assumption.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns1 assignment) (Negation c1) H6).
+              apply (assume_more_then_still_proves (makeLine assignment ns1) (Negation c1) H6).
               intros h.
               intro.
               apply in_cons.
               apply in_or_app.
               intuition.
-              apply (BottomElim (c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c1).
-              apply (BottomIntro (c2 :: makeLine ns1 assignment ++ makeLine ns2 assignment) c2).
+              apply (BottomElim (c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c1).
+              apply (BottomIntro (c2 :: makeLine assignment ns1 ++ makeLine assignment ns2) c2).
               apply Assumption.
               intuition.
-              apply (assume_more_then_still_proves (makeLine ns2 assignment) (Negation c2) H7).
+              apply (assume_more_then_still_proves (makeLine assignment ns2) (Negation c2) H7).
               intros h.
               intro.
               apply in_cons.
@@ -1820,11 +1838,261 @@ Module PropositionalLogic.
               intuition.
     Qed.
 
-(*  Theorem completeness :
-      forall premises : list formula,
+    Proposition proof_of_ex_middle :
+      forall p : formula,
+      infers [] (Disjunction p (Negation p)).
+    Proof.
+      intros c.
+      apply (NotElim [] (Disjunction c (Negation c))).
+      apply (BottomIntro [Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
+      apply (OrIntro2 [Negation (Disjunction c (Negation c))] c (Negation c)).
+      apply (NotIntro [Negation (Disjunction c (Negation c))] c).
+      apply (BottomIntro [c; Negation (Disjunction c (Negation c))] (Disjunction c (Negation c))).
+      apply (OrIntro1 [c; Negation (Disjunction c (Negation c))] c ((Negation c))).
+      apply (Assumption [c; Negation (Disjunction c (Negation c))] c).
+      intuition.
+      apply (Assumption [c; Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
+      intuition.
+      apply (Assumption [Negation (Disjunction c (Negation c))] (Negation (Disjunction c (Negation c)))).
+      intuition.
+    Qed.
+
+    Lemma merge_line :
+      forall ns : list nat,
+      forall c : formula,
+      (forall n : nat, In n ns -> occurs n c) ->
+      (forall assignment : nat -> bool, infers (makeLine assignment ns) c) ->
+      infers [] c.
+    Proof.
+      assert (
+        forall f1 f2 : nat -> formula,
+        forall xs : list nat,
+        (forall x : nat, In x xs -> f1 x = f2 x) ->
+        map f1 xs = map f2 xs
+      ).
+        intros f1 f2.
+        intros xs.
+        induction xs as [| x xs].
+          intuition.
+          intuition.
+          simpl.
+          assert (f1 x = f2 x).
+            apply (H x).
+            intuition.
+          assert (map f1 xs = map f2 xs).
+            apply IHxs.
+            intros x0.
+            intro.
+            apply (H x0).
+            intuition.
+          rewrite H0.
+          rewrite H1.
+          tauto. 
+      intros ns.
+      induction ns as [| n ns].
+      - intros c.
+        simpl.
+        intro.
+        intro.
+        apply H1.
+        intros n.
+        apply false.
+      - intros c.
+        intro.
+        intro.
+        destruct (List.in_dec Nat.eq_dec n ns).
+        * apply IHns.
+          intros n0.
+          assert (In n0 (n :: ns) -> occurs n0 c).
+            apply (H0 n0).
+          simpl.
+          destruct (Nat.eq_dec n0 n).
+          subst.
+          intuition.
+          intro.
+          subst.
+          simpl In in H1. 
+          intuition.
+          intuition.
+          apply (assume_more_then_still_proves (makeLine assignment (n :: ns)) c).
+          apply (H1 assignment).
+          intros h.
+          simpl.
+          intro.
+          destruct H2.
+          unfold makeLine.
+          subst.
+          apply (
+            in_map
+              ( fun n0 : nat =>
+                if assignment n0
+                then PropVar n0
+                else Negation (PropVar n0)
+              )
+              ns
+              n
+              i
+          ).
+          apply H2.
+        * apply IHns.
+          intros n1.
+          intro.
+          assert (n <> n1).
+            intro.
+            subst.
+            apply (n0 H2).
+          intuition.
+          intro.
+          assert (assignment n = true \/ assignment n = false).
+            destruct (assignment n).
+              tauto.
+              tauto.
+          destruct H2.
+          + assert (
+              let assignment1 :=
+                fun n1 : nat =>
+                  if Nat.eq_dec n1 n
+                  then false
+                  else assignment n1
+              in
+              infers (Negation (PropVar n) :: makeLine assignment1 ns) c
+            ).
+              intro.
+              assert (infers (makeLine assignment1 (n :: ns)) c).
+                apply (H1 assignment1).
+              unfold makeLine in *.
+              unfold assignment1 in *.
+              simpl in H3.
+              destruct (Nat.eq_dec n n).
+              apply H3.
+              tauto.
+            assert (
+              let assignment1 :=
+                fun n1 : nat =>
+                  if Nat.eq_dec n1 n
+                  then false
+                  else assignment n1
+              in
+              makeLine assignment1 ns = makeLine assignment ns
+            ).
+              apply H.
+              intros x.
+              intro.
+              destruct (Nat.eq_dec x n).
+              subst.
+              tauto.
+              tauto.
+            assert (infers (makeLine assignment (n :: ns)) c).
+              apply (H1 assignment).
+            simpl in H5.
+            rewrite H2 in H5.
+            assert (infers (Negation (PropVar n) :: makeLine assignment ns) c).
+              rewrite <- H4.
+              apply H3.
+            assert (infers (makeLine assignment ns) (Disjunction (PropVar n) (Negation (PropVar n)))).
+              apply (assume_more_then_still_proves [] (Disjunction (PropVar n) (Negation (PropVar n)))).
+              apply (proof_of_ex_middle (PropVar n)).
+              intros h.
+              simpl.
+              intuition.
+            apply (OrElim (makeLine assignment ns) (PropVar n) (Negation (PropVar n)) c H7 H5 H6).
+          + assert (
+              let assignment1 :=
+                fun n1 : nat =>
+                  if Nat.eq_dec n1 n
+                  then true
+                  else assignment n1
+              in
+              infers (PropVar n :: makeLine assignment1 ns) c
+            ).
+              intro.
+              assert (infers (makeLine assignment1 (n :: ns)) c).
+                apply (H1 assignment1).
+              unfold makeLine in *.
+              unfold assignment1 in *.
+              simpl in H3.
+              destruct (Nat.eq_dec n n).
+              apply H3.
+              tauto.
+            assert (
+              let assignment1 :=
+                fun n1 : nat =>
+                  if Nat.eq_dec n1 n
+                  then true
+                  else assignment n1
+              in
+              makeLine assignment1 ns = makeLine assignment ns
+            ).
+              apply H.
+              intros x.
+              intro.
+              destruct (Nat.eq_dec x n).
+              subst.
+              tauto.
+              tauto.
+            assert (infers (makeLine assignment (n :: ns)) c).
+              apply (H1 assignment).
+            simpl in H5.
+            rewrite H2 in H5.
+            assert (infers (PropVar n :: makeLine assignment ns) c).
+              rewrite <- H4.
+              apply H3.
+            assert (infers (makeLine assignment ns) (Disjunction (PropVar n) (Negation (PropVar n)))).
+              apply (assume_more_then_still_proves [] (Disjunction (PropVar n) (Negation (PropVar n)))).
+              apply (proof_of_ex_middle (PropVar n)).
+              intros h.
+              simpl.
+              intuition.
+            apply (OrElim (makeLine assignment ns) (PropVar n) (Negation (PropVar n)) c H7 H6 H5).
+    Qed.
+      
+    Theorem tautology_is_theory :
+      forall c : formula,
+      entails [] c ->
+      infers [] c.
+    Proof.
+      intros c.
+      unfold entails.
+      simpl.
+      intro.
+      assert (
+        exists ns : list nat,
+        (forall n : nat, In n ns -> occurs n c) /\
+        forall assignment : nat -> bool,
+        let hs := makeLine assignment ns in
+        if satisfies assignment c
+        then infers hs c
+        else infers hs (Negation c)
+      ).
+        destruct (prove_line c) as [ns].
+        exists ns.
+        intuition.
+        apply (proj1 (H1 n) H0).
+      destruct H0 as [ns H0].
+      destruct H0.
+      apply (merge_line ns c).
+      apply H0.
+      intros assignment.
+      cut (satisfies assignment c = true).
+        assert (
+          let hs := makeLine assignment ns in
+          if satisfies assignment c
+          then infers hs c
+          else infers hs (Negation c)
+        ).
+          apply (H1 assignment).
+        intro.
+        rewrite H3 in *.
+        apply H2.
+      apply (H assignment).
+      tauto.
+    Qed.
+
+(*  Corollary completeness_thm :
       forall consequence : formula,
-      not (infers premises consequence) ->
-      not (entails premises consequence).
+      forall premises : list formula,
+      entails premises consequence ->
+      infers premises consequence.
     Proof.
     Qed.
 *)
