@@ -1155,7 +1155,7 @@ Module PropositionalLogic.
       inversion H5.
     Qed.
 
-   Theorem soundness_thm :
+   Theorem weak_soundness :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
@@ -2046,7 +2046,7 @@ Module PropositionalLogic.
             apply (OrElim (makeLine assignment ns) (PropVar n) (Negation (PropVar n)) c H7 H6 H5).
     Qed.
 
-    Theorem tautology_is_theory :
+    Theorem tautology_is_theorem :
       forall c : formula,
       entails [] c ->
       infers [] c.
@@ -2145,7 +2145,7 @@ Module PropositionalLogic.
         * apply (IfthenIntro).
     Qed.
 
-    Theorem completeness :
+    Theorem weak_completeness :
       forall premises : list formula,
       forall consequence : formula,
       entails premises consequence ->
@@ -2153,11 +2153,9 @@ Module PropositionalLogic.
     Proof.
       intros hs c.
       intro.
-      assert (entails [] (charge_implication hs c)).
-        apply (proj1 (charging_implication_preserves_entailment hs c) H).
       apply (proj2 (charging_implication_preserves_proof hs c)).
-      apply (tautology_is_theory (charge_implication hs c)).
-      apply H0.
+      apply (tautology_is_theorem (charge_implication hs c)).
+      apply (proj1 (charging_implication_preserves_entailment hs c) H).
     Qed.
 
   End Completeness.
