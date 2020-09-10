@@ -2045,7 +2045,7 @@ Module PropositionalLogic.
               intuition.
             apply (OrElim (makeLine assignment ns) (PropVar n) (Negation (PropVar n)) c H7 H6 H5).
     Qed.
-      
+
     Theorem tautology_is_theory :
       forall c : formula,
       entails [] c ->
@@ -2088,14 +2088,77 @@ Module PropositionalLogic.
       tauto.
     Qed.
 
-(*  Corollary completeness_thm :
-      forall consequence : formula,
+    Fixpoint charge_implication (hs : list formula) (c : formula) : formula :=
+      match hs with
+      | [] => c
+      | h :: hs' => charge_implication hs' (Implication h c)
+      end
+    .
+
+    Lemma charging_implication_preserves_entailment :
+      forall hs : list formula,
+      forall c : formula,
+      entails hs c <-> entails [] (charge_implication hs c).
+    Proof.
+      intros hs.
+      induction hs as [| h hs].
+      - simpl.
+        tauto.
+      - simpl.
+        intros c.
+        assert (entails hs (Implication h c) <-> entails [] (charge_implication hs (Implication h c))).
+          apply (IHhs (Implication h c)).
+        cut (entails hs (Implication h c) <-> entails (h :: hs) c).
+          intuition.
+        constructor.
+        * intro.
+          apply (ifthen_elim_preserves (h :: hs) h c).
+          apply (premise_more_then_still_entails hs (Implication h c) H0).
+          intuition.
+          apply (always_entails_premise (h :: hs) h).
+          intuition.
+        * apply (ifthen_intro_preserves hs h c).
+    Qed.
+
+    Lemma charging_implication_preserves_proof :
+      forall hs : list formula,
+      forall c : formula,
+      infers hs c <-> infers [] (charge_implication hs c).
+    Proof.
+      intros hs.
+      induction hs as [| h hs].
+      - simpl.
+        intuition.
+      - intros c.
+        simpl.
+        assert (infers hs (Implication h c) <-> infers [] (charge_implication hs (Implication h c))).
+          apply (IHhs (Implication h c)).
+        cut (infers hs (Implication h c) <-> infers (h :: hs) c).
+          intuition.
+        constructor.
+        * intro.
+          apply (IfthenElim (h :: hs) h c).
+          apply (assume_more_then_still_proves hs (Implication h c) H0).
+          intuition.
+          apply (Assumption (h :: hs) h).
+          intuition.
+        * apply (IfthenIntro).
+    Qed.
+
+    Theorem completeness :
       forall premises : list formula,
+      forall consequence : formula,
       entails premises consequence ->
       infers premises consequence.
     Proof.
+      intros hs c.
+      intro.
+      assert (entails [] (charge_implication hs c)).
+        apply (proj1 (charging_implication_preserves_entailment hs c) H).
+      apply (proj2 (charging_implication_preserves_proof hs c)).
+      apply (tautology_is_theory (charge_implication hs c)).
+      apply H0.
     Qed.
-*)
 
   End Completeness.
 
