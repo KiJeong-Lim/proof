@@ -1,9 +1,3 @@
-Require Export List.
-Require Export Bool.
-Require Export PeanoNat.
-Require Export Peano_dec.
-Require Export Lia.
-
 (* THANKS_TO:
   1. Taeseung Sohn: "https://github.com/paulsohn";
   2. Junyoung Clare Jang: "https://github.com/Ailrun";
@@ -11,7 +5,10 @@ Require Export Lia.
 
 Module PropositionalLogic.
 
-  Import ListNotations.
+  Require Export Bool.
+  Require Export PeanoNat.
+  Require Export Peano_dec.
+  Require Export Lia.
 
   Section Syntax.
 
@@ -290,6 +287,10 @@ Module PropositionalLogic.
   End Syntax.
 
   Module Weak.
+
+    Require Export List.
+
+    Import ListNotations.
 
     Section Semantics.
 
@@ -2166,6 +2167,8 @@ Module PropositionalLogic.
   End Weak.
 
   Module Strong.
+
+    Require Export Ensembles.
 
   End Strong.
 
