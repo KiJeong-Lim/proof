@@ -2170,6 +2170,16 @@ Module PropositionalLogic.
 
     Require Export Ensembles.
 
+    Definition formula_set := Ensemble formula.
+
+    Section Semantics.
+
+    End Semantics.
+
+    Section InferenceRules.
+
+    End InferenceRules.
+
   End Strong.
 
 End PropositionalLogic.
