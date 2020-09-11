@@ -1,14 +1,15 @@
-(* THANKS_TO:
-  1. Taeseung Sohn: "https://github.com/paulsohn";
-  2. Junyoung Clare Jang: "https://github.com/Ailrun";
+Require Export Bool.
+Require Export PeanoNat.
+Require Export Peano_dec.
+Require Export Lia.
+
+(*
+  THANKS TO:
+    1. Taeseung Sohn: "https://github.com/paulsohn";
+    2. Junyoung Clare Jang: "https://github.com/Ailrun";
 *)
 
 Module PropositionalLogic.
-
-  Require Export Bool.
-  Require Export PeanoNat.
-  Require Export Peano_dec.
-  Require Export Lia.
 
   Section Syntax.
 
@@ -283,6 +284,46 @@ Module PropositionalLogic.
               tauto.
             tauto.
     Qed.
+
+    Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
+      match p with
+      | PropVar n => assignment n
+      | Contradiction => false
+      | Negation p1 =>
+        match satisfies assignment p1 with
+        | true => false
+        | false => true
+        end
+      | Conjunction p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => false
+        | false, false => false
+        end
+      | Disjunction p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => true
+        | false, true => true
+        | false, false => false
+        end
+      | Implication p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => true
+        | false, false => true
+        end
+      | Biconditional p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => false
+        | false, false => true
+        end
+      end
+    .
 
   End Syntax.
 
@@ -2168,12 +2209,12 @@ Module PropositionalLogic.
 
   Module Strong.
 
-    Require Export Ensembles.
+    Definition formula_set := formula -> Prop.
 
-    Definition formula_set := Ensemble formula.
+    Definition In (p : formula) (ps : formula_set) := ps p.
 
     Section Semantics.
-
+    
     End Semantics.
 
     Section InferenceRules.
