@@ -1925,9 +1925,9 @@ Module PropositionalLogic.
           apply (
             in_map
               ( fun n0 : nat =>
-                if assignment n0
-                then PropVar n0
-                else Negation (PropVar n0)
+                  if assignment n0
+                  then PropVar n0
+                  else Negation (PropVar n0)
               )
               ns
               n
