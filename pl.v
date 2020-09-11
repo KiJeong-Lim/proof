@@ -1155,7 +1155,7 @@ Module PropositionalLogic.
       inversion H5.
     Qed.
 
-   Theorem weak_soundness :
+    Theorem weak_soundness :
       forall hypotheses : list formula,
       forall conclusion : formula,
       infers hypotheses conclusion ->
