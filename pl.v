@@ -2155,7 +2155,8 @@ Module PropositionalLogic.
       intro.
       apply (proj2 (charging_implication_preserves_proof hs c)).
       apply (tautology_is_theorem (charge_implication hs c)).
-      apply (proj1 (charging_implication_preserves_entailment hs c) H).
+      apply (proj1 (charging_implication_preserves_entailment hs c)).
+      apply H.
     Qed.
 
   End Completeness.
