@@ -285,46 +285,6 @@ Module PropositionalLogic.
             tauto.
     Qed.
 
-    Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
-      match p with
-      | PropVar n => assignment n
-      | Contradiction => false
-      | Negation p1 =>
-        match satisfies assignment p1 with
-        | true => false
-        | false => true
-        end
-      | Conjunction p1 p2 =>
-        match satisfies assignment p1, satisfies assignment p2 with
-        | true, true => true
-        | true, false => false
-        | false, true => false
-        | false, false => false
-        end
-      | Disjunction p1 p2 =>
-        match satisfies assignment p1, satisfies assignment p2 with
-        | true, true => true
-        | true, false => true
-        | false, true => true
-        | false, false => false
-        end
-      | Implication p1 p2 =>
-        match satisfies assignment p1, satisfies assignment p2 with
-        | true, true => true
-        | true, false => false
-        | false, true => true
-        | false, false => true
-        end
-      | Biconditional p1 p2 =>
-        match satisfies assignment p1, satisfies assignment p2 with
-        | true, true => true
-        | true, false => false
-        | false, true => false
-        | false, false => true
-        end
-      end
-    .
-
   End Syntax.
 
   Module Weak.
@@ -2207,17 +2167,233 @@ Module PropositionalLogic.
 
   End Weak.
 
-  Module Strong.
+  Module FormulaSet.
 
     Definition formula_set := formula -> Prop.
 
     Definition In (p : formula) (ps : formula_set) := ps p.
 
+    Inductive empty : formula_set :=
+    .
+
+    Inductive singleton : formula -> formula_set :=
+    | MkSingleton :
+      forall p : formula,
+      In p (singleton p)
+    .
+
+    Inductive union : formula_set -> formula_set -> formula_set :=
+    | UnionL :
+      forall ps1 ps2 : formula_set,
+      forall p : formula,
+      In p ps1 ->
+      In p (union ps1 ps2)
+    | UnionR :
+      forall ps1 ps2 : formula_set,
+      forall p : formula,
+      In p ps2 ->
+      In p (union ps1 ps2)
+    .
+    
+    Definition insert (p : formula) (ps : formula_set) : formula_set :=
+      union ps (singleton p)
+    .
+  
+  End FormulaSet.
+  
+  Module Strong.
+
+    Import FormulaSet.
+
     Section Semantics.
+
+      Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
+        match p with
+        | PropVar n => assignment n
+        | Contradiction => false
+        | Negation p1 =>
+          match satisfies assignment p1 with
+          | true => false
+          | false => true
+          end
+        | Conjunction p1 p2 =>
+          match satisfies assignment p1, satisfies assignment p2 with
+          | true, true => true
+          | true, false => false
+          | false, true => false
+          | false, false => false
+          end
+        | Disjunction p1 p2 =>
+          match satisfies assignment p1, satisfies assignment p2 with
+          | true, true => true
+          | true, false => true
+          | false, true => true
+          | false, false => false
+          end
+        | Implication p1 p2 =>
+          match satisfies assignment p1, satisfies assignment p2 with
+          | true, true => true
+          | true, false => false
+          | false, true => true
+          | false, false => true
+          end
+        | Biconditional p1 p2 =>
+          match satisfies assignment p1, satisfies assignment p2 with
+          | true, true => true
+          | true, false => false
+          | false, true => false
+          | false, false => true
+          end
+        end
+      .
+
+      Definition entails (premises : formula_set) (conclusion : formula) : Prop :=
+        forall assignment : nat -> bool,
+        (forall premise : formula, In premise premises -> satisfies assignment premise = true) ->
+        satisfies assignment conclusion = true
+      .        
+
+      Lemma premise_more_then_still_entails :
+        forall hs1 : formula_set,
+        forall c : formula,
+        entails hs1 c ->
+        forall hs2 : formula_set,
+        (forall h : formula, In h hs1 -> In h hs2) ->
+        entails hs2 c.
+      Proof.
+        intros hs c.
+        intro.
+        intros hs2.
+        intro.
+        unfold entails in *.
+        intros assignment.
+        intro.
+        apply (H assignment).
+        intros premise.
+        intro.
+        apply (H1 premise).
+        apply (H0 premise).
+        apply H2.
+      Qed.
+
+      Lemma always_entails_premise :
+        forall hs : formula_set,
+        forall c : formula,
+        In c hs ->
+        entails hs c.
+      Proof.
+        intros hs c.
+        cut (entails (singleton c) c).
+          intro.
+          intro.
+          apply (premise_more_then_still_entails (singleton c) c).
+          apply H.
+          intros h.
+          intro.
+          inversion H1.
+          subst.
+          apply H0.
+        unfold entails in *.
+        intros assignment.
+        intro.
+        apply (H c).
+        apply MkSingleton.
+      Qed.
     
     End Semantics.
 
     Section InferenceRules.
+
+      Inductive infers : formula_set -> formula -> Prop :=
+      | Assumption :
+        forall hs : formula_set,
+        forall h : formula,
+        In h hs ->
+        infers hs h
+      | BottomIntro :
+        forall hs : formula_set,
+        forall a : formula,
+        infers hs a ->
+        infers hs (Negation a) ->
+        infers hs Contradiction
+      | BottomElim :
+        forall hs : formula_set,
+        forall a : formula,
+        infers hs Contradiction ->
+        infers hs a
+      | NotIntro :
+        forall hs : formula_set,
+        forall a : formula,
+        infers (insert a hs) Contradiction ->
+        infers hs (Negation a)
+      | NotElim :
+        forall hs : formula_set,
+        forall a : formula,
+        infers (insert (Negation a) hs) Contradiction ->
+        infers hs a
+      | AndIntro :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs a ->
+        infers hs b ->
+        infers hs (Conjunction a b)
+      | AndElim1 :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs (Conjunction a b) ->
+        infers hs a
+      | AndElim2 : 
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs (Conjunction a b) ->
+        infers hs b
+      | OrIntro1 :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs a ->
+        infers hs (Disjunction a b)
+      | OrIntro2 :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs b ->
+        infers hs (Disjunction a b)
+      | OrElim :
+        forall hs : formula_set,
+        forall a b c : formula,
+        infers hs (Disjunction a b) ->
+        infers (insert a hs) c ->
+        infers (insert b hs) c ->
+        infers hs c
+      | IfthenIntro :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers (insert a hs) b ->
+        infers hs (Implication a b)
+      | IfthenElim :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs (Implication a b) ->
+        infers hs a ->
+        infers hs b
+      | IffIntro :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers (insert a hs) b ->
+        infers (insert b hs) a ->
+        infers hs (Biconditional a b)
+      | IffElim1 :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs (Biconditional a b) ->
+        infers hs a ->
+        infers hs b
+      | IffElim2 :
+        forall hs : formula_set,
+        forall a b : formula,
+        infers hs (Biconditional a b) ->
+        infers hs b ->
+        infers hs a
+      .
 
     End InferenceRules.
 
