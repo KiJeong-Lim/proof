@@ -1159,7 +1159,7 @@ Module PropositionalLogic.
         inversion H5.
       Qed.
 
-      Theorem weak_soundness :
+      Theorem soundness :
         forall hypotheses : list formula,
         forall conclusion : formula,
         infers hypotheses conclusion ->
@@ -2149,7 +2149,7 @@ Module PropositionalLogic.
           * apply (IfthenIntro).
       Qed.
 
-      Theorem weak_completeness :
+      Theorem completeness :
         forall premises : list formula,
         forall consequence : formula,
         entails premises consequence ->
@@ -2177,7 +2177,7 @@ Module PropositionalLogic.
     .
 
     Inductive singleton : formula -> formula_set :=
-    | MkSingleton :
+    | Single :
       forall p : formula,
       In p (singleton p)
     .
@@ -2198,7 +2198,27 @@ Module PropositionalLogic.
     Definition insert (p : formula) (ps : formula_set) : formula_set :=
       union ps (singleton p)
     .
-  
+
+    Proposition in_insert :
+      forall hs1 hs2 : formula_set,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      forall a b : formula,
+      In a (insert b hs1) ->
+      In a (insert b hs2).
+    Proof.
+      intros hs1 hs2.
+      intro.
+      intros a b.
+      intro.
+      unfold insert in *.
+      destruct H0.
+      - apply UnionL.
+        apply H.
+        apply H0.
+      - apply UnionR.
+        apply H0.
+    Qed.
+
   End FormulaSet.
   
   Module Strong.
@@ -2297,7 +2317,7 @@ Module PropositionalLogic.
         intros assignment.
         intro.
         apply (H c).
-        apply MkSingleton.
+        apply Single.
       Qed.
     
     End Semantics.
@@ -2394,6 +2414,46 @@ Module PropositionalLogic.
         infers hs b ->
         infers hs a
       .
+
+(*    Lemma assume_more_then_still_proves :
+        forall hs1 : formula_set,
+        forall a : formula,
+        infers hs1 a ->
+        forall hs2 : formula_set,
+        (forall h : formula, In h hs1 -> In h hs2) ->
+        infers hs2 a.
+      Proof.
+        intros hs1 a.
+        intro.
+        induction H.
+        - intros hs2.
+          intro.
+          apply (Assumption hs2 h).
+          apply (H0 h H).
+        - intros hs2.
+          intro.
+          apply (BottomIntro hs2 a).
+          apply (IHinfers1 hs2 H1).
+          apply (IHinfers2 hs2 H1).
+        - intros hs2.
+          intro.
+          apply (BottomElim hs2 a).
+          apply (IHinfers hs2 H0).
+        - intros hs2.
+          intro.
+          apply (NotIntro hs2 a).
+          apply (IHinfers (insert a hs2)).
+          intros h.
+          apply (in_insert hs hs2 H0 h a).
+        - intros hs2.
+          intro.
+          apply (NotElim hs2 a).
+          apply (IHinfers (insert (Negation a) hs2)).
+          intros h.
+          apply (in_insert hs hs2 H0 h (Negation a)).
+         
+      Qed.
+*)
 
     End InferenceRules.
 
