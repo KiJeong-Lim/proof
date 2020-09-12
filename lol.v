@@ -9,6 +9,176 @@ Require Export Lia.
     2. Junyoung Clare Jang: "https://github.com/Ailrun";
 *)
 
+Module Ensembles.
+
+  Definition ensemble (A : Type) :=
+    A -> Prop
+  .
+
+  Definition In {A : Type} (x : A) (xs : ensemble A) :=
+    xs x
+  .
+
+  Inductive empty {A : Type} : ensemble A :=
+  .
+
+  Proposition in_empty {A : Type} :
+    forall x : A,
+    ~ In x empty.
+  Proof.
+    intros x.
+    intro.
+    destruct H.
+  Qed.
+
+  Inductive universe {A : Type} : ensemble A :=
+  | Univ :
+    forall p : A,
+    In p universe
+  .
+
+  Proposition in_universe {A : Type} :
+    forall x : A,
+    In x universe.
+  Proof.
+    intros x.
+    apply (Univ x).
+  Qed.
+
+  Inductive filter {A : Type} : (A -> bool) -> ensemble A -> ensemble A :=
+  | Filt :
+    forall x : A,
+    forall cond : A -> bool,
+    forall xs : ensemble A,
+    cond x = true ->
+    In x xs ->
+    In x (filter cond xs)
+  .
+
+  Proposition in_filter {A : Type} :
+    forall x : A,
+    forall xs1 : ensemble A,
+    forall cond : A -> bool,
+    In x (filter cond xs1) <-> (In x xs1 /\ cond x = true).
+  Proof.
+    intros x xs1 cond.
+    constructor.
+    - intro.
+      destruct H.
+      intuition.
+    - intro.
+      destruct H.
+      apply (Filt x cond xs1 H0 H).
+  Qed.
+
+  Inductive singleton {A : Type} : A -> ensemble A :=
+  | Single :
+    forall x : A,
+    In x (singleton x)
+  .
+
+  Proposition in_singleton {A : Type} :
+    forall x : A,
+    forall x1 : A,
+    In x (singleton x1) <-> x = x1.
+  Proof.
+    intros x x1.
+    constructor.
+    - intro.
+      destruct H.
+      tauto.
+    - intro.
+      subst.
+      apply (Single x1).
+  Qed.
+
+  Inductive union {A : Type} : ensemble A -> ensemble A -> ensemble A :=
+  | UnionL :
+    forall xs1 xs2 : ensemble A,
+    forall x : A,
+    In x xs1 ->
+    In x (union xs1 xs2)
+  | UnionR :
+    forall xs1 xs2 : ensemble A,
+    forall x : A,
+    In x xs2 ->
+    In x (union xs1 xs2)
+  .
+
+  Proposition in_union {A : Type} :
+    forall x : A,
+    forall xs1 xs2 : ensemble A,
+    In x (union xs1 xs2) <-> (In x xs1 \/ In x xs2).
+  Proof.
+    intros x xs1 xs2.
+    constructor.
+    - intro.
+      destruct H.
+      * intuition.
+      * intuition.
+    - intro.
+      destruct H.
+      * apply UnionL.
+        apply H.
+      * apply UnionR.
+        apply H.
+  Qed.
+
+  Definition insert {A : Type} (x : A) (xs : ensemble A) : ensemble A :=
+    union xs (singleton x)
+  .
+
+  Proposition in_insert {A : Type} :
+    forall x : A,
+    forall x1 : A,
+    forall xs1 : ensemble A,
+    In x (insert x1 xs1) <-> (x = x1 \/ In x xs1).
+  Proof.
+    intros x x1 xs1.
+    constructor.
+    - intro.
+      assert (In x xs1 \/ In x (singleton x1)).
+        apply (proj1 (in_union x xs1 (singleton x1)) H).
+      destruct H0.
+      * intuition.
+      * apply (or_introl (proj1 (in_singleton x x1) H0)).
+    - intro.
+      cut (In x xs1 \/ In x (singleton x1)).
+        apply (proj2 (in_union x xs1 (singleton x1))).
+      destruct H.
+      * apply (or_intror (proj2 (in_singleton x x1) H)).
+      * intuition.
+  Qed.
+
+  Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
+  | Unions :
+    forall x : A,
+    forall xss : ensemble (ensemble A),
+    forall xs : ensemble A,
+    In x xs ->
+    In xs xss ->
+    In x (unions xss)
+  .
+
+  Proposition in_unions {A : Type} :
+    forall x : A,
+    forall xss1 : ensemble (ensemble A),
+    In x (unions xss1) <-> (exists xs1 : ensemble A, In x xs1 /\ In xs1 xss1).
+  Proof.
+    intros x xss1.
+    constructor.
+    - intro.
+      destruct H.
+      exists xs.
+      intuition.
+    - intro.
+      destruct H as [xs1].
+      destruct H.
+      apply (Unions x xss1 xs1 H H0).
+  Qed.
+
+End Ensembles.
+
 Module PropositionalLogic.
 
   Section Syntax.
@@ -2166,149 +2336,10 @@ Module PropositionalLogic.
     End Completeness.
 
   End Weak.
-
-  Module FormulaSet.
-
-    Definition formula_set := formula -> Prop.
-
-    Definition In (p : formula) (ps : formula_set) := ps p.
-
-    Inductive empty : formula_set :=
-    .
-
-    Proposition in_empty :
-      forall p : formula,
-      not (In p empty).
-    Proof.
-      intros p.
-      intro.
-      destruct H.
-    Qed.
-
-    Inductive universe : formula_set :=
-    | Univ :
-      forall p : formula,
-      In p universe
-    .
-
-    Proposition in_universe :
-      forall p : formula,
-      In p universe.
-    Proof.
-      intros p.
-      apply (Univ p).
-    Qed.
-
-    Inductive filter : (formula -> bool) -> formula_set -> formula_set :=
-    | Filt :
-      forall p : formula,
-      forall cond : formula -> bool,
-      forall ps : formula_set,
-      cond p = true ->
-      In p ps ->
-      In p (filter cond ps)
-    .
-
-    Proposition in_filter :
-      forall p : formula,
-      forall ps1 : formula_set,
-      forall cond : formula -> bool,
-      In p (filter cond ps1) <-> (In p ps1 /\ cond p = true).
-    Proof.
-      intros p ps1 cond.
-      constructor.
-      - intro.
-        destruct H.
-        intuition.
-      - intro.
-        destruct H.
-        apply (Filt p cond ps1 H0 H).
-    Qed.
-
-    Inductive singleton : formula -> formula_set :=
-    | Single :
-      forall p : formula,
-      In p (singleton p)
-    .
-
-    Proposition in_singleton :
-      forall p : formula,
-      forall p1 : formula,
-      In p (singleton p1) <-> p = p1.
-    Proof.
-      intros p p1.
-      constructor.
-      - intro.
-        destruct H.
-        tauto.
-      - intro.
-        subst.
-        apply (Single p1).
-    Qed.
-
-    Inductive union : formula_set -> formula_set -> formula_set :=
-    | UnionL :
-      forall ps1 ps2 : formula_set,
-      forall p : formula,
-      In p ps1 ->
-      In p (union ps1 ps2)
-    | UnionR :
-      forall ps1 ps2 : formula_set,
-      forall p : formula,
-      In p ps2 ->
-      In p (union ps1 ps2)
-    .
-
-    Proposition in_union :
-      forall p : formula,
-      forall ps1 ps2 : formula_set,
-      In p (union ps1 ps2) <-> (In p ps1 \/ In p ps2).
-    Proof.
-      intros p ps1 ps2.
-      constructor.
-      - intro.
-        destruct H.
-        * intuition.
-        * intuition.
-      - intro.
-        destruct H.
-        * apply UnionL.
-          apply H.
-        * apply UnionR.
-          apply H.
-    Qed.
-
-    Definition insert (p : formula) (ps : formula_set) : formula_set :=
-      union ps (singleton p)
-    .
-
-    Proposition in_insert :
-      forall p : formula,
-      forall p1 : formula,
-      forall ps1 : formula_set,
-      In p (insert p1 ps1) <-> (p = p1 \/ In p ps1).
-    Proof.
-      intros p p1 ps1.
-      constructor.
-      - intro.
-        assert (In p ps1 \/ In p (singleton p1)).
-          apply (proj1 (in_union p ps1 (singleton p1)) H).
-        destruct H0.
-        * intuition.
-        * apply (or_introl (proj1 (in_singleton p p1) H0)).
-      - intro.
-        cut (In p ps1 \/ In p (singleton p1)).
-          apply (proj2 (in_union p ps1 (singleton p1))).
-        destruct H.
-        * apply (or_intror (proj2 (in_singleton p p1) H)).
-        * intuition.
-    Qed.
-
-  End FormulaSet.
   
   Module Strong.
 
-    Import FormulaSet.
+    Import Ensembles.
 
     Section Semantics.
 
@@ -2350,6 +2381,10 @@ Module PropositionalLogic.
           | false, false => true
           end
         end
+      .
+
+      Definition formula_set : Type :=
+        ensemble formula
       .
 
       Definition entails (premises : formula_set) (conclusion : formula) : Prop :=
