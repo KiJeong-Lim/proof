@@ -2176,6 +2176,55 @@ Module PropositionalLogic.
     Inductive empty : formula_set :=
     .
 
+    Proposition in_empty :
+      forall p : formula,
+      not (In p empty).
+    Proof.
+      intros p.
+      intro.
+      destruct H.
+    Qed.
+
+    Inductive universe : formula_set :=
+    | Univ :
+      forall p : formula,
+      In p universe
+    .
+
+    Proposition in_universe :
+      forall p : formula,
+      In p universe.
+    Proof.
+      intros p.
+      apply (Univ p).
+    Qed.
+
+    Inductive filter : (formula -> bool) -> formula_set -> formula_set :=
+    | Filt :
+      forall p : formula,
+      forall cond : formula -> bool,
+      forall ps : formula_set,
+      cond p = true ->
+      In p ps ->
+      In p (filter cond ps)
+    .
+
+    Proposition in_filter :
+      forall p : formula,
+      forall ps1 : formula_set,
+      forall cond : formula -> bool,
+      In p (filter cond ps1) <-> (In p ps1 /\ cond p = true).
+    Proof.
+      intros p ps1 cond.
+      constructor.
+      - intro.
+        destruct H.
+        intuition.
+      - intro.
+        destruct H.
+        apply (Filt p cond ps1 H0 H).
+    Qed.
+
     Inductive singleton : formula -> formula_set :=
     | Single :
       forall p : formula,
@@ -2566,6 +2615,10 @@ Module PropositionalLogic.
       Qed.
 
     End InferenceRules.
+
+    Section Soundness.
+
+    End Soundness.
 
   End Strong.
 
