@@ -177,6 +177,34 @@ Module Ensembles.
       apply (Unions x xss1 xs1 H H0).
   Qed.
 
+  Inductive map {A : Type} {B : Type} : (A -> B) -> ensemble A -> ensemble B :=
+  | Image :
+    forall f : A -> B,
+    forall xs : ensemble A,
+    forall x : A,
+    In x xs ->
+    In (f x) (map f xs)
+  .
+
+  Proposition in_map {A : Type} {B : Type} :
+    forall y : B,
+    forall f : A -> B,
+    forall xs1 : ensemble A,
+    In y (map f xs1) <-> (exists x : A, In x xs1 /\ y = f x).
+  Proof.
+    intros y f xs1.
+    constructor.
+    - intro.
+      destruct H.
+      exists x.
+      intuition.
+    - intro.
+      destruct H.
+      destruct H.
+      rewrite H0.
+      apply (Image f xs1 x H).
+  Qed.
+
 End Ensembles.
 
 Module PropositionalLogic.
@@ -2654,6 +2682,18 @@ Module PropositionalLogic.
     Section Soundness.
 
     End Soundness.
+
+    Section Completeness.
+
+    End Completeness.
+
+    Section Compactness.
+
+    End Compactness.
+
+    Section ETC.
+
+    End ETC.
 
   End Strong.
 
