@@ -3,21 +3,45 @@ Require Export PeanoNat.
 Require Export Peano_dec.
 Require Export Lia.
 
-(*
-  THANKS TO:
-    1. Taeseung Sohn: "https://github.com/paulsohn";
-    2. Junyoung Clare Jang: "https://github.com/Ailrun";
-*)
+(* THANKS TO: *)
+(* 1. Taeseung Sohn: "https://github.com/paulsohn" *)
+(* 2. Junyoung Clare Jang: "https://github.com/Ailrun" *)
 
 Module Ensembles.
 
-  Definition ensemble (A : Type) :=
+  Definition ensemble (A : Type) : Type :=
     A -> Prop
   .
 
-  Definition In {A : Type} (x : A) (xs : ensemble A) :=
+  Definition In {A : Type} (x : A) (xs : ensemble A) : Prop :=
     xs x
   .
+
+  Definition subset {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : Prop :=
+    forall x : A,
+    In x xs1 ->
+    In x xs2
+  .
+
+  Proposition subset_refl {A : Type} :
+    forall xs : ensemble A,
+    subset xs xs.
+  Proof.
+    intros xs.
+    unfold subset in *.
+    intuition.
+  Qed.
+
+  Proposition subset_trans {A : Type} :
+    forall xs1 xs2 xs3 : ensemble A,
+    subset xs1 xs2 ->
+    subset xs2 xs3 ->
+    subset xs1 xs3.
+  Proof.
+    intros xs1 xs2 xs3.
+    unfold subset in *.
+    intuition.
+  Qed.
 
   Inductive empty {A : Type} : ensemble A :=
   .
@@ -32,7 +56,7 @@ Module Ensembles.
   Qed.
 
   Inductive universe {A : Type} : ensemble A :=
-  | Univ :
+  | InUniverse :
     forall p : A,
     In p universe
   .
@@ -42,11 +66,11 @@ Module Ensembles.
     In x universe.
   Proof.
     intros x.
-    apply (Univ x).
+    apply (InUniverse x).
   Qed.
 
   Inductive filter {A : Type} : (A -> bool) -> ensemble A -> ensemble A :=
-  | Filt :
+  | InFilter :
     forall x : A,
     forall cond : A -> bool,
     forall xs : ensemble A,
@@ -68,11 +92,11 @@ Module Ensembles.
       intuition.
     - intro.
       destruct H.
-      apply (Filt x cond xs1 H0 H).
+      apply (InFilter x cond xs1 H0 H).
   Qed.
 
   Inductive singleton {A : Type} : A -> ensemble A :=
-  | Single :
+  | InSingleton :
     forall x : A,
     In x (singleton x)
   .
@@ -89,16 +113,16 @@ Module Ensembles.
       tauto.
     - intro.
       subst.
-      apply (Single x1).
+      apply (InSingleton x1).
   Qed.
 
   Inductive union {A : Type} : ensemble A -> ensemble A -> ensemble A :=
-  | UnionL :
+  | InUnionL :
     forall xs1 xs2 : ensemble A,
     forall x : A,
     In x xs1 ->
     In x (union xs1 xs2)
-  | UnionR :
+  | InUnionR :
     forall xs1 xs2 : ensemble A,
     forall x : A,
     In x xs2 ->
@@ -118,9 +142,9 @@ Module Ensembles.
       * intuition.
     - intro.
       destruct H.
-      * apply UnionL.
+      * apply InUnionL.
         apply H.
-      * apply UnionR.
+      * apply InUnionR.
         apply H.
   Qed.
 
@@ -151,7 +175,7 @@ Module Ensembles.
   Qed.
 
   Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
-  | Unions :
+  | InUnions :
     forall x : A,
     forall xss : ensemble (ensemble A),
     forall xs : ensemble A,
@@ -174,11 +198,11 @@ Module Ensembles.
     - intro.
       destruct H as [xs1].
       destruct H.
-      apply (Unions x xss1 xs1 H H0).
+      apply (InUnions x xss1 xs1 H H0).
   Qed.
 
   Inductive map {A : Type} {B : Type} : (A -> B) -> ensemble A -> ensemble B :=
-  | Image :
+  | InMap :
     forall f : A -> B,
     forall xs : ensemble A,
     forall x : A,
@@ -202,7 +226,7 @@ Module Ensembles.
       destruct H.
       destruct H.
       rewrite H0.
-      apply (Image f xs1 x H).
+      apply (InMap f xs1 x H).
   Qed.
 
 End Ensembles.
