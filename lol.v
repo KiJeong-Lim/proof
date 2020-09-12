@@ -2182,6 +2182,21 @@ Module PropositionalLogic.
       In p (singleton p)
     .
 
+    Proposition in_singleton :
+      forall p : formula,
+      forall p1 : formula,
+      In p (singleton p1) <-> p = p1.
+    Proof.
+      intros p p1.
+      constructor.
+      - intro.
+        destruct H.
+        tauto.
+      - intro.
+        subst.
+        apply (Single p1).
+    Qed.
+
     Inductive union : formula_set -> formula_set -> formula_set :=
     | UnionL :
       forall ps1 ps2 : formula_set,
@@ -2194,29 +2209,50 @@ Module PropositionalLogic.
       In p ps2 ->
       In p (union ps1 ps2)
     .
-    
+
+    Proposition in_union :
+      forall p : formula,
+      forall ps1 ps2 : formula_set,
+      In p (union ps1 ps2) <-> (In p ps1 \/ In p ps2).
+    Proof.
+      intros p ps1 ps2.
+      constructor.
+      - intro.
+        destruct H.
+        * intuition.
+        * intuition.
+      - intro.
+        destruct H.
+        * apply UnionL.
+          apply H.
+        * apply UnionR.
+          apply H.
+    Qed.
+
     Definition insert (p : formula) (ps : formula_set) : formula_set :=
       union ps (singleton p)
     .
 
     Proposition in_insert :
-      forall hs1 hs2 : formula_set,
-      (forall h : formula, In h hs1 -> In h hs2) ->
-      forall a b : formula,
-      In a (insert b hs1) ->
-      In a (insert b hs2).
+      forall p : formula,
+      forall p1 : formula,
+      forall ps1 : formula_set,
+      In p (insert p1 ps1) <-> (p = p1 \/ In p ps1).
     Proof.
-      intros hs1 hs2.
-      intro.
-      intros a b.
-      intro.
-      unfold insert in *.
-      destruct H0.
-      - apply UnionL.
-        apply H.
-        apply H0.
-      - apply UnionR.
-        apply H0.
+      intros p p1 ps1.
+      constructor.
+      - intro.
+        assert (In p ps1 \/ In p (singleton p1)).
+          apply (proj1 (in_union p ps1 (singleton p1)) H).
+        destruct H0.
+        * intuition.
+        * apply (or_introl (proj1 (in_singleton p p1) H0)).
+      - intro.
+        cut (In p ps1 \/ In p (singleton p1)).
+          apply (proj2 (in_union p ps1 (singleton p1))).
+        destruct H.
+        * apply (or_intror (proj2 (in_singleton p p1) H)).
+        * intuition.
     Qed.
 
   End FormulaSet.
@@ -2415,7 +2451,7 @@ Module PropositionalLogic.
         infers hs a
       .
 
-(*    Lemma assume_more_then_still_proves :
+      Lemma assume_more_then_still_proves :
         forall hs1 : formula_set,
         forall a : formula,
         infers hs1 a ->
@@ -2423,6 +2459,21 @@ Module PropositionalLogic.
         (forall h : formula, In h hs1 -> In h hs2) ->
         infers hs2 a.
       Proof.
+        assert ( insert_lemma :
+          forall p : formula,
+          forall hs1 hs2 : formula_set,
+          (forall h : formula, In h hs1 -> In h hs2) ->
+          (forall h : formula, In h (insert p hs1) -> In h (insert p hs2))
+        ).
+          intros p hs1 hs2.
+          intro.
+          intros h.
+          intro.
+          apply (proj2 (in_insert h p hs2)).
+          destruct (proj1 (in_insert h p hs1)).
+            intuition.
+            intuition.
+          intuition.
         intros hs1 a.
         intro.
         induction H.
@@ -2443,17 +2494,76 @@ Module PropositionalLogic.
           intro.
           apply (NotIntro hs2 a).
           apply (IHinfers (insert a hs2)).
-          intros h.
-          apply (in_insert hs hs2 H0 h a).
+          apply insert_lemma.
+          apply H0.
         - intros hs2.
           intro.
           apply (NotElim hs2 a).
           apply (IHinfers (insert (Negation a) hs2)).
-          intros h.
-          apply (in_insert hs hs2 H0 h (Negation a)).
-         
+          apply insert_lemma.
+          apply H0.
+        - intros hs2.
+          intro.
+          apply (AndIntro hs2 a b).
+          apply (IHinfers1 hs2 H1).
+          apply (IHinfers2 hs2 H1).
+        - intros hs2.
+          intro.
+          apply (AndElim1 hs2 a b).
+          apply (IHinfers hs2 H0).
+        - intros hs2.
+          intro.
+          apply (AndElim2 hs2 a b).
+          apply (IHinfers hs2 H0).
+        - intros hs2.
+          intro.
+          apply (OrIntro1 hs2 a b).
+          apply (IHinfers hs2 H0).
+        - intros hs2.
+          intro.
+          apply (OrIntro2 hs2 a b).
+          apply (IHinfers hs2 H0).
+        - intros hs2.
+          intro.
+          apply (OrElim hs2 a b c).
+          apply (IHinfers1 hs2 H2).
+          apply (IHinfers2 (insert a hs2)).
+          apply insert_lemma.
+          apply H2.
+          apply (IHinfers3 (insert b hs2)).
+          apply insert_lemma.
+          apply H2.
+        - intros hs2.
+          intro.
+          apply (IfthenIntro hs2 a b).
+          apply (IHinfers (insert a hs2)).
+          apply insert_lemma.
+          apply H0.
+        - intros hs2.
+          intro.
+          apply (IfthenElim hs2 a b).
+          apply (IHinfers1 hs2 H1).
+          apply (IHinfers2 hs2 H1).
+        - intros hs2.
+          intro.
+          apply (IffIntro hs2 a b).
+          apply (IHinfers1 (insert a hs2)).
+          apply insert_lemma.
+          apply H1.
+          apply (IHinfers2 (insert b hs2)).
+          apply insert_lemma.
+          apply H1.
+        - intros hs2.
+          intro.
+          apply (IffElim1 hs2 a b).
+          apply (IHinfers1 hs2 H1).
+          apply (IHinfers2 hs2 H1).
+        - intros hs2.
+          intro.
+          apply (IffElim2 hs2 a b).
+          apply (IHinfers1 hs2 H1).
+          apply (IHinfers2 hs2 H1).
       Qed.
-*)
 
     End InferenceRules.
 
