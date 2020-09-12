@@ -32,6 +32,13 @@ Module Ensembles.
     intuition.
   Qed.
 
+  Axiom subset_asym :
+    forall {A : Type},
+    forall xs1 xs2 : ensemble A,
+    subset xs1 xs2 ->
+    subset xs2 xs1 ->
+    xs1 = xs2.
+
   Proposition subset_trans {A : Type} :
     forall xs1 xs2 xs3 : ensemble A,
     subset xs1 xs2 ->
@@ -2393,331 +2400,307 @@ Module PropositionalLogic.
 
     Import Ensembles.
 
-    Section Semantics.
-
-      Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
-        match p with
-        | PropVar n => assignment n
-        | Contradiction => false
-        | Negation p1 =>
-          match satisfies assignment p1 with
-          | true => false
-          | false => true
-          end
-        | Conjunction p1 p2 =>
-          match satisfies assignment p1, satisfies assignment p2 with
-          | true, true => true
-          | true, false => false
-          | false, true => false
-          | false, false => false
-          end
-        | Disjunction p1 p2 =>
-          match satisfies assignment p1, satisfies assignment p2 with
-          | true, true => true
-          | true, false => true
-          | false, true => true
-          | false, false => false
-          end
-        | Implication p1 p2 =>
-          match satisfies assignment p1, satisfies assignment p2 with
-          | true, true => true
-          | true, false => false
-          | false, true => true
-          | false, false => true
-          end
-        | Biconditional p1 p2 =>
-          match satisfies assignment p1, satisfies assignment p2 with
-          | true, true => true
-          | true, false => false
-          | false, true => false
-          | false, false => true
-          end
+    Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
+      match p with
+      | PropVar n => assignment n
+      | Contradiction => false
+      | Negation p1 =>
+        match satisfies assignment p1 with
+        | true => false
+        | false => true
         end
-      .
+      | Conjunction p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => false
+        | false, false => false
+        end
+      | Disjunction p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => true
+        | false, true => true
+        | false, false => false
+        end
+      | Implication p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => true
+        | false, false => true
+        end
+      | Biconditional p1 p2 =>
+        match satisfies assignment p1, satisfies assignment p2 with
+        | true, true => true
+        | true, false => false
+        | false, true => false
+        | false, false => true
+        end
+      end
+    .
 
-      Definition formula_set : Type :=
-        ensemble formula
-      .
+    Definition formula_set : Type :=
+      ensemble formula
+    .
 
-      Definition entails (premises : formula_set) (conclusion : formula) : Prop :=
-        forall assignment : nat -> bool,
-        (forall premise : formula, In premise premises -> satisfies assignment premise = true) ->
-        satisfies assignment conclusion = true
-      .        
+    Definition entails (premises : formula_set) (conclusion : formula) : Prop :=
+      forall assignment : nat -> bool,
+      (forall premise : formula, In premise premises -> satisfies assignment premise = true) ->
+      satisfies assignment conclusion = true
+    .        
 
-      Lemma premise_more_then_still_entails :
-        forall hs1 : formula_set,
-        forall c : formula,
-        entails hs1 c ->
-        forall hs2 : formula_set,
+    Lemma premise_more_then_still_entails :
+      forall hs1 : formula_set,
+      forall c : formula,
+      entails hs1 c ->
+      forall hs2 : formula_set,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      entails hs2 c.
+    Proof.
+      intros hs c.
+      intro.
+      intros hs2.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      apply (H assignment).
+      intros premise.
+      intro.
+      apply (H1 premise).
+      apply (H0 premise).
+      apply H2.
+    Qed.
+
+    Lemma always_entails_premise :
+      forall hs : formula_set,
+      forall c : formula,
+      In c hs ->
+      entails hs c.
+    Proof.
+      intros hs c.
+      cut (entails (singleton c) c).
+        intro.
+        intro.
+        apply (premise_more_then_still_entails (singleton c) c).
+        apply H.
+        intros h.
+        intro.
+        inversion H1.
+        subst.
+        apply H0.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      apply (H c).
+      apply Single.
+    Qed.
+
+    Inductive infers : formula_set -> formula -> Prop :=
+    | Assumption :
+      forall hs : formula_set,
+      forall h : formula,
+      In h hs ->
+      infers hs h
+    | BottomIntro :
+      forall hs : formula_set,
+      forall a : formula,
+      infers hs a ->
+      infers hs (Negation a) ->
+      infers hs Contradiction
+    | BottomElim :
+      forall hs : formula_set,
+      forall a : formula,
+      infers hs Contradiction ->
+      infers hs a
+    | NotIntro :
+      forall hs : formula_set,
+      forall a : formula,
+      infers (insert a hs) Contradiction ->
+      infers hs (Negation a)
+    | NotElim :
+      forall hs : formula_set,
+      forall a : formula,
+      infers (insert (Negation a) hs) Contradiction ->
+      infers hs a
+    | AndIntro :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs a ->
+      infers hs b ->
+      infers hs (Conjunction a b)
+    | AndElim1 :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs (Conjunction a b) ->
+      infers hs a
+    | AndElim2 : 
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs (Conjunction a b) ->
+      infers hs b
+    | OrIntro1 :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs a ->
+      infers hs (Disjunction a b)
+    | OrIntro2 :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs b ->
+      infers hs (Disjunction a b)
+    | OrElim :
+      forall hs : formula_set,
+      forall a b c : formula,
+      infers hs (Disjunction a b) ->
+      infers (insert a hs) c ->
+      infers (insert b hs) c ->
+      infers hs c
+    | IfthenIntro :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers (insert a hs) b ->
+      infers hs (Implication a b)
+    | IfthenElim :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs (Implication a b) ->
+      infers hs a ->
+      infers hs b
+    | IffIntro :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers (insert a hs) b ->
+      infers (insert b hs) a ->
+      infers hs (Biconditional a b)
+    | IffElim1 :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs (Biconditional a b) ->
+      infers hs a ->
+      infers hs b
+    | IffElim2 :
+      forall hs : formula_set,
+      forall a b : formula,
+      infers hs (Biconditional a b) ->
+      infers hs b ->
+      infers hs a
+    .
+
+    Lemma assume_more_then_still_proves :
+      forall hs1 : formula_set,
+      forall a : formula,
+      infers hs1 a ->
+      forall hs2 : formula_set,
+      (forall h : formula, In h hs1 -> In h hs2) ->
+      infers hs2 a.
+    Proof.
+      assert ( insert_lemma :
+        forall p : formula,
+        forall hs1 hs2 : formula_set,
         (forall h : formula, In h hs1 -> In h hs2) ->
-        entails hs2 c.
-      Proof.
-        intros hs c.
+        (forall h : formula, In h (insert p hs1) -> In h (insert p hs2))
+      ).
+        intros p hs1 hs2.
         intro.
-        intros hs2.
+        intros h.
         intro.
-        unfold entails in *.
-        intros assignment.
-        intro.
-        apply (H assignment).
-        intros premise.
-        intro.
-        apply (H1 premise).
-        apply (H0 premise).
-        apply H2.
-      Qed.
-
-      Lemma always_entails_premise :
-        forall hs : formula_set,
-        forall c : formula,
-        In c hs ->
-        entails hs c.
-      Proof.
-        intros hs c.
-        cut (entails (singleton c) c).
-          intro.
-          intro.
-          apply (premise_more_then_still_entails (singleton c) c).
-          apply H.
-          intros h.
-          intro.
-          inversion H1.
-          subst.
-          apply H0.
-        unfold entails in *.
-        intros assignment.
-        intro.
-        apply (H c).
-        apply Single.
-      Qed.
-    
-    End Semantics.
-
-    Section InferenceRules.
-
-      Inductive infers : formula_set -> formula -> Prop :=
-      | Assumption :
-        forall hs : formula_set,
-        forall h : formula,
-        In h hs ->
-        infers hs h
-      | BottomIntro :
-        forall hs : formula_set,
-        forall a : formula,
-        infers hs a ->
-        infers hs (Negation a) ->
-        infers hs Contradiction
-      | BottomElim :
-        forall hs : formula_set,
-        forall a : formula,
-        infers hs Contradiction ->
-        infers hs a
-      | NotIntro :
-        forall hs : formula_set,
-        forall a : formula,
-        infers (insert a hs) Contradiction ->
-        infers hs (Negation a)
-      | NotElim :
-        forall hs : formula_set,
-        forall a : formula,
-        infers (insert (Negation a) hs) Contradiction ->
-        infers hs a
-      | AndIntro :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs a ->
-        infers hs b ->
-        infers hs (Conjunction a b)
-      | AndElim1 :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs (Conjunction a b) ->
-        infers hs a
-      | AndElim2 : 
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs (Conjunction a b) ->
-        infers hs b
-      | OrIntro1 :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs a ->
-        infers hs (Disjunction a b)
-      | OrIntro2 :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs b ->
-        infers hs (Disjunction a b)
-      | OrElim :
-        forall hs : formula_set,
-        forall a b c : formula,
-        infers hs (Disjunction a b) ->
-        infers (insert a hs) c ->
-        infers (insert b hs) c ->
-        infers hs c
-      | IfthenIntro :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers (insert a hs) b ->
-        infers hs (Implication a b)
-      | IfthenElim :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs (Implication a b) ->
-        infers hs a ->
-        infers hs b
-      | IffIntro :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers (insert a hs) b ->
-        infers (insert b hs) a ->
-        infers hs (Biconditional a b)
-      | IffElim1 :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs (Biconditional a b) ->
-        infers hs a ->
-        infers hs b
-      | IffElim2 :
-        forall hs : formula_set,
-        forall a b : formula,
-        infers hs (Biconditional a b) ->
-        infers hs b ->
-        infers hs a
-      .
-
-      Lemma assume_more_then_still_proves :
-        forall hs1 : formula_set,
-        forall a : formula,
-        infers hs1 a ->
-        forall hs2 : formula_set,
-        (forall h : formula, In h hs1 -> In h hs2) ->
-        infers hs2 a.
-      Proof.
-        assert ( insert_lemma :
-          forall p : formula,
-          forall hs1 hs2 : formula_set,
-          (forall h : formula, In h hs1 -> In h hs2) ->
-          (forall h : formula, In h (insert p hs1) -> In h (insert p hs2))
-        ).
-          intros p hs1 hs2.
-          intro.
-          intros h.
-          intro.
-          apply (proj2 (in_insert h p hs2)).
-          destruct (proj1 (in_insert h p hs1)).
-            intuition.
-            intuition.
+        apply (proj2 (in_insert h p hs2)).
+        destruct (proj1 (in_insert h p hs1)).
           intuition.
-        intros hs1 a.
+          intuition.
+        intuition.
+      intros hs1 a.
+      intro.
+      induction H.
+      - intros hs2.
         intro.
-        induction H.
-        - intros hs2.
-          intro.
-          apply (Assumption hs2 h).
-          apply (H0 h H).
-        - intros hs2.
-          intro.
-          apply (BottomIntro hs2 a).
-          apply (IHinfers1 hs2 H1).
-          apply (IHinfers2 hs2 H1).
-        - intros hs2.
-          intro.
-          apply (BottomElim hs2 a).
-          apply (IHinfers hs2 H0).
-        - intros hs2.
-          intro.
-          apply (NotIntro hs2 a).
-          apply (IHinfers (insert a hs2)).
-          apply insert_lemma.
-          apply H0.
-        - intros hs2.
-          intro.
-          apply (NotElim hs2 a).
-          apply (IHinfers (insert (Negation a) hs2)).
-          apply insert_lemma.
-          apply H0.
-        - intros hs2.
-          intro.
-          apply (AndIntro hs2 a b).
-          apply (IHinfers1 hs2 H1).
-          apply (IHinfers2 hs2 H1).
-        - intros hs2.
-          intro.
-          apply (AndElim1 hs2 a b).
-          apply (IHinfers hs2 H0).
-        - intros hs2.
-          intro.
-          apply (AndElim2 hs2 a b).
-          apply (IHinfers hs2 H0).
-        - intros hs2.
-          intro.
-          apply (OrIntro1 hs2 a b).
-          apply (IHinfers hs2 H0).
-        - intros hs2.
-          intro.
-          apply (OrIntro2 hs2 a b).
-          apply (IHinfers hs2 H0).
-        - intros hs2.
-          intro.
-          apply (OrElim hs2 a b c).
-          apply (IHinfers1 hs2 H2).
-          apply (IHinfers2 (insert a hs2)).
-          apply insert_lemma.
-          apply H2.
-          apply (IHinfers3 (insert b hs2)).
-          apply insert_lemma.
-          apply H2.
-        - intros hs2.
-          intro.
-          apply (IfthenIntro hs2 a b).
-          apply (IHinfers (insert a hs2)).
-          apply insert_lemma.
-          apply H0.
-        - intros hs2.
-          intro.
-          apply (IfthenElim hs2 a b).
-          apply (IHinfers1 hs2 H1).
-          apply (IHinfers2 hs2 H1).
-        - intros hs2.
-          intro.
-          apply (IffIntro hs2 a b).
-          apply (IHinfers1 (insert a hs2)).
-          apply insert_lemma.
-          apply H1.
-          apply (IHinfers2 (insert b hs2)).
-          apply insert_lemma.
-          apply H1.
-        - intros hs2.
-          intro.
-          apply (IffElim1 hs2 a b).
-          apply (IHinfers1 hs2 H1).
-          apply (IHinfers2 hs2 H1).
-        - intros hs2.
-          intro.
-          apply (IffElim2 hs2 a b).
-          apply (IHinfers1 hs2 H1).
-          apply (IHinfers2 hs2 H1).
-      Qed.
-
-    End InferenceRules.
-
-    Section Soundness.
-
-    End Soundness.
-
-    Section Completeness.
-
-    End Completeness.
-
-    Section Compactness.
-
-    End Compactness.
-
-    Section ETC.
-
-    End ETC.
+        apply (Assumption hs2 h).
+        apply (H0 h H).
+      - intros hs2.
+        intro.
+        apply (BottomIntro hs2 a).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BottomElim hs2 a).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (NotIntro hs2 a).
+        apply (IHinfers (insert a hs2)).
+        apply insert_lemma.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (NotElim hs2 a).
+        apply (IHinfers (insert (Negation a) hs2)).
+        apply insert_lemma.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (AndIntro hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (AndElim1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (AndElim2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrIntro1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrIntro2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (OrElim hs2 a b c).
+        apply (IHinfers1 hs2 H2).
+        apply (IHinfers2 (insert a hs2)).
+        apply insert_lemma.
+        apply H2.
+        apply (IHinfers3 (insert b hs2)).
+        apply insert_lemma.
+        apply H2.
+      - intros hs2.
+        intro.
+        apply (IfthenIntro hs2 a b).
+        apply (IHinfers (insert a hs2)).
+        apply insert_lemma.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (IfthenElim hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (IffIntro hs2 a b).
+        apply (IHinfers1 (insert a hs2)).
+        apply insert_lemma.
+        apply H1.
+        apply (IHinfers2 (insert b hs2)).
+        apply insert_lemma.
+        apply H1.
+      - intros hs2.
+        intro.
+        apply (IffElim1 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (IffElim2 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+    Qed.
 
   End Strong.
 
