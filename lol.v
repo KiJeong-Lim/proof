@@ -23,7 +23,8 @@ Module Ensembles.
     In x xs2
   .
 
-  Proposition subset_refl {A : Type} :
+  Proposition subset_refl :
+    forall {A : Type},
     forall xs : ensemble A,
     subset xs xs.
   Proof.
@@ -39,7 +40,8 @@ Module Ensembles.
     subset xs2 xs1 ->
     xs1 = xs2.
 
-  Proposition subset_trans {A : Type} :
+  Proposition subset_trans :
+    forall {A : Type},
     forall xs1 xs2 xs3 : ensemble A,
     subset xs1 xs2 ->
     subset xs2 xs3 ->
@@ -53,10 +55,12 @@ Module Ensembles.
   Inductive empty {A : Type} : ensemble A :=
   .
 
-  Proposition in_empty {A : Type} :
+  Proposition in_empty :
+    forall {A : Type},
     forall x : A,
     ~ In x empty.
   Proof.
+    intros A.
     intros x.
     intro.
     destruct H.
@@ -68,10 +72,12 @@ Module Ensembles.
     In p universe
   .
 
-  Proposition in_universe {A : Type} :
+  Proposition in_universe :
+    forall {A : Type},
     forall x : A,
     In x universe.
   Proof.
+    intros A.
     intros x.
     apply (InUniverse x).
   Qed.
@@ -86,12 +92,14 @@ Module Ensembles.
     In x (filter cond xs)
   .
 
-  Proposition in_filter {A : Type} :
+  Proposition in_filter :
+    forall {A : Type},
     forall x : A,
     forall xs1 : ensemble A,
     forall cond : A -> bool,
     In x (filter cond xs1) <-> (In x xs1 /\ cond x = true).
   Proof.
+    intros A.
     intros x xs1 cond.
     constructor.
     - intro.
@@ -108,11 +116,13 @@ Module Ensembles.
     In x (singleton x)
   .
 
-  Proposition in_singleton {A : Type} :
+  Proposition in_singleton :
+    forall {A : Type},
     forall x : A,
     forall x1 : A,
     In x (singleton x1) <-> x = x1.
   Proof.
+    intros A.
     intros x x1.
     constructor.
     - intro.
@@ -136,11 +146,13 @@ Module Ensembles.
     In x (union xs1 xs2)
   .
 
-  Proposition in_union {A : Type} :
+  Proposition in_union :
+    forall {A : Type},
     forall x : A,
     forall xs1 xs2 : ensemble A,
     In x (union xs1 xs2) <-> (In x xs1 \/ In x xs2).
   Proof.
+    intros A.
     intros x xs1 xs2.
     constructor.
     - intro.
@@ -159,12 +171,14 @@ Module Ensembles.
     union xs (singleton x)
   .
 
-  Proposition in_insert {A : Type} :
+  Proposition in_insert :
+    forall {A : Type},
     forall x : A,
     forall x1 : A,
     forall xs1 : ensemble A,
     In x (insert x1 xs1) <-> (x = x1 \/ In x xs1).
   Proof.
+    intros A.
     intros x x1 xs1.
     constructor.
     - intro.
@@ -181,6 +195,90 @@ Module Ensembles.
       * intuition.
   Qed.
 
+  
+  Definition complement {A : Type} (xs : ensemble A) : ensemble A :=
+    fun x : A =>
+      ~ In x xs
+  .
+
+  Proposition in_complement :
+    forall {A : Type},
+    forall x : A,
+    forall xs1 : ensemble A,
+    In x (complement xs1) <-> ~ In x xs1.
+  Proof.
+    intros A.
+    intros x xs1.
+    unfold complement.
+    unfold In.
+    intuition.
+  Qed.
+
+  Inductive intersection {A : Type} : ensemble A -> ensemble A -> ensemble A :=
+  | InIntersection :
+    forall xs1 xs2 : ensemble A,
+    forall x : A,
+    In x xs1 ->
+    In x xs2 ->
+    In x (intersection xs1 xs2)
+  .
+
+  Proposition in_intersection :
+    forall {A : Type},
+    forall x : A,
+    forall xs1 xs2 : ensemble A,
+    In x (intersection xs1 xs2) <-> (In x xs1 /\ In x xs2).
+  Proof.
+    intros A.
+    intros x xs1 xs2.
+    constructor.
+    - intro.
+      destruct H.
+      intuition.
+    - intro.
+      destruct H.
+      apply (InIntersection xs1 xs2 x H H0).
+  Qed.
+
+  Definition difference {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : ensemble A :=
+    fun x : A =>
+      In x xs1 /\ ~ In x xs2
+  .
+
+  Proposition in_difference :
+    forall {A : Type},
+    forall x : A,
+    forall xs1 xs2 : ensemble A,
+    In x (difference xs1 xs2) <-> (In x xs1 /\ ~ In x xs2).
+  Proof.
+    intros A.
+    intros x xs1 xs2.
+    unfold difference.
+    unfold In.
+    intuition.
+  Qed.
+
+  Definition delete {A : Type} (x1 : A) (xs1 : ensemble A) : ensemble A :=
+    difference xs1 (singleton x1)
+  .
+
+  Proposition in_delete :
+    forall {A : Type},
+    forall x : A,
+    forall x1 : A,
+    forall xs1 : ensemble A,
+    In x (delete x1 xs1) <-> (In x xs1 /\ x <> x1).
+  Proof.
+    intros A.
+    intros x x1 xs1.
+    unfold delete.
+    assert (In x (difference xs1 (singleton x1)) <-> In x xs1 /\ ~ In x (singleton x1)).
+      apply (in_difference x xs1 (singleton x1)).
+    assert (In x (singleton x1) <-> x = x1).
+      apply (in_singleton x x1).
+    intuition.
+  Qed.
+
   Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
   | InUnions :
     forall x : A,
@@ -191,11 +289,13 @@ Module Ensembles.
     In x (unions xss)
   .
 
-  Proposition in_unions {A : Type} :
+  Proposition in_unions :
+    forall {A : Type},
     forall x : A,
     forall xss1 : ensemble (ensemble A),
     In x (unions xss1) <-> (exists xs1 : ensemble A, In x xs1 /\ In xs1 xss1).
   Proof.
+    intros A.
     intros x xss1.
     constructor.
     - intro.
@@ -217,13 +317,15 @@ Module Ensembles.
     In (f x) (map f xs)
   .
 
-  Proposition in_map {A : Type} {B : Type} :
-    forall y : B,
+  Proposition in_map :
+    forall {A B : Type},
     forall f : A -> B,
+    forall y : B,
     forall xs1 : ensemble A,
     In y (map f xs1) <-> (exists x : A, In x xs1 /\ y = f x).
   Proof.
-    intros y f xs1.
+    intros A B.
+    intros f y xs1.
     constructor.
     - intro.
       destruct H.
@@ -2071,7 +2173,7 @@ Module PropositionalLogic.
                 intuition.
       Qed.
 
-      Proposition proof_of_ex_middle :
+      Example ex_middle :
         forall p : formula,
         infers [] (Disjunction p (Negation p)).
       Proof.
@@ -2224,7 +2326,7 @@ Module PropositionalLogic.
                 apply H3.
               assert (infers (makeLine assignment ns) (Disjunction (PropVar n) (Negation (PropVar n)))).
                 apply (assume_more_then_still_proves [] (Disjunction (PropVar n) (Negation (PropVar n)))).
-                apply (proof_of_ex_middle (PropVar n)).
+                apply (ex_middle (PropVar n)).
                 intros h.
                 simpl.
                 intuition.
@@ -2272,7 +2374,7 @@ Module PropositionalLogic.
                 apply H3.
               assert (infers (makeLine assignment ns) (Disjunction (PropVar n) (Negation (PropVar n)))).
                 apply (assume_more_then_still_proves [] (Disjunction (PropVar n) (Negation (PropVar n)))).
-                apply (proof_of_ex_middle (PropVar n)).
+                apply (ex_middle (PropVar n)).
                 intros h.
                 simpl.
                 intuition.
