@@ -3378,6 +3378,48 @@ Module PropositionalLogic.
       - apply (iff_elim2_preserves hs a b IHinfers1 IHinfers2).
     Qed.
 
+    Theorem consistency_implies_model_exists :
+      forall hs : formula_set,
+      (forall assignment : nat -> bool, ~ (forall h : formula, In h hs -> satisfies assignment h = true)) ->
+      infers hs Contradiction.
+    Proof.
+    Qed.
+
+    Corollary completeness :
+      forall hs : formula_set,
+      forall c : formula,
+      entails hs c ->
+      infers hs c.
+    Proof.
+      intros hs c.
+      intro.
+      cut (
+        let hs' := insert (Negation c) hs in
+        forall assignment : nat -> bool,
+        ~ (forall h : formula, In h hs' -> satisfies assignment h = true) 
+      ).
+        intro.
+        apply (NotElim hs c).
+        apply (consistency_implies_model_exists).
+        apply H0.
+      intros hs' assignment.
+      intro.
+      assert (satisfies assignment c = true).
+        apply H.
+        intros h.
+        intro.
+        apply (H0 h).
+        apply (proj2 (in_insert h (Negation c) hs)).
+        intuition.
+      assert (satisfies assignment (Negation c) = true).
+        apply (H0 (Negation c)).
+        apply (proj2 (in_insert (Negation c) (Negation c) hs)).
+        intuition.
+      simpl in H2.
+      rewrite H1 in H2.
+      inversion H2.
+    Qed.
+
   End Strong.
 
 End PropositionalLogic.
