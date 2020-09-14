@@ -2596,7 +2596,7 @@ Module PropositionalLogic.
       intros assignment.
       intro.
       apply (H c).
-      apply Single.
+      apply InSingleton.
     Qed.
 
     Inductive infers : formula_set -> formula -> Prop :=
@@ -2802,6 +2802,580 @@ Module PropositionalLogic.
         apply (IffElim2 hs2 a b).
         apply (IHinfers1 hs2 H1).
         apply (IHinfers2 hs2 H1).
+    Qed.
+
+    Proposition bottom_intro_preserves :
+      forall hs : formula_set,
+      forall a : formula,
+      entails hs a ->
+      entails hs (Negation a) ->
+      entails hs Contradiction.
+    Proof.
+      intros hs a.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H1).
+      assert (
+        satisfies assignment (Negation a) = true
+      ).
+        apply (H0 assignment H1).
+      inversion H3.
+      rewrite H2 in H5.
+      inversion H5.
+    Qed.
+
+    Proposition bottom_elim_preserves :
+      forall hs : formula_set,
+      forall a : formula,
+      entails hs Contradiction ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment H0).
+      inversion H1.
+    Qed.
+
+    Proposition not_intro_preserves :
+      forall hs : formula_set,
+      forall a : formula,
+      entails (insert a hs) Contradiction ->
+      entails hs (Negation a).
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        (forall premise : formula, In premise (insert a hs) -> satisfies assignment premise = true) ->
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment).
+      cut (
+        satisfies assignment a = false
+      ).
+        intro.
+        simpl.
+        rewrite H2.
+        intuition.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+      - elimtype False.
+        cut (satisfies assignment Contradiction = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct (proj1 (in_insert premise a hs) H3).
+        * rewrite <- H4 in H2.
+          apply H2.
+        * apply (H0 premise H4).
+      - apply H2.
+    Qed.
+
+    Proposition not_elim_preserves :
+      forall hs : formula_set,
+      forall a : formula,
+      entails (insert (Negation a) hs) Contradiction ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        (forall premise : formula, In premise (insert (Negation a) hs) -> satisfies assignment premise = true) ->
+        satisfies assignment Contradiction = true
+      ).
+        apply (H assignment).
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+      - apply H2.
+      - elimtype False.
+        cut (satisfies assignment Contradiction = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct (proj1 (in_insert premise (Negation a) hs) H3).
+        * rewrite H4.
+          simpl.
+          rewrite H2.
+          intuition.
+        * apply (H0 premise H4).
+    Qed.
+
+    Proposition and_intro_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs a ->
+      entails hs b ->
+      entails hs (Conjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H1).
+      assert (
+        satisfies assignment b = true
+      ).
+        apply (H0 assignment H1).
+      simpl.
+      rewrite H2.
+      rewrite H3.
+      intuition.
+    Qed.
+
+    Proposition and_elim1_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs (Conjunction a b) ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment (Conjunction a b) = true
+      ).
+        apply (H assignment H0).
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies assignment b = true \/ satisfies assignment b = false
+      ).
+        induction (satisfies assignment b).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Proposition and_elim2_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs (Conjunction a b) ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment (Conjunction a b) = true
+      ).
+        apply (H assignment H0).
+      assert (
+        satisfies assignment b = true \/ satisfies assignment b = false
+      ).
+        induction (satisfies assignment b).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies assignment a = true \/ satisfies assignment a = false
+      ).
+        induction (satisfies assignment a).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Proposition or_intro1_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs a ->
+      entails hs (Disjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment a = true
+      ).
+        apply (H assignment H0).
+      cut (satisfies assignment b = true \/ satisfies assignment b = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies assignment b).
+        tauto.
+        tauto.
+    Qed.
+
+    Proposition or_intro2_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs b ->
+      entails hs (Disjunction a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (
+        satisfies assignment b = true
+      ).
+        apply (H assignment H0).
+      cut (satisfies assignment a = true \/ satisfies assignment a = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies assignment a).
+        tauto.
+        tauto.
+    Qed.
+
+    Proposition or_elim_preserves :
+      forall hs : formula_set,
+      forall a b c : formula,
+      entails hs (Disjunction a b) ->
+      entails (insert a hs) c ->
+      entails (insert b hs) c ->
+      entails hs c.
+    Proof.
+      intros hs a b c.
+      unfold entails in *.
+      intro.
+      intro.
+      intro.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment b = true).
+        assert (satisfies assignment (Disjunction a b) = true).
+          apply (H assignment H2).
+        inversion H3.
+        cut (satisfies assignment a = true \/ satisfies assignment a = false).
+          intro.
+          destruct H4.
+            rewrite H4 in *.
+            apply or_introl.
+            rewrite H5.
+            tauto.
+            cut (satisfies assignment b = true \/ satisfies assignment b = false).
+              intro.
+              rewrite H4 in *.
+              destruct H6.
+                rewrite H6 in *.
+                tauto.
+                rewrite H6 in *.
+                inversion H5.
+            induction (satisfies assignment b).
+              tauto.
+              tauto.
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      destruct H3.
+      - apply (H0 assignment).
+        intros premise.
+        simpl.
+        intro.
+        destruct (proj1 (in_insert premise a hs) H4).
+        * rewrite <- H5 in H3.
+          apply H3.
+        * apply (H2 premise H5).
+      - apply (H1 assignment).
+        intros premise.
+        intro.
+        destruct (proj1 (in_insert premise b hs) H4).
+        * rewrite <- H5 in H3.
+          apply H3.
+        * apply (H2 premise H5).
+    Qed.
+
+    Proposition ifthen_intro_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails (insert a hs) b ->
+      entails hs (Implication a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H1.
+      - destruct H2.
+        * simpl.
+          rewrite H1.
+          rewrite H2.
+          tauto.
+        * assert (satisfies assignment b = true).
+            apply (H assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct (proj1 (in_insert premise a hs) H3).
+              rewrite H4.
+              apply H1.
+              apply (H0 premise H4).
+          rewrite H3 in H2.
+          inversion H2.
+      - simpl.
+        destruct H2.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+    Qed.
+
+    Proposition ifthen_elim_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs (Implication a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true).
+        apply (H0 assignment H1).
+      cut (satisfies assignment (Implication a b) = true).
+        intro.
+        cut (satisfies assignment b = true \/ satisfies assignment b = false).
+          intro.
+          destruct H4.
+            apply H4.
+            cut (satisfies assignment (Implication a b) = false).
+              intro.
+              rewrite H3 in H5.
+              inversion H5.
+            simpl.
+            rewrite H2.
+            rewrite H4.
+            tauto.
+        destruct (satisfies assignment b).
+          tauto.
+          tauto.
+      apply (H assignment H1).
+    Qed.
+
+    Proposition iff_intro_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails (insert a hs) b ->
+      entails (insert b hs) a ->
+      entails hs (Biconditional a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H2.
+      - destruct H3.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+        * assert (satisfies assignment b = true).
+            apply (H assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct (proj1 (in_insert premise a hs) H4).
+              rewrite H5.
+              apply H2.
+              apply (H1 premise H5).
+          rewrite H4 in H3.
+          inversion H3.
+      - destruct H3.
+        * assert (satisfies assignment a = true).
+            apply (H0 assignment).
+            intros premise.
+            simpl.
+            intro.
+            destruct (proj1 (in_insert premise b hs) H4).
+              rewrite H5.
+              apply H3.
+              apply (H1 premise H5).
+          rewrite H4 in H2.
+          inversion H2.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+    Qed.
+
+    Proposition iff_elim1_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs (Biconditional a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment b = true \/ satisfies assignment b = false).
+        induction (satisfies assignment b).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies assignment a = true).
+        apply (H0 assignment H1).
+      assert (satisfies assignment (Biconditional a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies assignment (Biconditional a b) = true).
+        apply (H assignment H1).
+      rewrite H4 in H5.
+      inversion H5.
+    Qed.
+
+    Proposition iff_elim2_preserves :
+      forall hs : formula_set,
+      forall a b : formula,
+      entails hs (Biconditional a b) ->
+      entails hs b ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros assignment.
+      intro.
+      assert (satisfies assignment a = true \/ satisfies assignment a = false).
+        induction (satisfies assignment a).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies assignment b = true).
+        apply (H0 assignment H1).
+      assert (satisfies assignment (Biconditional a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies assignment (Biconditional a b) = true).
+        apply (H assignment H1).
+      rewrite H4 in H5.
+      inversion H5.
+    Qed.
+
+    Theorem soundness :
+      forall hypotheses : formula_set,
+      forall conclusion : formula,
+      infers hypotheses conclusion ->
+      entails hypotheses conclusion.
+    Proof.
+      intros hs c.
+      intro.
+      induction H.
+      - apply (always_entails_premise hs h H).
+      - apply (bottom_intro_preserves hs a IHinfers1 IHinfers2).
+      - apply (bottom_elim_preserves hs a IHinfers).
+      - apply (not_intro_preserves hs a IHinfers).
+      - apply (not_elim_preserves hs a IHinfers).
+      - apply (and_intro_preserves hs a b IHinfers1 IHinfers2).
+      - apply (and_elim1_preserves hs a b IHinfers).
+      - apply (and_elim2_preserves hs a b IHinfers).
+      - apply (or_intro1_preserves hs a b IHinfers).
+      - apply (or_intro2_preserves hs a b IHinfers).
+      - apply (or_elim_preserves hs a b c IHinfers1 IHinfers2 IHinfers3).
+      - apply (ifthen_intro_preserves hs a b IHinfers).
+      - apply (ifthen_elim_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_intro_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_elim1_preserves hs a b IHinfers1 IHinfers2).
+      - apply (iff_elim2_preserves hs a b IHinfers1 IHinfers2).
     Qed.
 
   End Strong.
