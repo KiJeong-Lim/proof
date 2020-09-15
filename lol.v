@@ -49,12 +49,12 @@ Module Helper.
       apply (InUniverse x).
     Qed.
 
-    Inductive filter {A : Type} : (A -> bool) -> ensemble A -> ensemble A :=
+    Inductive filter {A : Type} : (A -> Prop) -> ensemble A -> ensemble A :=
     | InFilter :
       forall x : A,
-      forall cond : A -> bool,
+      forall cond : A -> Prop,
       forall xs : ensemble A,
-      cond x = true ->
+      cond x ->
       In x xs ->
       In x (filter cond xs)
     .
@@ -63,8 +63,8 @@ Module Helper.
       forall {A : Type},
       forall x : A,
       forall xs1 : ensemble A,
-      forall cond : A -> bool,
-      In x (filter cond xs1) <-> (In x xs1 /\ cond x = true).
+      forall cond : A -> Prop,
+      In x (filter cond xs1) <-> (In x xs1 /\ cond x).
     Proof.
       intros A.
       intros x xs1 cond.
@@ -2573,6 +2573,8 @@ Module PropositionalLogic.
   Module Strong.
 
     Import Helper.Ensembles.
+
+    Import Helper.LineToPlane.
 
     Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
       match p with
