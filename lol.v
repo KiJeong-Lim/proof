@@ -7,338 +7,410 @@ Require Export Lia.
 (* 1. Taeseung Sohn: "https://github.com/paulsohn" *)
 (* 2. Junyoung Clare Jang: "https://github.com/Ailrun" *)
 
-Module Ensembles.
+Module Helper.
 
-  Definition ensemble (A : Type) : Type :=
-    A -> Prop
-  .
+  Module Ensembles.
 
-  Definition In {A : Type} (x : A) (xs : ensemble A) : Prop :=
-    xs x
-  .
+    Definition ensemble (A : Type) : Type :=
+      A -> Prop
+    .
 
-  Definition subset {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : Prop :=
-    forall x : A,
-    In x xs1 ->
-    In x xs2
-  .
+    Definition In {A : Type} (x : A) (xs : ensemble A) : Prop :=
+      xs x
+    .
 
-  Proposition subset_refl :
-    forall {A : Type},
-    forall xs : ensemble A,
-    subset xs xs.
-  Proof.
-    intros xs.
-    unfold subset in *.
-    intuition.
-  Qed.
+    Inductive empty {A : Type} : ensemble A :=
+    .
 
-  Axiom subset_asym :
-    forall {A : Type},
-    forall xs1 xs2 : ensemble A,
-    subset xs1 xs2 ->
-    subset xs2 xs1 ->
-    xs1 = xs2.
-
-  Proposition subset_trans :
-    forall {A : Type},
-    forall xs1 xs2 xs3 : ensemble A,
-    subset xs1 xs2 ->
-    subset xs2 xs3 ->
-    subset xs1 xs3.
-  Proof.
-    intros xs1 xs2 xs3.
-    unfold subset in *.
-    intuition.
-  Qed.
-
-  Inductive empty {A : Type} : ensemble A :=
-  .
-
-  Proposition in_empty :
-    forall {A : Type},
-    forall x : A,
-    ~ In x empty.
-  Proof.
-    intros A.
-    intros x.
-    intro.
-    destruct H.
-  Qed.
-
-  Inductive universe {A : Type} : ensemble A :=
-  | InUniverse :
-    forall p : A,
-    In p universe
-  .
-
-  Proposition in_universe :
-    forall {A : Type},
-    forall x : A,
-    In x universe.
-  Proof.
-    intros A.
-    intros x.
-    apply (InUniverse x).
-  Qed.
-
-  Inductive filter {A : Type} : (A -> bool) -> ensemble A -> ensemble A :=
-  | InFilter :
-    forall x : A,
-    forall cond : A -> bool,
-    forall xs : ensemble A,
-    cond x = true ->
-    In x xs ->
-    In x (filter cond xs)
-  .
-
-  Proposition in_filter :
-    forall {A : Type},
-    forall x : A,
-    forall xs1 : ensemble A,
-    forall cond : A -> bool,
-    In x (filter cond xs1) <-> (In x xs1 /\ cond x = true).
-  Proof.
-    intros A.
-    intros x xs1 cond.
-    constructor.
-    - intro.
+    Proposition in_empty :
+      forall {A : Type},
+      forall x : A,
+      ~ In x empty.
+    Proof.
+      intros A.
+      intros x.
+      intro.
       destruct H.
+    Qed.
+
+    Inductive universe {A : Type} : ensemble A :=
+    | InUniverse :
+      forall p : A,
+      In p universe
+    .
+
+    Proposition in_universe :
+      forall {A : Type},
+      forall x : A,
+      In x universe.
+    Proof.
+      intros A.
+      intros x.
+      apply (InUniverse x).
+    Qed.
+
+    Inductive filter {A : Type} : (A -> bool) -> ensemble A -> ensemble A :=
+    | InFilter :
+      forall x : A,
+      forall cond : A -> bool,
+      forall xs : ensemble A,
+      cond x = true ->
+      In x xs ->
+      In x (filter cond xs)
+    .
+
+    Proposition in_filter :
+      forall {A : Type},
+      forall x : A,
+      forall xs1 : ensemble A,
+      forall cond : A -> bool,
+      In x (filter cond xs1) <-> (In x xs1 /\ cond x = true).
+    Proof.
+      intros A.
+      intros x xs1 cond.
+      constructor.
+      - intro.
+        destruct H.
+        intuition.
+      - intro.
+        destruct H.
+        apply (InFilter x cond xs1 H0 H).
+    Qed.
+
+    Inductive singleton {A : Type} : A -> ensemble A :=
+    | InSingleton :
+      forall x : A,
+      In x (singleton x)
+    .
+
+    Proposition in_singleton :
+      forall {A : Type},
+      forall x : A,
+      forall x1 : A,
+      In x (singleton x1) <-> x = x1.
+    Proof.
+      intros A.
+      intros x x1.
+      constructor.
+      - intro.
+        destruct H.
+        tauto.
+      - intro.
+        subst.
+        apply (InSingleton x1).
+    Qed.
+
+    Inductive union {A : Type} : ensemble A -> ensemble A -> ensemble A :=
+    | InUnionL :
+      forall xs1 xs2 : ensemble A,
+      forall x : A,
+      In x xs1 ->
+      In x (union xs1 xs2)
+    | InUnionR :
+      forall xs1 xs2 : ensemble A,
+      forall x : A,
+      In x xs2 ->
+      In x (union xs1 xs2)
+    .
+
+    Proposition in_union :
+      forall {A : Type},
+      forall x : A,
+      forall xs1 xs2 : ensemble A,
+      In x (union xs1 xs2) <-> (In x xs1 \/ In x xs2).
+    Proof.
+      intros A.
+      intros x xs1 xs2.
+      constructor.
+      - intro.
+        destruct H.
+        * intuition.
+        * intuition.
+      - intro.
+        destruct H.
+        * apply InUnionL.
+          apply H.
+        * apply InUnionR.
+          apply H.
+    Qed.
+
+    Definition insert {A : Type} (x : A) (xs : ensemble A) : ensemble A :=
+      union xs (singleton x)
+    .
+
+    Proposition in_insert :
+      forall {A : Type},
+      forall x : A,
+      forall x1 : A,
+      forall xs1 : ensemble A,
+      In x (insert x1 xs1) <-> (x = x1 \/ In x xs1).
+    Proof.
+      intros A.
+      intros x x1 xs1.
+      constructor.
+      - intro.
+        assert (In x xs1 \/ In x (singleton x1)).
+          apply (proj1 (in_union x xs1 (singleton x1)) H).
+        destruct H0.
+        * intuition.
+        * apply (or_introl (proj1 (in_singleton x x1) H0)).
+      - intro.
+        cut (In x xs1 \/ In x (singleton x1)).
+          apply (proj2 (in_union x xs1 (singleton x1))).
+        destruct H.
+        * apply (or_intror (proj2 (in_singleton x x1) H)).
+        * intuition.
+    Qed.
+
+    
+    Definition complement {A : Type} (xs : ensemble A) : ensemble A :=
+      fun x : A =>
+        ~ In x xs
+    .
+
+    Proposition in_complement :
+      forall {A : Type},
+      forall x : A,
+      forall xs1 : ensemble A,
+      In x (complement xs1) <-> ~ In x xs1.
+    Proof.
+      intros A.
+      intros x xs1.
+      unfold complement.
+      unfold In.
       intuition.
-    - intro.
-      destruct H.
-      apply (InFilter x cond xs1 H0 H).
-  Qed.
+    Qed.
 
-  Inductive singleton {A : Type} : A -> ensemble A :=
-  | InSingleton :
-    forall x : A,
-    In x (singleton x)
-  .
+    Inductive intersection {A : Type} : ensemble A -> ensemble A -> ensemble A :=
+    | InIntersection :
+      forall xs1 xs2 : ensemble A,
+      forall x : A,
+      In x xs1 ->
+      In x xs2 ->
+      In x (intersection xs1 xs2)
+    .
 
-  Proposition in_singleton :
-    forall {A : Type},
-    forall x : A,
-    forall x1 : A,
-    In x (singleton x1) <-> x = x1.
-  Proof.
-    intros A.
-    intros x x1.
-    constructor.
-    - intro.
-      destruct H.
-      tauto.
-    - intro.
-      subst.
-      apply (InSingleton x1).
-  Qed.
+    Proposition in_intersection :
+      forall {A : Type},
+      forall x : A,
+      forall xs1 xs2 : ensemble A,
+      In x (intersection xs1 xs2) <-> (In x xs1 /\ In x xs2).
+    Proof.
+      intros A.
+      intros x xs1 xs2.
+      constructor.
+      - intro.
+        destruct H.
+        intuition.
+      - intro.
+        destruct H.
+        apply (InIntersection xs1 xs2 x H H0).
+    Qed.
 
-  Inductive union {A : Type} : ensemble A -> ensemble A -> ensemble A :=
-  | InUnionL :
-    forall xs1 xs2 : ensemble A,
-    forall x : A,
-    In x xs1 ->
-    In x (union xs1 xs2)
-  | InUnionR :
-    forall xs1 xs2 : ensemble A,
-    forall x : A,
-    In x xs2 ->
-    In x (union xs1 xs2)
-  .
+    Definition difference {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : ensemble A :=
+      fun x : A =>
+        In x xs1 /\ ~ In x xs2
+    .
 
-  Proposition in_union :
-    forall {A : Type},
-    forall x : A,
-    forall xs1 xs2 : ensemble A,
-    In x (union xs1 xs2) <-> (In x xs1 \/ In x xs2).
-  Proof.
-    intros A.
-    intros x xs1 xs2.
-    constructor.
-    - intro.
-      destruct H.
-      * intuition.
-      * intuition.
-    - intro.
-      destruct H.
-      * apply InUnionL.
-        apply H.
-      * apply InUnionR.
-        apply H.
-  Qed.
-
-  Definition insert {A : Type} (x : A) (xs : ensemble A) : ensemble A :=
-    union xs (singleton x)
-  .
-
-  Proposition in_insert :
-    forall {A : Type},
-    forall x : A,
-    forall x1 : A,
-    forall xs1 : ensemble A,
-    In x (insert x1 xs1) <-> (x = x1 \/ In x xs1).
-  Proof.
-    intros A.
-    intros x x1 xs1.
-    constructor.
-    - intro.
-      assert (In x xs1 \/ In x (singleton x1)).
-        apply (proj1 (in_union x xs1 (singleton x1)) H).
-      destruct H0.
-      * intuition.
-      * apply (or_introl (proj1 (in_singleton x x1) H0)).
-    - intro.
-      cut (In x xs1 \/ In x (singleton x1)).
-        apply (proj2 (in_union x xs1 (singleton x1))).
-      destruct H.
-      * apply (or_intror (proj2 (in_singleton x x1) H)).
-      * intuition.
-  Qed.
-
-  
-  Definition complement {A : Type} (xs : ensemble A) : ensemble A :=
-    fun x : A =>
-      ~ In x xs
-  .
-
-  Proposition in_complement :
-    forall {A : Type},
-    forall x : A,
-    forall xs1 : ensemble A,
-    In x (complement xs1) <-> ~ In x xs1.
-  Proof.
-    intros A.
-    intros x xs1.
-    unfold complement.
-    unfold In.
-    intuition.
-  Qed.
-
-  Inductive intersection {A : Type} : ensemble A -> ensemble A -> ensemble A :=
-  | InIntersection :
-    forall xs1 xs2 : ensemble A,
-    forall x : A,
-    In x xs1 ->
-    In x xs2 ->
-    In x (intersection xs1 xs2)
-  .
-
-  Proposition in_intersection :
-    forall {A : Type},
-    forall x : A,
-    forall xs1 xs2 : ensemble A,
-    In x (intersection xs1 xs2) <-> (In x xs1 /\ In x xs2).
-  Proof.
-    intros A.
-    intros x xs1 xs2.
-    constructor.
-    - intro.
-      destruct H.
+    Proposition in_difference :
+      forall {A : Type},
+      forall x : A,
+      forall xs1 xs2 : ensemble A,
+      In x (difference xs1 xs2) <-> (In x xs1 /\ ~ In x xs2).
+    Proof.
+      intros A.
+      intros x xs1 xs2.
+      unfold difference.
+      unfold In.
       intuition.
-    - intro.
-      destruct H.
-      apply (InIntersection xs1 xs2 x H H0).
-  Qed.
+    Qed.
 
-  Definition difference {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : ensemble A :=
-    fun x : A =>
-      In x xs1 /\ ~ In x xs2
-  .
+    Definition delete {A : Type} (x1 : A) (xs1 : ensemble A) : ensemble A :=
+      difference xs1 (singleton x1)
+    .
 
-  Proposition in_difference :
-    forall {A : Type},
-    forall x : A,
-    forall xs1 xs2 : ensemble A,
-    In x (difference xs1 xs2) <-> (In x xs1 /\ ~ In x xs2).
-  Proof.
-    intros A.
-    intros x xs1 xs2.
-    unfold difference.
-    unfold In.
-    intuition.
-  Qed.
-
-  Definition delete {A : Type} (x1 : A) (xs1 : ensemble A) : ensemble A :=
-    difference xs1 (singleton x1)
-  .
-
-  Proposition in_delete :
-    forall {A : Type},
-    forall x : A,
-    forall x1 : A,
-    forall xs1 : ensemble A,
-    In x (delete x1 xs1) <-> (In x xs1 /\ x <> x1).
-  Proof.
-    intros A.
-    intros x x1 xs1.
-    unfold delete.
-    assert (In x (difference xs1 (singleton x1)) <-> In x xs1 /\ ~ In x (singleton x1)).
-      apply (in_difference x xs1 (singleton x1)).
-    assert (In x (singleton x1) <-> x = x1).
-      apply (in_singleton x x1).
-    intuition.
-  Qed.
-
-  Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
-  | InUnions :
-    forall x : A,
-    forall xss : ensemble (ensemble A),
-    forall xs : ensemble A,
-    In x xs ->
-    In xs xss ->
-    In x (unions xss)
-  .
-
-  Proposition in_unions :
-    forall {A : Type},
-    forall x : A,
-    forall xss1 : ensemble (ensemble A),
-    In x (unions xss1) <-> (exists xs1 : ensemble A, In x xs1 /\ In xs1 xss1).
-  Proof.
-    intros A.
-    intros x xss1.
-    constructor.
-    - intro.
-      destruct H.
-      exists xs.
+    Proposition in_delete :
+      forall {A : Type},
+      forall x : A,
+      forall x1 : A,
+      forall xs1 : ensemble A,
+      In x (delete x1 xs1) <-> (In x xs1 /\ x <> x1).
+    Proof.
+      intros A.
+      intros x x1 xs1.
+      unfold delete.
+      assert (In x (difference xs1 (singleton x1)) <-> In x xs1 /\ ~ In x (singleton x1)).
+        apply (in_difference x xs1 (singleton x1)).
+      assert (In x (singleton x1) <-> x = x1).
+        apply (in_singleton x x1).
       intuition.
-    - intro.
-      destruct H as [xs1].
-      destruct H.
-      apply (InUnions x xss1 xs1 H H0).
-  Qed.
+    Qed.
 
-  Inductive map {A : Type} {B : Type} : (A -> B) -> ensemble A -> ensemble B :=
-  | InMap :
-    forall f : A -> B,
-    forall xs : ensemble A,
-    forall x : A,
-    In x xs ->
-    In (f x) (map f xs)
-  .
+    Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
+    | InUnions :
+      forall x : A,
+      forall xss : ensemble (ensemble A),
+      forall xs : ensemble A,
+      In x xs ->
+      In xs xss ->
+      In x (unions xss)
+    .
 
-  Proposition in_map :
-    forall {A B : Type},
-    forall f : A -> B,
-    forall y : B,
-    forall xs1 : ensemble A,
-    In y (map f xs1) <-> (exists x : A, In x xs1 /\ y = f x).
-  Proof.
-    intros A B.
-    intros f y xs1.
-    constructor.
-    - intro.
-      destruct H.
-      exists x.
-      intuition.
-    - intro.
-      destruct H.
-      destruct H.
-      rewrite H0.
-      apply (InMap f xs1 x H).
-  Qed.
+    Proposition in_unions :
+      forall {A : Type},
+      forall x : A,
+      forall xss1 : ensemble (ensemble A),
+      In x (unions xss1) <-> (exists xs1 : ensemble A, In x xs1 /\ In xs1 xss1).
+    Proof.
+      intros A.
+      intros x xss1.
+      constructor.
+      - intro.
+        destruct H.
+        exists xs.
+        intuition.
+      - intro.
+        destruct H as [xs1].
+        destruct H.
+        apply (InUnions x xss1 xs1 H H0).
+    Qed.
 
-End Ensembles.
+    Inductive map {A : Type} {B : Type} : (A -> B) -> ensemble A -> ensemble B :=
+    | InMap :
+      forall f : A -> B,
+      forall xs : ensemble A,
+      forall x : A,
+      In x xs ->
+      In (f x) (map f xs)
+    .
+
+    Proposition in_map :
+      forall {A B : Type},
+      forall f : A -> B,
+      forall y : B,
+      forall xs1 : ensemble A,
+      In y (map f xs1) <-> (exists x : A, In x xs1 /\ y = f x).
+    Proof.
+      intros A B.
+      intros f y xs1.
+      constructor.
+      - intro.
+        destruct H.
+        exists x.
+        intuition.
+      - intro.
+        destruct H.
+        destruct H.
+        rewrite H0.
+        apply (InMap f xs1 x H).
+    Qed.
+
+  End Ensembles.
+
+  Module LineToPlane.
+
+    Fixpoint mapsLineToPlane (n : nat) : (nat * nat) :=
+      match n with
+      | 0 => (0, 0)
+      | S n' =>
+        let x := fst (mapsLineToPlane n') in
+        let y := snd (mapsLineToPlane n') in
+        match x with
+        | 0 => (S y, 0)
+        | S x' => (x', S y)
+        end
+      end
+    .
+
+    Fixpoint sum_from_0_to (n : nat) : nat :=
+      match n with
+      | 0 => 0
+      | S n' => n + sum_from_0_to n'
+      end
+    .
+
+    Proposition value_of_sum_from_0_to :
+      forall n : nat,
+      2 * sum_from_0_to n = n * (S n).
+    Proof.
+      intros n.
+      induction n.
+      - intuition.
+      - simpl in *.
+        lia.
+    Qed.
+
+    Lemma mapsLineToPlane_is_surjective:
+      forall x y : nat,
+      (x, y) = mapsLineToPlane (sum_from_0_to (x + y) + y).
+    Proof.
+      cut (
+        forall z x y : nat,
+        z = x + y ->
+        (x, y) = mapsLineToPlane (sum_from_0_to z + y)
+      ).
+        intro.
+        intros x y.
+        apply (H (x + y) x y eq_refl).
+      intros z.
+      induction z.
+      - intros x y.
+        intro.
+        assert (x = 0).
+          lia.
+        assert (y = 0).
+          lia.
+        subst.
+        intuition.
+      - cut (
+          forall y x : nat,
+          S z = x + y ->
+          (x, y) = mapsLineToPlane (sum_from_0_to (S z) + y)
+        ).
+          intuition.
+        intros y.
+        induction y.
+        * intros x.
+          intro.
+          assert (x = S z).
+            lia.
+          subst.
+          simpl sum_from_0_to.
+          simpl plus.
+          assert ((0, z) = mapsLineToPlane (sum_from_0_to z + z)).
+            apply (IHz 0 z).
+            lia.
+          assert ((0, z) = mapsLineToPlane (z + sum_from_0_to z + 0)).
+            rewrite H0.
+            assert (sum_from_0_to z + z = z + sum_from_0_to z + 0).
+              lia.
+            rewrite H1.
+            tauto.
+          simpl.
+          rewrite <- H1.
+          simpl.
+          tauto.
+        * intros x.
+          intro.
+          assert ((S x, y) = mapsLineToPlane (sum_from_0_to (S z) + y)).
+            apply (IHy (S x)).
+            lia.
+          assert (mapsLineToPlane (z + sum_from_0_to z + S y) = mapsLineToPlane (sum_from_0_to (S z) + y)).
+            assert (z + sum_from_0_to z + S y = sum_from_0_to (S z) + y).
+              simpl.
+              lia.
+            rewrite H1.
+            tauto.
+          simpl.
+          rewrite H1.
+          rewrite <- H0.
+          simpl.
+          tauto.
+    Qed.
+
+  End LineToPlane.
+
+End Helper.
 
 Module PropositionalLogic.
 
@@ -2500,7 +2572,7 @@ Module PropositionalLogic.
   
   Module Strong.
 
-    Import Ensembles.
+    Import Helper.Ensembles.
 
     Fixpoint satisfies (assignment : nat -> bool) (p : formula) : bool :=
       match p with
