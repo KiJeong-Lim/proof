@@ -19,6 +19,38 @@ Module Helper.
       xs x
     .
 
+    Definition Subset {A : Type} (xs1 : ensemble A) (xs2 : ensemble A) : Prop :=
+      forall x : A,
+      In x xs1 ->
+      In x xs2
+    .
+
+    Proposition SubsetReflexivity :
+      forall {A : Type},
+      forall xs1 : ensemble A,
+      Subset xs1 xs1.
+    Proof.
+      intros A.
+      intros xs1.
+      unfold Subset.
+      intuition.
+    Qed.
+
+    Axiom SubsetAsymmetry : forall {A : Type}, forall xs1 xs2 : ensemble A, Subset xs1 xs2 -> Subset xs2 xs1 -> xs1 = xs2.
+
+    Proposition SubsetTransitivity :
+      forall {A : Type},
+      forall xs1 xs2 xs3 : ensemble A,
+      Subset xs1 xs2 ->
+      Subset xs2 xs3 ->
+      Subset xs1 xs3.
+    Proof.
+      intros A.
+      intros xs1 xs2 xs3.
+      unfold Subset.
+      intuition.
+    Qed.
+
     Inductive empty {A : Type} : ensemble A :=
     .
 
@@ -309,19 +341,6 @@ Module Helper.
 
   Module LineToPlane.
 
-    Fixpoint mapsLineToPlane (n : nat) : (nat * nat) :=
-      match n with
-      | 0 => (0, 0)
-      | S n' =>
-        let x := fst (mapsLineToPlane n') in
-        let y := snd (mapsLineToPlane n') in
-        match x with
-        | 0 => (S y, 0)
-        | S x' => (x', S y)
-        end
-      end
-    .
-
     Fixpoint sum_from_0_to (n : nat) : nat :=
       match n with
       | 0 => 0
@@ -340,7 +359,20 @@ Module Helper.
         lia.
     Qed.
 
-    Lemma mapsLineToPlane_is_surjective:
+    Fixpoint mapsLineToPlane (n : nat) : (nat * nat) :=
+      match n with
+      | 0 => (0, 0)
+      | S n' =>
+        let x := fst (mapsLineToPlane n') in
+        let y := snd (mapsLineToPlane n') in
+        match x with
+        | 0 => (S y, 0)
+        | S x' => (x', S y)
+        end
+      end
+    .
+
+    Proposition mapsLineToPlane_is_surjective:
       forall x y : nat,
       (x, y) = mapsLineToPlane (sum_from_0_to (x + y) + y).
     Proof.
@@ -406,6 +438,91 @@ Module Helper.
           rewrite <- H0.
           simpl.
           tauto.
+    Qed.
+
+    Proposition mapsLineToPlane_is_injective :
+      forall n x y : nat,
+      (x, y) = mapsLineToPlane n ->
+      n = sum_from_0_to (x + y) + y.
+    Proof.
+      intros n.
+      induction n.
+      - intros x y.
+        simpl.
+        intro.
+        assert (x = 0 /\ y = 0).
+          apply (pair_equal_spec).
+          apply H.
+        destruct H0.
+        subst.
+        simpl.
+        tauto.
+      - cut (
+          forall y x : nat,
+          (x, y) = mapsLineToPlane (S n) ->
+          S n = sum_from_0_to (x + y) + y
+        ).
+          intuition.
+        intros y.
+        destruct y.
+        * intros x.
+          intro.
+          simpl in H.
+          assert (mapsLineToPlane n = (fst (mapsLineToPlane n), snd (mapsLineToPlane n))).
+            apply (surjective_pairing).
+          destruct (fst (mapsLineToPlane n)). 
+          + assert (x = S (snd (mapsLineToPlane n))).
+              apply (proj1 (proj1 (pair_equal_spec _ _ 0 0) H)).
+            subst.
+            simpl.
+            cut (n = snd (mapsLineToPlane n) + 0 + sum_from_0_to (snd (mapsLineToPlane n) + 0) + 0).
+              lia.
+            cut (n = sum_from_0_to (0 + snd (mapsLineToPlane n)) + snd (mapsLineToPlane n)).
+              assert (snd (mapsLineToPlane n) + 0 = 0 + snd (mapsLineToPlane n)).
+                lia.
+              rewrite H1.
+              lia.
+            apply (IHn 0 (snd (mapsLineToPlane n))).
+            rewrite <- H0.
+            tauto.
+          + assert (0 = S (snd (mapsLineToPlane n))).
+              apply (proj2 (proj1 (pair_equal_spec x n0 _ _) H)).
+            inversion H1.
+        * intros x.
+          intro.
+          assert (x = fst (mapsLineToPlane (S n)) /\ S y = snd (mapsLineToPlane (S n))).
+            apply pair_equal_spec.
+            rewrite H.
+            apply surjective_pairing.
+          cut (n = sum_from_0_to (S x + y) + y).
+            intro.
+            assert (x + S y = S (x + y)).
+              lia.
+            rewrite H2.
+            simpl in *.
+            lia.
+          apply (IHn (S x) y).
+          assert (mapsLineToPlane n = (fst (mapsLineToPlane n), snd (mapsLineToPlane n))).
+            apply (surjective_pairing).
+          simpl in *.
+          destruct (fst (mapsLineToPlane n)).
+          + assert (S y = 0).
+              destruct H0.
+              simpl in H2.
+              apply H2.
+            inversion H2.
+          + assert (x = n0 /\ y = snd (mapsLineToPlane n)).
+              destruct H0.
+              simpl in *.
+              constructor.
+              apply H0.
+              inversion H2.
+              tauto.
+            destruct H2.
+            rewrite <- H2 in *.
+            rewrite H3 in *.
+            rewrite <- H1.
+            tauto.
     Qed.
 
   End LineToPlane.
