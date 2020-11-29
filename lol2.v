@@ -2,7 +2,7 @@ Require Export Bool.
 Require Export PeanoNat.
 Require Export Peano_dec.
 Require Export Lia.
-Require Export List.
+Require Export Ensembles.
 
 Module Helper.
 
@@ -257,12 +257,46 @@ Module Helper.
 
   End Section2.
 
+  Section Section3.
+    
+    Lemma Included_refl {A : Type} :
+      forall xs : Ensemble A,
+      Included A xs xs.
+    Proof.
+      intros xs.
+      intros x.
+      tauto.
+    Qed.
+
+    Lemma Included_Add {A : Type} :
+      forall x : A,
+      forall xs1 : Ensemble A,
+      forall xs2 : Ensemble A,
+      Included A xs1 xs2 ->
+      Included A (Add A xs1 x) (Add A xs2 x).
+    Proof.
+      intros x xs1 xs2.
+      unfold Included.
+      intro.
+      intros x'.
+      intro.
+      destruct H0.
+      - unfold Add.
+        apply Union_introl.
+        apply (H x0).
+        apply H0.
+      - unfold Add.
+        apply Union_intror.
+        apply H0.
+    Qed.
+
+  End Section3.
+
 End Helper.
 
 Module PropositionalLogic.
 
   Import Helper.
-  Import ListNotations.
 
   Section Syntax.
 
@@ -857,21 +891,43 @@ Module PropositionalLogic.
       end
     .
 
-    Definition FormulaSet : Set := 
-      Formula -> bool
+    Definition FormulaSet : Type :=
+      Ensemble Formula
     .
 
     Definition EmptyFormulaSet : FormulaSet :=
-      fun p : Formula => false
+      Empty_set Formula
     .
 
-    Definition Insert (p : Formula) (ps : FormulaSet) : FormulaSet :=
-      fun p' : Formula => if eq_Formula_dec p p' then true else ps p'
-    .
+    Definition Insert (h : Formula) (hs : FormulaSet) : FormulaSet :=
+      Add Formula hs h
+    . 
 
     Definition entails (hs : FormulaSet) (c : Formula) : Prop :=
-      forall v : Assignment, (forall h : Formula, hs h = true -> satisfies v h = true) -> satisfies v c = true
+      forall v : Assignment, (forall h : Formula, In Formula hs h -> satisfies v h = true) -> satisfies v c = true
     .
+
+    Lemma weakening_entails :
+      forall hs1 : FormulaSet,
+      forall c : Formula,
+      entails hs1 c ->
+      forall hs2 : FormulaSet,
+      Included Formula hs1 hs2 ->
+      entails hs2 c.
+    Proof.
+      intros hs1 c.
+      intro.
+      intros hs2.
+      intro.
+      intros v.
+      intro.
+      apply (H v).
+      intros h.
+      intro.
+      apply (H1 h).
+      apply (H0 h).
+      apply H2.
+    Qed.
 
   End Semantics.
 
@@ -881,7 +937,7 @@ Module PropositionalLogic.
     | Assumption :
       forall hs : FormulaSet,
       forall h : Formula,
-      hs h = true ->
+      In Formula hs h ->
       infers hs h
     | ContradictionI :
       forall hs : FormulaSet,
@@ -993,26 +1049,719 @@ Module PropositionalLogic.
       apply (DisjunctionI1 (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) p (NegationF p)).
       apply (Assumption (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) p).
       unfold Insert.
-      destruct (eq_Formula_dec p p).
-        tauto.
-        tauto.
+      unfold Add.
+      apply Union_intror.
+      apply In_singleton.
       apply (Assumption (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) (NegationF (DisjunctionF p (NegationF p)))).
       unfold Insert.
-      destruct (eq_Formula_dec (NegationF (DisjunctionF p (NegationF p))) (NegationF (DisjunctionF p (NegationF p)))).
-        destruct (eq_Formula_dec p (NegationF (DisjunctionF p (NegationF p)))).
-          tauto.
-          tauto.
-        tauto.
+      unfold Add.
+      apply Union_introl.
+      apply Union_intror.
+      apply In_singleton.
       apply (Assumption (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet) (NegationF (DisjunctionF p (NegationF p)))).
       unfold Insert.
-      destruct (eq_Formula_dec (NegationF (DisjunctionF p (NegationF p))) (NegationF (DisjunctionF p (NegationF p)))).
-        tauto.
-        tauto.
+      unfold Add.
+      apply Union_intror.
+      apply In_singleton.
     Qed.
 
   End InferenceRules.
 
   Section Soundness.
+
+    Lemma weakening_infers :
+      forall hs1 : FormulaSet,
+      forall c : Formula,
+      infers hs1 c ->
+      forall hs2 : FormulaSet,
+      Included Formula hs1 hs2 ->
+      infers hs2 c.
+    Proof.
+      intros hs1 c.
+      intro.
+      induction H.
+      - intros hs2.
+        intro.
+        apply (Assumption hs2 h).
+        apply (H0 h H).
+      - intros hs2.
+        intro.
+        apply (ContradictionI hs2 a).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (ContradictionE hs2 a).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (NegationI hs2 a).
+        apply (IHinfers (Insert a hs2)).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (NegationE hs2 a).
+        apply (IHinfers (Insert (NegationF a) hs2)).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (ConjunctionI hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (ConjunctionE1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (ConjunctionE2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionI1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionI2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionE hs2 a b c).
+        apply (IHinfers1 hs2 H2).
+        apply (IHinfers2 (Insert a hs2)).
+        apply Included_Add.
+        apply H2.
+        apply (IHinfers3 (Insert b hs2)).
+        apply Included_Add.
+        apply H2.
+      - intros hs2.
+        intro.
+        apply (ImplicationI hs2 a b).
+        apply (IHinfers (Insert a hs2)).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (ImplicationE hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BiconditionalI hs2 a b).
+        apply (IHinfers1 (Insert a hs2)).
+        apply Included_Add.
+        apply H1.
+        apply (IHinfers2 (Insert b hs2)).
+        apply Included_Add.
+        apply H1.
+      - intros hs2.
+        intro.
+        apply (BiconditionalE1 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BiconditionalE2 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+    Qed.
+
+    Lemma Assumption_preserves :
+      forall hs : FormulaSet,
+      forall c : Formula,
+      In Formula hs c ->
+      entails hs c.
+    Proof.
+      intros hs c.
+      assert (In Formula (Singleton Formula c) c).
+        apply In_singleton.
+      assert (entails (Singleton Formula c) c).
+        intros v.
+        intro.
+        apply (H0 c H).
+      intro.
+      apply (weakening_entails (Singleton Formula c) c H0 hs).
+      intros x.
+      intro.
+      inversion H2.
+      subst.
+      apply H1.
+    Qed.
+
+    Lemma ContradictionI_preserves :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      entails hs a ->
+      entails hs (NegationF a) ->
+      entails hs ContradictionF.
+    Proof.
+      intros hs a.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v a = true
+      ).
+        apply (H v H1).
+      assert (
+        satisfies v (NegationF a) = true
+      ).
+        apply (H0 v H1).
+      inversion H3.
+      rewrite H2 in H5.
+      inversion H5.
+    Qed.
+
+    Lemma ContradictionE_preserves :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      entails hs ContradictionF ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v ContradictionF = true
+      ).
+        apply (H v H0).
+      inversion H1.
+    Qed.
+
+    Lemma NegationI_preserves :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      entails (Insert a hs) ContradictionF ->
+      entails hs (NegationF a).
+    Proof.
+      intros hs a.
+      intro.
+      intros v.
+      intro.
+      assert (
+        (forall h : Formula, In Formula (Insert a hs) h -> satisfies v h = true) ->
+        satisfies v ContradictionF = true
+      ).
+        apply (H v).
+      cut (
+        satisfies v a = false
+      ).
+        intro.
+        simpl.
+        rewrite H2.
+        intuition.
+      assert (satisfies v a = true \/ satisfies v a = false).
+        induction (satisfies v a).
+        intuition.
+        intuition.
+      destruct H2.
+      - elimtype False.
+        cut (satisfies v ContradictionF = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct H3.
+        * apply (H0 x H3).
+        * rewrite H3 in H2.
+          apply H2.
+      - apply H2.
+    Qed.
+
+    Lemma NegationE_preserves :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      entails (Insert (NegationF a) hs) ContradictionF ->
+      entails hs a.
+    Proof.
+      intros hs a.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        (forall h : Formula, In Formula (Insert (NegationF a) hs) h -> satisfies v h = true) ->
+        satisfies v ContradictionF = true
+      ).
+        apply (H v).
+      assert (
+        satisfies v a = true \/ satisfies v a = false
+      ).
+        induction (satisfies v a).
+        intuition.
+        intuition.
+      destruct H2.
+      - apply H2.
+      - elimtype False.
+        cut (satisfies v ContradictionF = true).
+          simpl.
+          intuition.
+        apply H1.
+        intros premise.
+        simpl.
+        intro.
+        destruct H3.
+        * apply (H0 x H3).
+        * rewrite <- H3.
+          simpl.
+          rewrite H2.
+          intuition.
+    Qed.
+
+    Lemma ConjunctionI_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs a ->
+      entails hs b ->
+      entails hs (ConjunctionF a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v a = true
+      ).
+        apply (H v H1).
+      assert (
+        satisfies v b = true
+      ).
+        apply (H0 v H1).
+      simpl.
+      rewrite H2.
+      rewrite H3.
+      intuition.
+    Qed.
+
+    Lemma ConjunctionE1_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs (ConjunctionF a b) ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v (ConjunctionF a b) = true
+      ).
+        apply (H v H0).
+      assert (
+        satisfies v a = true \/ satisfies v a = false
+      ).
+        induction (satisfies v a).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies v b = true \/ satisfies v b = false
+      ).
+        induction (satisfies v b).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Lemma ConjunctionE2_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs (ConjunctionF a b) ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v (ConjunctionF a b) = true
+      ).
+        apply (H v H0).
+      assert (
+        satisfies v b = true \/ satisfies v b = false
+      ).
+        induction (satisfies v b).
+        intuition.
+        intuition.
+      destruct H2.
+        apply H2.
+        inversion H1.
+        rewrite H2.
+      assert (
+        satisfies v a = true \/ satisfies v a = false
+      ).
+        induction (satisfies v a).
+        intuition.
+        intuition.
+        destruct H3.
+        rewrite H3.
+        tauto.
+        rewrite H3.
+        tauto.
+    Qed.
+
+    Lemma DisjunctionI1_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs a ->
+      entails hs (DisjunctionF a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v a = true
+      ).
+        apply (H v H0).
+      cut (satisfies v b = true \/ satisfies v b = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies v b).
+        tauto.
+        tauto.
+    Qed.
+
+    Lemma DisjunctionI2_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs b ->
+      entails hs (DisjunctionF a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (
+        satisfies v b = true
+      ).
+        apply (H v H0).
+      cut (satisfies v a = true \/ satisfies v a = false).
+        intro.
+        simpl.
+        rewrite H1.
+        destruct H2.
+          rewrite H2.
+          tauto.
+          rewrite H2.
+          tauto.
+      induction (satisfies v a).
+        tauto.
+        tauto.
+    Qed.
+
+    Lemma DisjunctionE_preserves :
+      forall hs : FormulaSet,
+      forall a b c : Formula,
+      entails hs (DisjunctionF a b) ->
+      entails (Insert a hs) c ->
+      entails (Insert b hs) c ->
+      entails hs c.
+    Proof.
+      intros hs a b c.
+      unfold entails in *.
+      intro.
+      intro.
+      intro.
+      intros v.
+      intro.
+      assert (satisfies v a = true \/ satisfies v b = true).
+        assert (satisfies v (DisjunctionF a b) = true).
+          apply (H v H2).
+        inversion H3.
+        cut (satisfies v a = true \/ satisfies v a = false).
+          intro.
+          destruct H4.
+            rewrite H4 in *.
+            apply or_introl.
+            rewrite H5.
+            tauto.
+            cut (satisfies v b = true \/ satisfies v b = false).
+              intro.
+              rewrite H4 in *.
+              destruct H6.
+                rewrite H6 in *.
+                tauto.
+                rewrite H6 in *.
+                inversion H5.
+            induction (satisfies v b).
+              tauto.
+              tauto.
+        induction (satisfies v a).
+          tauto.
+          tauto.
+      destruct H3.
+      - apply (H0 v).
+        intros h.
+        simpl.
+        intro.
+        destruct H4.
+        * apply (H2 x H4).
+        * rewrite H4 in H3.
+          apply H3.
+      - apply (H1 v).
+        intros h.
+        simpl.
+        intro.
+        destruct H4.
+        * apply (H2 x H4).
+        * rewrite H4 in H3.
+          apply H3.
+    Qed.
+
+    Lemma ImplicationI_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails (Insert a hs) b ->
+      entails hs (ImplicationF a b).
+    Proof.
+      intros hs a b.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (satisfies v a = true \/ satisfies v a = false).
+        induction (satisfies v a).
+          tauto.
+          tauto.
+      assert (satisfies v b = true \/ satisfies v b = false).
+        induction (satisfies v b).
+          tauto.
+          tauto.
+      destruct H1.
+      - destruct H2.
+        * simpl.
+          rewrite H1.
+          rewrite H2.
+          tauto.
+        * assert (satisfies v b = true).
+            apply (H v).
+            intros h.
+            simpl.
+            intro.
+            destruct H3.
+              apply (H0 x H3).
+              rewrite <- H3.
+              apply H1.
+          rewrite H3 in H2.
+          inversion H2.
+      - simpl.
+        destruct H2.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+        * rewrite H1.
+          rewrite H2.
+          tauto.
+    Qed.
+
+    Lemma ImplicationE_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs (ImplicationF a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (satisfies v a = true).
+        apply (H0 v H1).
+      cut (satisfies v (ImplicationF a b) = true).
+        intro.
+        cut (satisfies v b = true \/ satisfies v b = false).
+          intro.
+          destruct H4.
+            apply H4.
+            cut (satisfies v (ImplicationF a b) = false).
+              intro.
+              rewrite H3 in H5.
+              inversion H5.
+            simpl.
+            rewrite H2.
+            rewrite H4.
+            tauto.
+        destruct (satisfies v b).
+          tauto.
+          tauto.
+      apply (H v H1).
+    Qed.
+
+    Lemma BiconditionalI_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails (Insert a hs) b ->
+      entails (Insert b hs) a ->
+      entails hs (BiconditionalF a b).
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (satisfies v a = true \/ satisfies v a = false).
+        induction (satisfies v a).
+          tauto.
+          tauto.
+      assert (satisfies v b = true \/ satisfies v b = false).
+        induction (satisfies v b).
+          tauto.
+          tauto.
+      destruct H2.
+      - destruct H3.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+        * assert (satisfies v b = true).
+            apply (H v).
+            intros h.
+            simpl.
+            intro.
+            destruct H4.
+              apply (H1 x H4).
+              rewrite <- H4.
+              apply H2.
+          rewrite H4 in H3.
+          inversion H3.
+      - destruct H3.
+        * assert (satisfies v a = true).
+            apply (H0 v).
+            intros h.
+            simpl.
+            intro.
+            destruct H4.
+              apply (H1 x H4).  
+              rewrite <- H4.
+              apply H3.
+          rewrite H4 in H2.
+          inversion H2.
+        * simpl.
+          rewrite H2.
+          rewrite H3.
+          tauto.
+    Qed.
+
+    Lemma BiconditionalE1_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs (BiconditionalF a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (satisfies v b = true \/ satisfies v b = false).
+        induction (satisfies v b).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies v a = true).
+        apply (H0 v H1).
+      assert (satisfies v (BiconditionalF a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies v (BiconditionalF a b) = true).
+        apply (H v H1).
+      rewrite H4 in H5.
+      inversion H5.
+    Qed.
+
+    Lemma BiconditionalE2_preserves :
+      forall hs : FormulaSet,
+      forall a b : Formula,
+      entails hs (BiconditionalF a b) ->
+      entails hs b ->
+      entails hs a.
+    Proof.
+      intros hs a b.
+      intro.
+      intro.
+      unfold entails in *.
+      intros v.
+      intro.
+      assert (satisfies v a = true \/ satisfies v a = false).
+        induction (satisfies v a).
+          tauto.
+          tauto.
+      destruct H2.
+        apply H2.
+      assert (satisfies v b = true).
+        apply (H0 v H1).
+      assert (satisfies v (BiconditionalF a b) = false).
+        simpl.
+        rewrite H2.
+        rewrite H3.
+        tauto.
+      assert (satisfies v (BiconditionalF a b) = true).
+        apply (H v H1).
+      rewrite H4 in H5.
+      inversion H5.
+    Qed.
+
+    Theorem soundness :
+      forall hs : FormulaSet,
+      forall c : Formula,
+      infers hs c ->
+      entails hs c.
+    Proof.
+      intros hs c H.
+      induction H.
+      - apply (Assumption_preserves hs h H).
+      - apply (ContradictionI_preserves hs a IHinfers1 IHinfers2).
+      - apply (ContradictionE_preserves hs a IHinfers).
+      - apply (NegationI_preserves hs a IHinfers).
+      - apply (NegationE_preserves hs a IHinfers).
+      - apply (ConjunctionI_preserves hs a b IHinfers1 IHinfers2).
+      - apply (ConjunctionE1_preserves hs a b IHinfers).
+      - apply (ConjunctionE2_preserves hs a b IHinfers).
+      - apply (DisjunctionI1_preserves hs a b IHinfers).
+      - apply (DisjunctionI2_preserves hs a b IHinfers).
+      - apply (DisjunctionE_preserves hs a b c IHinfers1 IHinfers2 IHinfers3).
+      - apply (ImplicationI_preserves hs a b IHinfers).
+      - apply (ImplicationE_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalI_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalE1_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalE2_preserves hs a b IHinfers1 IHinfers2).
+    Qed.
 
   End Soundness.
 
