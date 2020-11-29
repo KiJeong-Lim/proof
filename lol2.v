@@ -280,7 +280,7 @@ Module PropositionalLogic.
     | BiconditionalF : Formula -> Formula -> Formula
     .
     
-    Proposition eq_formula_dec :
+    Proposition eq_Formula_dec :
       forall p1 p2 : Formula,
       {p1 = p2} + {p1 <> p2}.
     Proof.
@@ -857,6 +857,167 @@ Module PropositionalLogic.
       end
     .
 
+    Definition FormulaSet : Set := 
+      Formula -> bool
+    .
+
+    Definition EmptyFormulaSet : FormulaSet :=
+      fun p : Formula => false
+    .
+
+    Definition Insert (p : Formula) (ps : FormulaSet) : FormulaSet :=
+      fun p' : Formula => if eq_Formula_dec p p' then true else ps p'
+    .
+
+    Definition entails (hs : FormulaSet) (c : Formula) : Prop :=
+      forall v : Assignment, (forall h : Formula, hs h = true -> satisfies v h = true) -> satisfies v c = true
+    .
+
   End Semantics.
+
+  Section InferenceRules.
+
+    Inductive infers : FormulaSet -> Formula -> Prop :=
+    | Assumption :
+      forall hs : FormulaSet,
+      forall h : Formula,
+      hs h = true ->
+      infers hs h
+    | ContradictionI :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      infers hs a ->
+      infers hs (NegationF a) ->
+      infers hs ContradictionF
+    | ContradictionE :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      infers hs ContradictionF ->
+      infers hs a
+    | NegationI :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      infers (Insert a hs) ContradictionF ->
+      infers hs (NegationF a)
+    | NegationE :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      infers (Insert (NegationF a) hs) ContradictionF ->
+      infers hs a
+    | ConjunctionI :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs a ->
+      infers hs b ->
+      infers hs (ConjunctionF a b)
+    | ConjunctionE1 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ConjunctionF a b) ->
+      infers hs a
+    | ConjunctionE2 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ConjunctionF a b) ->
+      infers hs b
+    | DisjunctionI1 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs a ->
+      infers hs (DisjunctionF a b)
+    | DisjunctionI2 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs b ->
+      infers hs (DisjunctionF a b)
+    | DisjunctionE :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      forall c : Formula,
+      infers hs (DisjunctionF a b) ->
+      infers (Insert a hs) c ->
+      infers (Insert b hs) c ->
+      infers hs c
+    | ImplicationI :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers (Insert a hs) b ->
+      infers hs (ImplicationF a b)
+    | ImplicationE :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ImplicationF a b) ->
+      infers hs a ->
+      infers hs b
+    | BiconditionalI :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers (Insert a hs) b ->
+      infers (Insert b hs) a ->
+      infers hs (BiconditionalF a b)
+    | BiconditionalE1 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (BiconditionalF a b) ->
+      infers hs a ->
+      infers hs b
+    | BiconditionalE2 :
+      forall hs : FormulaSet,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (BiconditionalF a b) ->
+      infers hs b ->
+      infers hs a
+    .
+
+    Example exclusive_middle :
+      forall p : Formula,
+      infers EmptyFormulaSet (DisjunctionF p (NegationF p)).
+    Proof.
+      intros p.
+      apply (NegationE EmptyFormulaSet (DisjunctionF p (NegationF p))).
+      apply (ContradictionI (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet) (DisjunctionF p (NegationF p))).
+      apply (DisjunctionI2 (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet) p (NegationF p)).
+      apply (NegationI (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet) p).
+      apply (ContradictionI (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) (DisjunctionF p (NegationF p))).
+      apply (DisjunctionI1 (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) p (NegationF p)).
+      apply (Assumption (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) p).
+      unfold Insert.
+      destruct (eq_Formula_dec p p).
+        tauto.
+        tauto.
+      apply (Assumption (Insert p (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet)) (NegationF (DisjunctionF p (NegationF p)))).
+      unfold Insert.
+      destruct (eq_Formula_dec (NegationF (DisjunctionF p (NegationF p))) (NegationF (DisjunctionF p (NegationF p)))).
+        destruct (eq_Formula_dec p (NegationF (DisjunctionF p (NegationF p)))).
+          tauto.
+          tauto.
+        tauto.
+      apply (Assumption (Insert (NegationF (DisjunctionF p (NegationF p))) EmptyFormulaSet) (NegationF (DisjunctionF p (NegationF p)))).
+      unfold Insert.
+      destruct (eq_Formula_dec (NegationF (DisjunctionF p (NegationF p))) (NegationF (DisjunctionF p (NegationF p)))).
+        tauto.
+        tauto.
+    Qed.
+
+  End InferenceRules.
+
+  Section Soundness.
+
+  End Soundness.
+
+  Section Completeness.
+
+  End Completeness.
 
 End PropositionalLogic.
