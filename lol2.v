@@ -292,6 +292,109 @@ Module Helper.
 
   End Section3.
 
+  Section Section4.
+    
+    Fixpoint first_nat (p : nat -> bool) (n : nat) : nat :=
+      match n with
+      | 0 => 0
+      | S n' => if p (first_nat p n') then first_nat p n' else n
+      end
+    .
+
+    Theorem well_ordering_principle : 
+      forall p : nat -> bool,
+      (exists n : nat, p n = true) ->
+      (exists m : nat, p m = true /\ (forall i : nat, p i = true -> i >= m)).
+    Proof.
+      intros p.
+      assert (forall x : nat, p x = true -> p (first_nat p x) = true).
+        intros x.
+        induction x.
+        tauto.
+        simpl.
+        cut (let b := p (first_nat p x) in p (S x) = true -> p (if b then first_nat p x else S x) = true).
+          simpl.
+          tauto.
+        intros.
+        assert (b = true \/ b = false).
+          destruct b.
+            tauto.
+            tauto.
+        destruct H0.
+        rewrite H0.
+        unfold b in H0.
+        apply H0.
+        rewrite H0.
+        apply H.
+      assert (forall x : nat, first_nat p x <= x).
+        intros x.
+        induction x.
+          simpl.
+          lia.
+          simpl.
+          cut (let b := p (first_nat p x) in (if b then first_nat p x else S x) <= S x).
+            simpl.
+            tauto.
+          intros.
+          assert (b = true \/ b = false).
+            destruct b.
+              tauto.
+              tauto.
+          destruct H0.
+            rewrite H0.
+            lia.
+            rewrite H0.
+            lia.
+      assert (forall x : nat, p (first_nat p x) = true -> (forall y : nat, x < y -> first_nat p x = first_nat p y)).
+        intros x.
+        intro.
+        intros y.
+        intro.
+        induction H2.
+          simpl.
+          rewrite H1.
+          tauto.
+          simpl.
+          rewrite <- IHle.
+          rewrite H1.
+          tauto.
+      assert (forall x : nat, forall y : nat, p y = true -> first_nat p x <= y).
+        intros x.
+        intros y.
+        intro.
+        assert (x <= y \/ x > y).
+          lia.
+        destruct H3.
+        assert (first_nat p x <= x <= y).
+          constructor.
+          apply (H0 x).
+          apply H3.
+          lia.
+        assert (p (first_nat p y) = true).
+          apply (H y).
+          assert (first_nat p x <= x).
+            apply (H0 x).
+            apply H2.
+        assert (first_nat p y = first_nat p x).
+          apply (H1 y).
+          apply H4.
+          lia.
+          rewrite <- H5.
+          apply (H0 y).
+      intro.
+      destruct H3.
+      exists (first_nat p x).
+      constructor.
+      apply (H x H3).
+      intros i.
+      intro.
+      assert (first_nat p x <= i).
+        apply (H2 x i H4).
+      lia.
+    Qed.
+
+  End Section4.
+
 End Helper.
 
 Module PropositionalLogic.
@@ -1266,7 +1369,7 @@ Module PropositionalLogic.
           simpl.
           intuition.
         apply H1.
-        intros premise.
+        intros h.
         simpl.
         intro.
         destruct H3.
@@ -1305,7 +1408,7 @@ Module PropositionalLogic.
           simpl.
           intuition.
         apply H1.
-        intros premise.
+        intros h.
         simpl.
         intro.
         destruct H3.
@@ -1861,38 +1964,42 @@ Module PropositionalLogic.
     Lemma MaximalConsistentSet_property :
       forall hs : FormulaSet,
       forall h : Formula,
-      ~ In Formula (MaximalConsistentSet hs) h ->
-      infers (Insert h (MaximalConsistentSet hs)) ContradictionF.
+      ~ In Formula (MaximalConsistentSet hs) h <-> infers (Insert h (MaximalConsistentSet hs)) ContradictionF.
     Proof.
-      intros hs h H.
-      destruct (Formula_is_enumerable h) as [n H0].
-      assert (forall i : nat, Included Formula (Lindenbaum hs i) (MaximalConsistentSet hs)).
-        intros i p.
+      intros hs h.
+      constructor.
+      - intro.
+        destruct (Formula_is_enumerable h) as [n H0].
+        assert (forall i : nat, Included Formula (Lindenbaum hs i) (MaximalConsistentSet hs)).
+          intros i p.
+          intro.
+          apply (UnionsLindenbaum hs i p H1).
+        subst.
+        assert (~ infers (Lindenbaum hs n) (enumerateFormula n)).
+          intro.
+          assert (In Formula (Lindenbaum hs (S n)) (enumerateFormula n)).
+            apply (InsertT (Lindenbaum hs n) (enumerateFormula n) H0).
+          apply H.
+          apply (H1 (S n) (enumerateFormula n) H2).
+        assert (In Formula (Lindenbaum hs (S n)) (NegationF (enumerateFormula n))).
+          apply (InsertF (Lindenbaum hs n) (enumerateFormula n) H0).
+        assert (In Formula (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+          apply (H1 (S n) (NegationF (enumerateFormula n)) H2).
+        assert (infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+          apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H3).
+        apply (ContradictionI (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+        apply (Assumption (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+        apply Union_intror.
+        apply In_singleton.
+        apply (extend_infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H4 (Insert (enumerateFormula n) (MaximalConsistentSet hs))).
+        intros h.
         intro.
-        apply (UnionsLindenbaum hs i p H1).
-      subst.
-      assert (~ infers (Lindenbaum hs n) (enumerateFormula n)).
-        intro.
-        assert (In Formula (Lindenbaum hs (S n)) (enumerateFormula n)).
-          apply (InsertT (Lindenbaum hs n) (enumerateFormula n) H0).
-        apply H.
-        apply (H1 (S n) (enumerateFormula n) H2).
-      assert (In Formula (Lindenbaum hs (S n)) (NegationF (enumerateFormula n))).
-        apply (InsertF (Lindenbaum hs n) (enumerateFormula n) H0).
-      assert (In Formula (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
-        apply (H1 (S n) (NegationF (enumerateFormula n)) H2).
-      assert (infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
-        apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H3).
-      apply (ContradictionI (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
-      apply (Assumption (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
-      apply Union_intror.
-      apply In_singleton.
-      apply (extend_infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H4 (Insert (enumerateFormula n) (MaximalConsistentSet hs))).
-      intros h.
-      intro.
-      apply Union_introl.
-      apply H5.
+        apply Union_introl.
+        apply H5.
+      - 
     Qed.
+
+    Variable InFormula_dec : forall p : Formula, forall ps : FormulaSet, {In Formula ps p} + {~ In Formula ps p}.
 
   End Completeness.
 
