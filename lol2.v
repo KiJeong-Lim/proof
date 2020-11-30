@@ -907,7 +907,7 @@ Module PropositionalLogic.
       forall v : Assignment, (forall h : Formula, In Formula hs h -> satisfies v h = true) -> satisfies v c = true
     .
 
-    Lemma weakening_entails :
+    Lemma extend_entails :
       forall hs1 : FormulaSet,
       forall c : Formula,
       entails hs1 c ->
@@ -1069,7 +1069,7 @@ Module PropositionalLogic.
 
   Section Soundness.
 
-    Lemma weakening_infers :
+    Lemma extend_infers :
       forall hs1 : FormulaSet,
       forall c : Formula,
       infers hs1 c ->
@@ -1182,7 +1182,7 @@ Module PropositionalLogic.
         intro.
         apply (H0 c H).
       intro.
-      apply (weakening_entails (Singleton Formula c) c H0 hs).
+      apply (extend_entails (Singleton Formula c) c H0 hs).
       intros x.
       intro.
       inversion H2.
@@ -1766,6 +1766,8 @@ Module PropositionalLogic.
   End Soundness.
 
   Section Completeness.
+
+    
 
   End Completeness.
 
