@@ -1850,6 +1850,50 @@ Module PropositionalLogic.
           tauto.
     Qed.
 
+    Inductive MaximalConsistentSet (hs : FormulaSet) : FormulaSet :=
+    | UnionsLindenbaum :
+      forall n : nat,
+      forall h : Formula,
+      In Formula (Lindenbaum hs n) h ->
+      In Formula (MaximalConsistentSet hs) h
+    .
+
+    Lemma MaximalConsistentSet_property :
+      forall hs : FormulaSet,
+      forall h : Formula,
+      ~ In Formula (MaximalConsistentSet hs) h ->
+      infers (Insert h (MaximalConsistentSet hs)) ContradictionF.
+    Proof.
+      intros hs h H.
+      destruct (Formula_is_enumerable h) as [n H0].
+      assert (forall i : nat, Included Formula (Lindenbaum hs i) (MaximalConsistentSet hs)).
+        intros i p.
+        intro.
+        apply (UnionsLindenbaum hs i p H1).
+      subst.
+      assert (~ infers (Lindenbaum hs n) (enumerateFormula n)).
+        intro.
+        assert (In Formula (Lindenbaum hs (S n)) (enumerateFormula n)).
+          apply (InsertT (Lindenbaum hs n) (enumerateFormula n) H0).
+        apply H.
+        apply (H1 (S n) (enumerateFormula n) H2).
+      assert (In Formula (Lindenbaum hs (S n)) (NegationF (enumerateFormula n))).
+        apply (InsertF (Lindenbaum hs n) (enumerateFormula n) H0).
+      assert (In Formula (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+        apply (H1 (S n) (NegationF (enumerateFormula n)) H2).
+      assert (infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+        apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H3).
+      apply (ContradictionI (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+      apply (Assumption (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+      apply Union_intror.
+      apply In_singleton.
+      apply (extend_infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H4 (Insert (enumerateFormula n) (MaximalConsistentSet hs))).
+      intros h.
+      intro.
+      apply Union_introl.
+      apply H5.
+    Qed.
+
   End Completeness.
 
 End PropositionalLogic.
