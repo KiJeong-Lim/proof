@@ -1767,7 +1767,88 @@ Module PropositionalLogic.
 
   Section Completeness.
 
-    
+    Inductive InsertWithConsistency : FormulaSet -> Formula -> FormulaSet :=
+    | InsertN :
+      forall hs : FormulaSet,
+      forall h : Formula,
+      forall p : Formula,
+      In Formula hs p ->
+      In Formula (InsertWithConsistency hs h) p
+    | InsertT :
+      forall hs : FormulaSet,
+      forall h : Formula,
+      infers hs h ->
+      In Formula (InsertWithConsistency hs h) h
+    | InsertF :
+      forall hs : FormulaSet,
+      forall h : Formula,
+      ~ infers hs h ->
+      In Formula (InsertWithConsistency hs h) (NegationF h)
+    .
+
+    Fixpoint Lindenbaum (hs : FormulaSet) (i : nat) : FormulaSet :=
+      match i with
+      | 0 => hs
+      | S i' =>
+        let hs' := Lindenbaum hs i' in
+        let p' := enumerateFormula i' in
+        InsertWithConsistency hs' p'
+      end
+    .
+
+    Lemma Lindenbaum_property :
+      forall hs : FormulaSet,
+      ~ infers hs ContradictionF ->
+      forall i : nat,
+      Included Formula hs (Lindenbaum hs i) /\ ~ infers (Lindenbaum hs i) ContradictionF.
+    Proof.
+      intros hs H i.
+      induction i.
+      - simpl.
+        constructor.
+        * apply Included_refl.
+        * apply H.
+      - destruct IHi.
+        simpl in *.
+        constructor.
+        * intros h.
+          intro.
+          apply InsertN.
+          apply (H0 h H2).
+        * intro.
+          assert (~ infers (Lindenbaum hs i) (enumerateFormula i)).
+            intro.
+            assert (Included Formula (InsertWithConsistency (Lindenbaum hs i) (enumerateFormula i)) (Insert (enumerateFormula i) (Lindenbaum hs i))).
+              intros h.
+              intro.
+              inversion H4.
+              subst.
+              apply Union_introl.
+              tauto.
+              subst.
+              apply Union_intror.
+              apply In_singleton.
+              tauto.
+            apply H1.
+            apply (ContradictionI (Lindenbaum hs i) (enumerateFormula i)).
+            apply H3.
+            apply (NegationI (Lindenbaum hs i) (enumerateFormula i)).
+            apply (extend_infers (InsertWithConsistency (Lindenbaum hs i) (enumerateFormula i)) ContradictionF H2 (Insert (enumerateFormula i) (Lindenbaum hs i)) H4).
+          assert (infers (Lindenbaum hs i) (enumerateFormula i)).
+            assert (Included Formula (InsertWithConsistency (Lindenbaum hs i) (enumerateFormula i)) (Insert (NegationF (enumerateFormula i)) (Lindenbaum hs i))).
+              intros h.
+              intro.
+              inversion H4.
+              subst.
+              apply Union_introl.
+              tauto.
+              tauto.
+              apply Union_intror.
+              apply In_singleton.
+            apply (NegationE (Lindenbaum hs i) (enumerateFormula i)).
+            apply (extend_infers (InsertWithConsistency (Lindenbaum hs i) (enumerateFormula i)) ContradictionF H2 (Insert (NegationF (enumerateFormula i)) (Lindenbaum hs i)) H4).
+          tauto.
+    Qed.
 
   End Completeness.
 
