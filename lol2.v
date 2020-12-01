@@ -4,6 +4,8 @@ Require Export Peano_dec.
 Require Export Lia.
 Require Export Ensembles.
 
+(* THANKS TO: Taeseung Sohn( "https://github.com/paulsohn" ) *)
+
 Module Helper.
 
   Section Section1.
@@ -303,8 +305,10 @@ Module Helper.
 
     Theorem well_ordering_principle : 
       forall p : nat -> bool,
-      (exists n : nat, p n = true) ->
-      (exists m : nat, p m = true /\ (forall i : nat, p i = true -> i >= m)).
+      forall n : nat,
+      p n = true ->
+      let m := first_nat p n in
+      p m = true /\ (forall i : nat, p i = true -> i >= m).
     Proof.
       intros p.
       assert (forall x : nat, p x = true -> p (first_nat p x) = true).
@@ -381,15 +385,16 @@ Module Helper.
           lia.
           rewrite <- H5.
           apply (H0 y).
+      intros n.
       intro.
-      destruct H3.
-      exists (first_nat p x).
+      intros m.
       constructor.
-      apply (H x H3).
+      unfold m.
+      apply (H n H3).
       intros i.
       intro.
-      assert (first_nat p x <= i).
-        apply (H2 x i H4).
+      assert (first_nat p n <= i).
+        apply (H2 n i H4).
       lia.
     Qed.
 
@@ -1870,6 +1875,671 @@ Module PropositionalLogic.
 
   Section Completeness.
 
+    Variable InFormula_dec : forall p : Formula, forall ps : FormulaSet, {In Formula ps p} + {~ In Formula ps p}.
+
+    Lemma infers_has_compactness :
+      forall hs : FormulaSet,
+      forall c : Formula,
+      infers hs c ->
+      exists hs' : FormulaSet, Included Formula hs' hs /\ infers hs' c /\ (exists bound : nat, forall h : Formula, In Formula hs' h -> exists n : nat, enumerateFormula n = h /\ n < bound).
+    Proof.
+      intros hs c H.
+      induction H.
+      - exists (Singleton Formula h).
+        constructor.
+        intros p.
+        intro.
+        inversion H0.
+        subst.
+        apply H.
+        constructor.
+        apply (Assumption (Singleton Formula h) h).
+        apply In_singleton.
+        destruct (Formula_is_enumerable h) as [n H0].
+        exists (S n).
+        intros h0.
+        intro.
+        inversion H1.
+        exists n.
+        subst.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers1 as [hs1' H1].
+        destruct IHinfers2 as [hs2' H2].
+        exists (Union Formula hs1' hs2').
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        constructor.
+        intros p.
+        intro.
+        inversion H7.
+        subst.
+        apply (H1 p H8).
+        subst.
+        apply (H2 p H8).
+        constructor.
+        apply (ContradictionI (Union Formula hs1' hs2') a).
+        apply (extend_infers hs1' a H3 (Union Formula hs1' hs2')).
+        intros p.
+        intro.
+        apply Union_introl.
+        apply H7.
+        apply (extend_infers hs2' (NegationF a) H5 (Union Formula hs1' hs2')).
+        intros p.
+        intro.
+        apply Union_intror.
+        apply H7.
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros p.
+        intro.
+        inversion H7.
+        subst.
+        destruct (H4 p H8) as [n].
+        exists n.
+        destruct H9.
+        constructor.
+        apply H9.
+        lia.
+        subst.
+        destruct (H6 p H8) as [n].
+        exists n.
+        destruct H9.
+        constructor.
+        apply H9.
+        lia.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists hs1.
+        constructor.
+        apply H0.
+        constructor.
+        apply (ContradictionE hs1 a).
+        apply H1.
+        destruct H2 as [bound1].
+        exists bound1.
+        apply H2.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists (Subtract Formula hs1 a).
+        assert (Included Formula (Subtract Formula hs1 a) hs).
+          intros p.
+          intro.
+          inversion H3.
+          assert (In Formula (Insert a hs) p).
+            apply H0.
+            apply H4.
+          inversion H6.
+          subst.
+          apply H7.
+          tauto.
+        constructor.
+        apply H3.
+        assert (Included Formula hs1 (Insert a (Subtract Formula hs1 a))).
+          intros p.
+          intro.
+          destruct (eq_Formula_dec a p).
+            subst.
+            apply Union_intror.
+            apply In_singleton.
+            apply Union_introl.
+            constructor.
+            apply H4.
+            intro.
+            inversion H5.
+            tauto.
+        constructor.
+        apply (NegationI (Subtract Formula hs1 a) a).
+        apply (extend_infers hs1 ContradictionF H1 (Insert a (Subtract Formula hs1 a)) H4).
+        destruct H2 as [bound1].
+        exists bound1.
+        intros h.
+        intro.
+        apply (H2 h).
+        inversion H5.
+        apply H6.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists (Subtract Formula hs1 (NegationF a)).
+        assert (Included Formula (Subtract Formula hs1 (NegationF a)) hs).
+          intros p.
+          intro.
+          inversion H3.
+          assert (In Formula (Insert (NegationF a) hs) p).
+            apply H0.
+            apply H4.
+          inversion H6.
+          subst.
+          apply H7.
+          tauto.
+        constructor.
+        apply H3.
+        assert (Included Formula hs1 (Insert (NegationF a) (Subtract Formula hs1 (NegationF a)))).
+          intros p.
+          intro.
+          destruct (eq_Formula_dec (NegationF a) p).
+            subst.
+            apply Union_intror.
+            apply In_singleton.
+            apply Union_introl.
+            constructor.
+            apply H4.
+            intro.
+            inversion H5.
+            tauto.
+        constructor.
+        apply (NegationE (Subtract Formula hs1 (NegationF a)) a).
+        apply (extend_infers hs1 ContradictionF H1 (Insert (NegationF a) (Subtract Formula hs1 (NegationF a))) H4).
+        destruct H2 as [bound1].
+        exists bound1.
+        intros h.
+        intro.
+        apply (H2 h).
+        inversion H5.
+        apply H6.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        exists (Union Formula hs1 hs2).
+        assert (Included Formula hs1 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H7.
+        assert (Included Formula hs2 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_intror.
+          apply H8.
+        constructor.
+        intros p.
+        intro.
+        inversion H9.
+        subst.
+        apply (H1 p H10).
+        subst.
+        apply (H2 p H10).
+        constructor.
+        apply (ConjunctionI (Union Formula hs1 hs2) a b).
+        apply (extend_infers hs1 a H3 (Union Formula hs1 hs2) H7).
+        apply (extend_infers hs2 b H5 (Union Formula hs1 hs2) H8).
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros h.
+        intro.
+        inversion H9.
+        subst.
+        destruct (H4 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+        subst.
+        destruct (H6 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists hs1.
+        constructor.
+        apply H0.
+        constructor.
+        apply (ConjunctionE1 hs1 a b H1).
+        apply H2.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists hs1.
+        constructor.
+        apply H0.
+        constructor.
+        apply (ConjunctionE2 hs1 a b H1).
+        apply H2.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists hs1.
+        constructor.
+        apply H0.
+        constructor.
+        apply (DisjunctionI1 hs1 a b H1).
+        apply H2.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists hs1.
+        constructor.
+        apply H0.
+        constructor.
+        apply (DisjunctionI2 hs1 a b H1).
+        apply H2.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct IHinfers3 as [hs3].
+        destruct H2.
+        destruct H5.
+        destruct H3.
+        destruct H7.
+        destruct H4.
+        destruct H9.
+        exists (Union Formula hs1 (Union Formula (Subtract Formula hs2 a) (Subtract Formula hs3 b))).
+        assert (Included Formula hs2 (Insert a (Subtract Formula hs2 a))).
+          intros p.
+          intro.
+          destruct (eq_Formula_dec a p).
+          subst.
+          apply Union_intror.
+          apply In_singleton.
+          apply Union_introl.
+          constructor.
+          apply H11.
+          intro.
+          inversion H12.
+          tauto.
+        assert (Included Formula hs3 (Insert b (Subtract Formula hs3 b))).
+          intros p.
+          intro.
+          destruct (eq_Formula_dec b p).
+          subst.
+          apply Union_intror.
+          apply In_singleton.
+          apply Union_introl.
+          constructor.
+          apply H12.
+          intro.
+          inversion H13.
+          tauto.
+        assert (Included Formula (Union Formula hs1 (Union Formula (Subtract Formula hs2 a) (Subtract Formula hs3 b))) hs).
+          intros p.
+          intro.
+          inversion H13.
+          subst.
+          apply (H2 p H14).
+          inversion H14.
+          subst.
+          inversion H16.
+          assert (In Formula (Insert a hs) p).
+            apply (H3 p H15).
+          inversion H18.
+          subst.
+          apply H19.
+          subst.
+          tauto.
+          subst.
+          inversion H16.
+          assert (In Formula (Insert b hs) p).
+            apply (H4 p H15).
+          inversion H18.
+          subst.
+          apply H19.
+          subst.
+          tauto.
+        constructor.
+        apply H13.
+        constructor.
+        apply (DisjunctionE (Union Formula hs1 (Union Formula (Subtract Formula hs2 a) (Subtract Formula hs3 b))) a b c).
+        apply (extend_infers hs1 (DisjunctionF a b) H5).
+        intros p.
+        intro.
+        apply Union_introl.
+        apply H14.
+        apply (extend_infers hs2 c H7).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec a p).
+          subst.
+          apply Union_intror.
+          apply In_singleton.
+          apply Union_introl.
+          apply Union_intror.
+          apply Union_introl.
+          constructor.
+          apply H14.
+          intro.
+          inversion H15.
+          tauto.
+        apply (extend_infers hs3 c H9).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec b p).
+          subst.
+          apply Union_intror.
+          apply In_singleton.
+          apply Union_introl.
+          apply Union_intror.
+          apply Union_intror.
+          constructor.
+          apply H14.
+          intro.
+          inversion H15.
+          tauto.
+        destruct H6 as [bound1].
+        destruct H8 as [bound2].
+        destruct H10 as [bound3].
+        exists (max bound1 (max bound2 bound3)).
+        intros h.
+        intro.
+        inversion H14.
+        subst.
+        destruct (H6 h H15) as [n].
+        exists n.
+        destruct H16.
+        constructor.
+        tauto.
+        lia.
+        inversion H15.
+        subst.
+        destruct (H8 h) as [n].
+          destruct H17.
+          apply H16.
+        destruct H16.
+        exists n.
+        constructor.
+        tauto.
+        lia.
+        subst.
+        destruct (H10 h) as [n].
+          destruct H17.
+          apply H16.
+        destruct H16.
+        exists n.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers as [hs1].
+        destruct H0.
+        destruct H1.
+        exists (Subtract Formula hs1 a).
+        assert (Included Formula (Subtract Formula hs1 a) hs).
+          intros p.
+          intro.
+          inversion H3.
+          assert (In Formula (Insert a hs) p).
+            apply H0.
+            apply H4.
+          inversion H6.
+          subst.
+          apply H7.
+          tauto.
+        constructor.
+        apply H3.
+        assert (Included Formula hs1 (Insert a (Subtract Formula hs1 a))).
+          intros p.
+          intro.
+          destruct (eq_Formula_dec a p).
+            subst.
+            apply Union_intror.
+            apply In_singleton.
+            apply Union_introl.
+            constructor.
+            apply H4.
+            intro.
+            inversion H5.
+            tauto.
+        constructor.
+        apply (ImplicationI (Subtract Formula hs1 a) a).
+        apply (extend_infers hs1 b H1 (Insert a (Subtract Formula hs1 a)) H4).
+        destruct H2 as [bound1].
+        exists bound1.
+        intros h.
+        intro.
+        apply (H2 h).
+        inversion H5.
+        apply H6.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        exists (Union Formula hs1 hs2).
+        assert (Included Formula hs1 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H7.
+        assert (Included Formula hs2 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_intror.
+          apply H8.
+        constructor.
+        intros p.
+        intro.
+        inversion H9.
+        subst.
+        apply (H1 p H10).
+        subst.
+        apply (H2 p H10).
+        constructor.
+        apply (ImplicationE (Union Formula hs1 hs2) a b).
+        apply (extend_infers hs1 (ImplicationF a b) H3 (Union Formula hs1 hs2) H7).
+        apply (extend_infers hs2 a H5 (Union Formula hs1 hs2) H8).
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros h.
+        intro.
+        inversion H9.
+        subst.
+        destruct (H4 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+        subst.
+        destruct (H6 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        exists (Union Formula (Subtract Formula hs1 a) (Subtract Formula hs2 b)).
+        constructor.
+        intros p.
+        intro.
+        inversion H7.
+        destruct (eq_Formula_dec a p).
+        inversion H8.
+        contradiction H11.
+        rewrite e.
+        apply In_singleton.
+        subst.
+        assert (In Formula (Insert a hs) p).
+        apply (H1 p (proj1 H8)).
+        inversion H9.
+        apply H10.
+        inversion H10.
+        tauto.
+        destruct (eq_Formula_dec b p).
+        inversion H8.
+        contradiction H11.
+        rewrite e.
+        apply In_singleton.
+        subst.
+        assert (In Formula (Insert b hs) p).
+        apply (H2 p (proj1 H8)).
+        inversion H9.
+        apply H10. 
+        inversion H10.
+        tauto.
+        constructor.
+        apply (BiconditionalI (Union Formula (Subtract Formula hs1 a) (Subtract Formula hs2 b)) a b).
+        apply (extend_infers hs1 b H3).
+        intros p.
+        intro.
+        assert (In Formula (Insert a hs) p).
+        apply (H1 p H7).
+        destruct (eq_Formula_dec a p).
+        apply Union_intror.
+        rewrite e.
+        apply In_singleton.
+        apply Union_introl.
+        apply Union_introl.
+        constructor.
+        apply H7.
+        intro.
+        apply n.
+        inversion H9.
+        tauto.
+        apply (extend_infers hs2 a H5).
+        intros p.
+        intro.
+        assert (In Formula (Insert b hs) p).
+        apply (H2 p H7).
+        destruct (eq_Formula_dec b p).
+        apply Union_intror.
+        rewrite e.
+        apply In_singleton.
+        apply Union_introl.
+        apply Union_intror.
+        constructor.
+        apply H7.
+        intro.
+        apply n.
+        inversion H9.
+        tauto.
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros h.
+        intro.
+        inversion H7.
+        destruct (H4 h (proj1 H8)) as [n].
+        destruct H10.
+        exists n.
+        constructor.
+        tauto.
+        lia.
+        destruct (H6 h (proj1 H8)) as [n].
+        destruct H10.
+        exists n.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        exists (Union Formula hs1 hs2).
+        assert (Included Formula hs1 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H7.
+        assert (Included Formula hs2 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_intror.
+          apply H8.
+        constructor.
+        intros p.
+        intro.
+        inversion H9.
+        subst.
+        apply (H1 p H10).
+        subst.
+        apply (H2 p H10).
+        constructor.
+        apply (BiconditionalE1 (Union Formula hs1 hs2) a b).
+        apply (extend_infers hs1 (BiconditionalF a b) H3 (Union Formula hs1 hs2) H7).
+        apply (extend_infers hs2 a H5 (Union Formula hs1 hs2) H8).
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros h.
+        intro.
+        inversion H9.
+        subst.
+        destruct (H4 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+        subst.
+        destruct (H6 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+      - destruct IHinfers1 as [hs1].
+        destruct IHinfers2 as [hs2].
+        destruct H1.
+        destruct H3.
+        destruct H2.
+        destruct H5.
+        exists (Union Formula hs1 hs2).
+        assert (Included Formula hs1 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H7.
+        assert (Included Formula hs2 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_intror.
+          apply H8.
+        constructor.
+        intros p.
+        intro.
+        inversion H9.
+        subst.
+        apply (H1 p H10).
+        subst.
+        apply (H2 p H10).
+        constructor.
+        apply (BiconditionalE2 (Union Formula hs1 hs2) a b).
+        apply (extend_infers hs1 (BiconditionalF a b) H3 (Union Formula hs1 hs2) H7).
+        apply (extend_infers hs2 b H5 (Union Formula hs1 hs2) H8).
+        destruct H4 as [bound1].
+        destruct H6 as [bound2].
+        exists (max bound1 bound2).
+        intros h.
+        intro.
+        inversion H9.
+        subst.
+        destruct (H4 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+        subst.
+        destruct (H6 h H10) as [n].
+        exists n.
+        destruct H11.
+        constructor.
+        tauto.
+        lia.
+    Qed.
+
     Inductive InsertWithConsistency : FormulaSet -> Formula -> FormulaSet :=
     | InsertN :
       forall hs : FormulaSet,
@@ -1899,7 +2569,25 @@ Module PropositionalLogic.
       end
     .
 
-    Lemma Lindenbaum_property :
+    Lemma Lindenbaum_property1 :
+      forall hs : FormulaSet,
+      forall n1 : nat,
+      forall n2 : nat,
+      n1 <= n2 -> Included Formula (Lindenbaum hs n1) (Lindenbaum hs n2).
+    Proof.
+      intros hs n1 n2.
+      intro.
+      induction H.
+      * intros p.
+        tauto.
+      * intros p.
+        intro.
+        simpl.
+        apply InsertN.
+        apply (IHle p H0).
+    Qed.
+
+    Lemma Lindenbaum_property2 :
       forall hs : FormulaSet,
       ~ infers hs ContradictionF ->
       forall i : nat,
@@ -1955,51 +2643,121 @@ Module PropositionalLogic.
 
     Inductive MaximalConsistentSet (hs : FormulaSet) : FormulaSet :=
     | UnionsLindenbaum :
+      forall p : Formula,
       forall n : nat,
-      forall h : Formula,
-      In Formula (Lindenbaum hs n) h ->
-      In Formula (MaximalConsistentSet hs) h
+      In Formula (Lindenbaum hs n) p ->
+      In Formula (MaximalConsistentSet hs) p
     .
 
-    Lemma MaximalConsistentSet_property :
+    Lemma MaximalConsistentSet_property1 :
       forall hs : FormulaSet,
       forall h : Formula,
-      ~ In Formula (MaximalConsistentSet hs) h <-> infers (Insert h (MaximalConsistentSet hs)) ContradictionF.
+      ~ In Formula (MaximalConsistentSet hs) h ->
+      infers (Insert h (MaximalConsistentSet hs)) ContradictionF.
     Proof.
       intros hs h.
-      constructor.
-      - intro.
-        destruct (Formula_is_enumerable h) as [n H0].
-        assert (forall i : nat, Included Formula (Lindenbaum hs i) (MaximalConsistentSet hs)).
-          intros i p.
-          intro.
-          apply (UnionsLindenbaum hs i p H1).
-        subst.
-        assert (~ infers (Lindenbaum hs n) (enumerateFormula n)).
-          intro.
-          assert (In Formula (Lindenbaum hs (S n)) (enumerateFormula n)).
-            apply (InsertT (Lindenbaum hs n) (enumerateFormula n) H0).
-          apply H.
-          apply (H1 (S n) (enumerateFormula n) H2).
-        assert (In Formula (Lindenbaum hs (S n)) (NegationF (enumerateFormula n))).
-          apply (InsertF (Lindenbaum hs n) (enumerateFormula n) H0).
-        assert (In Formula (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
-          apply (H1 (S n) (NegationF (enumerateFormula n)) H2).
-        assert (infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
-          apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H3).
-        apply (ContradictionI (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
-        apply (Assumption (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
-        apply Union_intror.
-        apply In_singleton.
-        apply (extend_infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H4 (Insert (enumerateFormula n) (MaximalConsistentSet hs))).
-        intros h.
+      intro.
+      destruct (Formula_is_enumerable h) as [n H0].
+      assert (forall i : nat, Included Formula (Lindenbaum hs i) (MaximalConsistentSet hs)).
+        intros i p.
         intro.
-        apply Union_introl.
-        apply H5.
-      - 
+        apply (UnionsLindenbaum hs p i H1).
+      subst.
+      assert (~ infers (Lindenbaum hs n) (enumerateFormula n)).
+        intro.
+        assert (In Formula (Lindenbaum hs (S n)) (enumerateFormula n)).
+          apply (InsertT (Lindenbaum hs n) (enumerateFormula n) H0).
+        apply H.
+        apply (H1 (S n) (enumerateFormula n) H2).
+      assert (In Formula (Lindenbaum hs (S n)) (NegationF (enumerateFormula n))).
+        apply (InsertF (Lindenbaum hs n) (enumerateFormula n) H0).
+      assert (In Formula (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+        apply (H1 (S n) (NegationF (enumerateFormula n)) H2).
+      assert (infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n))).
+        apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H3).
+      apply (ContradictionI (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+      apply (Assumption (Insert (enumerateFormula n) (MaximalConsistentSet hs)) (enumerateFormula n)).
+      apply Union_intror.
+      apply In_singleton.
+      apply (extend_infers (MaximalConsistentSet hs) (NegationF (enumerateFormula n)) H4 (Insert (enumerateFormula n) (MaximalConsistentSet hs))).
+      intros h.
+      intro.
+      apply Union_introl.
+      apply H5.
     Qed.
 
-    Variable InFormula_dec : forall p : Formula, forall ps : FormulaSet, {In Formula ps p} + {~ In Formula ps p}.
+    Lemma MaximalConsistentSet_property2 :
+      forall hs : FormulaSet,
+      ~ infers hs ContradictionF ->
+      ~ infers (MaximalConsistentSet hs) ContradictionF.
+    Proof.
+      intros hs.
+      intro.
+      cut (
+        forall hs' : FormulaSet,
+        Included Formula hs' (MaximalConsistentSet hs) ->
+        forall bound : nat,
+        (forall h : Formula, In Formula hs' h -> exists i : nat, enumerateFormula i = h /\ i < bound) ->
+        exists k : nat,
+        Included Formula hs' (Lindenbaum hs k)
+      ).
+        intro.
+        intro.
+        destruct (infers_has_compactness (MaximalConsistentSet hs) ContradictionF H1) as [hs'].
+        destruct H2.
+        destruct H3.
+        destruct H4 as [bound].
+        destruct (H0 hs' H2 bound H4) as [k].
+        destruct (Lindenbaum_property2 hs H k).
+        apply H7.
+        apply (extend_infers hs' ContradictionF H3 (Lindenbaum hs k) H5).
+      intros hs'.
+      intro.
+      intros bound.
+      intro.
+      exists bound.
+      intros p.
+      intro.
+      destruct (H1 p H2) as [i].
+      destruct H3.
+      assert (In Formula (MaximalConsistentSet hs) p).
+        apply (H0 p H2).
+      inversion H5.
+      subst.
+      destruct (InFormula_dec (enumerateFormula i) (Lindenbaum hs bound)).
+        tauto.
+        assert (~ In Formula (Lindenbaum hs (S i)) (enumerateFormula i)).
+          assert (Included Formula (Lindenbaum hs (S i)) (Lindenbaum hs bound)).
+            apply (Lindenbaum_property1 hs (S i) bound).
+            lia.
+          intro.
+          apply n0.
+          apply (H3 (enumerateFormula i) H7).
+        assert (~ infers (Lindenbaum hs i) (enumerateFormula i)).
+          intro.
+          apply H3.
+          simpl.
+          apply InsertT.
+          apply H7.
+        assert (In Formula (Lindenbaum hs (S i)) (NegationF (enumerateFormula i))).
+          simpl.
+          apply InsertF.
+          apply H7.
+        assert (n >= bound \/ n < bound).
+          lia.
+        destruct H9.
+        - destruct (Lindenbaum_property2 hs H n).
+          contradiction H11.
+          apply (ContradictionI (Lindenbaum hs n) (enumerateFormula i)).
+          apply (Assumption (Lindenbaum hs n) (enumerateFormula i) H6).
+          apply (extend_infers (Lindenbaum hs (S i)) (NegationF (enumerateFormula i))).
+          apply (Assumption (Lindenbaum hs (S i)) (NegationF (enumerateFormula i)) H8).
+          apply (Lindenbaum_property1 hs (S i) n).
+          lia.
+        - apply (Lindenbaum_property1 hs n bound).
+          lia.
+          apply H6.
+    Qed.
 
   End Completeness.
 
