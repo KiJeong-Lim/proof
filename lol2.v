@@ -1173,6 +1173,22 @@ Module PropositionalLogic.
       apply In_singleton.
     Qed.
 
+    Lemma cut_property :
+      forall hs : FormulaSet,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      infers hs p1 ->
+      infers (Insert p1 hs) p2 ->
+      infers hs p2.
+    Proof.
+      intros hs p1 p2.
+      intro.
+      intro.
+      assert (infers hs (ImplicationF p1 p2)).
+        apply (ImplicationI hs p1 p2 H0).
+      apply (ImplicationE hs p1 p2 H1 H).
+    Qed.
+
   End InferenceRules.
 
   Section Soundness.
@@ -2757,6 +2773,187 @@ Module PropositionalLogic.
         - apply (Lindenbaum_property1 hs n bound).
           lia.
           apply H6.
+    Qed.
+
+    Lemma MaximalConsistentSet_property3 :
+      forall hs : FormulaSet,
+      ~ infers hs ContradictionF ->
+      forall p : Formula,
+      ~ In Formula (MaximalConsistentSet hs) p ->
+      ~ infers (MaximalConsistentSet hs) p.
+    Proof.
+      intros hs.
+      intro A.
+      intros p.
+      intro.
+      destruct (Formula_is_enumerable p) as [k].
+      assert (In Formula (MaximalConsistentSet hs) (NegationF p)).
+        apply (UnionsLindenbaum hs (NegationF p) (S k)).
+        simpl.
+        subst.
+        apply InsertF.
+        intro.
+        apply H.
+        apply (UnionsLindenbaum hs (enumerateFormula k) (S k)).
+        simpl.
+        apply InsertT.
+        apply H0.
+      subst.
+      intro.
+      assert (infers (MaximalConsistentSet hs) ContradictionF).
+        apply (ContradictionI (MaximalConsistentSet hs) (enumerateFormula k)).
+        apply H0.
+        apply (Assumption (MaximalConsistentSet hs) (NegationF (enumerateFormula k)) H1).
+      apply (MaximalConsistentSet_property2 hs A).
+      apply H2.
+    Qed.
+
+    Inductive ProofLine : FormulaSet -> FormulaSet :=
+    | TrueL :
+      forall hs : FormulaSet,
+      forall i : PropVar,
+      In Formula (MaximalConsistentSet hs) (AtomF i) ->
+      In Formula (ProofLine hs) (AtomF i)
+    | FalseL :
+      forall hs : FormulaSet,
+      forall i : PropVar,
+      ~ In Formula (MaximalConsistentSet hs) (AtomF i) ->
+      In Formula (ProofLine hs) (NegationF (AtomF i))
+    .
+
+    Axiom ProofLine_property :
+      forall hs : FormulaSet,
+      ~ infers hs ContradictionF ->
+      forall p : Formula,
+      ~ infers (ProofLine hs) p ->
+      ~ infers (MaximalConsistentSet hs) p.
+
+    Definition MakeLine (hs : FormulaSet) : Assignment :=
+      fun i : PropVar => if InFormula_dec (AtomF i) (MaximalConsistentSet hs) then true else false
+    .
+
+    Theorem ModelExistsIfConsistent :
+      forall hs : FormulaSet,
+      ~ infers hs ContradictionF ->
+      forall h : Formula,
+      In Formula (MaximalConsistentSet hs) h ->
+      satisfies (MakeLine hs) h = true.
+    Proof.
+      intros hs.
+      intro.
+      assert (forall h : Formula, ~ satisfies (MakeLine hs) h = true -> ~ infers (ProofLine hs) h).
+        intros h.
+        intro.
+        assert (satisfies (MakeLine hs) h = false).
+          destruct (satisfies (MakeLine hs) h).
+          tauto.
+          tauto.
+        assert (satisfies (MakeLine hs) (NegationF h) = true).
+          simpl.
+          rewrite H1.
+          tauto.
+        assert (~ entails (ProofLine hs) h).
+          intro.
+          unfold entails in H3.
+          contradiction H0.
+          apply H3.
+          intros p.
+          intro.
+          inversion H4.
+          subst.
+          simpl.
+          unfold MakeLine.
+          destruct (InFormula_dec (AtomF i) (MaximalConsistentSet hs)).
+            tauto.
+            tauto.
+          subst.
+          simpl.
+          unfold MakeLine.
+          destruct (InFormula_dec (AtomF i) (MaximalConsistentSet hs)).
+            tauto.
+            tauto.
+        intro.
+        apply H3.
+        apply (soundness (ProofLine hs) h H4).
+      intros h.
+      intro.
+      assert (infers (MaximalConsistentSet hs) h).
+        apply (Assumption (MaximalConsistentSet hs) h H1).
+      assert (satisfies (MakeLine hs) h <> true -> ~ In Formula (MaximalConsistentSet hs) h).
+        intro.
+        assert (~ infers (ProofLine hs) h).
+          apply (H0 h H3).
+        assert (~ infers (MaximalConsistentSet hs) h).
+          apply (ProofLine_property hs H h H4).
+        intro.
+        apply H5.
+        apply (Assumption (MaximalConsistentSet hs) h H6).
+      assert (satisfies (MakeLine hs) h = true \/ satisfies (MakeLine hs) h <> true).
+        destruct (satisfies (MakeLine hs) h).
+          tauto.
+          apply or_intror.
+          intro.
+          inversion H4.
+      destruct H4.
+        apply H4.
+        contradiction H3.
+    Qed.
+
+    Corollary completeness :
+      forall hs : FormulaSet,
+      forall c : Formula,
+      ~ infers hs c ->
+      ~ entails hs c.
+    Proof.
+      intros hs c.
+      intro.
+      assert (~ infers (Insert (NegationF c) hs) ContradictionF).
+        intro.
+        apply H.
+        apply (NegationE hs c H0).
+      cut (~ entails (Insert (NegationF c) hs) ContradictionF).
+        intro.
+        intro.
+        apply H1.
+        apply (ContradictionI_preserves (Insert (NegationF c) hs) c).
+        apply (extend_entails hs c H2).
+        intros h.
+        intro.
+        apply Union_introl.
+        apply H3.
+        apply (Assumption_preserves (Insert (NegationF c) hs) (NegationF c)).
+        apply Union_intror.
+        apply In_singleton.
+      intro.
+      assert (forall h : Formula, In Formula (MaximalConsistentSet (Insert (NegationF c) hs)) h -> satisfies (MakeLine (Insert (NegationF c) hs)) h = true).
+        apply ModelExistsIfConsistent.
+        apply H0.
+      assert (satisfies (MakeLine (Insert (NegationF c) hs)) c = true).
+        assert (entails hs c).
+          apply NegationE_preserves.
+          apply H1.
+        apply H3.
+        intros h.
+        intro.
+        apply H2.
+        apply (UnionsLindenbaum (Insert (NegationF c) hs) h 0).
+        simpl.
+        apply Union_introl.
+        apply H4.
+      assert (satisfies (MakeLine (Insert (NegationF c) hs)) c = false).
+        cut (satisfies (MakeLine (Insert (NegationF c) hs)) (NegationF c) = true).
+          intro.
+          simpl in H4.
+          destruct (satisfies (MakeLine (Insert (NegationF c) hs)) c).
+            inversion H4.
+            tauto.
+        apply H2.
+        apply (UnionsLindenbaum (Insert (NegationF c) hs) (NegationF c) 0).
+        simpl.
+        apply Union_intror.
+        apply In_singleton.
+        rewrite H3 in H4.
+        inversion H4.
     Qed.
 
   End Completeness.
