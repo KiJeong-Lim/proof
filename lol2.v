@@ -2808,6 +2808,350 @@ Module PropositionalLogic.
       apply H2.
     Qed.
 
+    Inductive Occurs : Formula -> PropVar -> Prop :=
+    | OccursAtom :
+      forall i : PropVar,
+      Occurs (AtomF i) i
+    | OccursNegation :
+      forall i : PropVar,
+      forall p1 : Formula,
+      Occurs p1 i ->
+      Occurs (NegationF p1) i
+    | OccursConjunction :
+      forall i : PropVar,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      Occurs p1 i \/ Occurs p2 i ->
+      Occurs (ConjunctionF p1 p2) i
+    | OccursDisjunction :
+      forall i : PropVar,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      Occurs p1 i \/ Occurs p2 i ->
+      Occurs (DisjunctionF p1 p2) i
+    | OccursImplication :
+      forall i : PropVar,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      Occurs p1 i \/ Occurs p2 i ->
+      Occurs (ImplicationF p1 p2) i
+    | OccursBiconditional :
+      forall i : PropVar,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      Occurs p1 i \/ Occurs p2 i ->
+      Occurs (BiconditionalF p1 p2) i
+    .
+
+    Lemma Occurs_property1 :
+      forall c : Formula,
+      forall hs : FormulaSet,
+      (forall i : PropVar, Occurs c i -> In Formula hs (AtomF i) \/ In Formula hs (NegationF (AtomF i))) ->
+      infers hs c \/ infers hs (NegationF c).
+    Proof.
+      intros c.
+      induction c.
+      - intros hs.
+        intro.
+        assert (In Formula hs (AtomF p) \/ In Formula hs (NegationF (AtomF p))).
+          apply (H p).
+          apply OccursAtom.
+        destruct H0.
+        apply or_introl.
+        apply Assumption.
+        apply H0.
+        apply or_intror.
+        apply Assumption.
+        apply H0.
+      - intros hs.
+        intro.
+        apply or_intror.
+        apply (DisjunctionE hs ContradictionF (NegationF ContradictionF) (NegationF ContradictionF)).
+        apply (extend_infers EmptyFormulaSet (DisjunctionF ContradictionF (NegationF ContradictionF))).
+        apply exclusive_middle.
+        intros p.
+        intro.
+        inversion H0.
+        apply ContradictionE.
+        apply Assumption.
+        apply Union_intror.
+        apply In_singleton.
+        apply Assumption.
+        apply Union_intror.
+        apply In_singleton.
+      - intros hs.
+        intro.
+        assert (infers hs c \/ infers hs (NegationF c)).
+          apply IHc.
+          intros i.
+          simpl.
+          intro.
+          assert (In Formula hs (AtomF i) \/ In Formula hs (NegationF (AtomF i))).
+            apply H.
+            apply OccursNegation.
+            apply H0.
+          apply H1.
+        destruct H0.
+        apply or_intror.
+        apply NegationI.
+        apply (ContradictionI (Insert (NegationF c) hs) c).
+        apply (extend_infers hs c H0).
+        intros p.
+        intro.
+        apply Union_introl.
+        apply H1.
+        apply Assumption.
+        apply Union_intror.
+        apply In_singleton.
+        apply or_introl.
+        apply H0.
+      - intros hs.
+        intro.
+        assert (infers hs c1 \/ infers hs (NegationF c1)).
+          apply IHc1.
+          intros i.
+          intro.
+          apply H.
+          apply OccursConjunction.
+          apply or_introl.
+          apply H0.
+        assert (infers hs c2 \/ infers hs (NegationF c2)).
+          apply IHc2.
+          intros i.
+          intro.
+          apply H.
+          apply OccursConjunction.
+          apply or_intror.
+          apply H1.
+        destruct H0.
+          destruct H1.
+            apply or_introl.
+            apply (ConjunctionI hs c1 c2).
+            apply H0.
+            apply H1.
+            apply or_intror.
+            apply (NegationI hs (ConjunctionF c1 c2)).
+            apply (ContradictionI (Insert (ConjunctionF c1 c2) hs) c2).
+            apply (ConjunctionE2 (Insert (ConjunctionF c1 c2) hs) c1 c2).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs (NegationF c2) H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+          apply or_intror.
+          apply (NegationI hs (ConjunctionF c1 c2)).
+          apply (ContradictionI (Insert (ConjunctionF c1 c2) hs) c1).
+          apply (ConjunctionE1 (Insert (ConjunctionF c1 c2) hs) c1 c2).
+          apply Assumption.
+          apply Union_intror.
+          apply In_singleton.
+          apply (extend_infers hs (NegationF c1) H0).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H2.
+      - intros hs.
+        intro.
+        assert (infers hs c1 \/ infers hs (NegationF c1)).
+          apply IHc1.
+          intros i.
+          intro.
+          apply H.
+          apply OccursDisjunction.
+          apply or_introl.
+          apply H0.
+        assert (infers hs c2 \/ infers hs (NegationF c2)).
+          apply IHc2.
+          intros i.
+          intro.
+          apply H.
+          apply OccursDisjunction.
+          apply or_intror.
+          apply H1.
+        destruct H0.
+          apply or_introl.
+          apply DisjunctionI1.
+          apply H0.
+          destruct H1.
+          apply or_introl.
+          apply DisjunctionI2.
+          apply H1.
+          apply or_intror.
+          apply (NegationI).
+          apply (DisjunctionE (Insert (DisjunctionF c1 c2) hs) c1 c2 ContradictionF).
+          apply (Assumption).
+          apply Union_intror.
+          apply In_singleton.
+          apply (ContradictionI (Insert c1 (Insert (DisjunctionF c1 c2) hs)) c1).
+          apply Assumption.
+          apply Union_intror.
+          apply In_singleton.
+          apply (extend_infers hs (NegationF c1) H0).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply Union_introl.
+          apply H2.
+          apply (ContradictionI (Insert c2 (Insert (DisjunctionF c1 c2) hs)) c2).
+          apply Assumption.
+          apply Union_intror.
+          apply In_singleton.
+          apply (extend_infers hs (NegationF c2) H1).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply Union_introl.
+          apply H2.
+      - intros hs.
+        intro.
+        assert (infers hs c1 \/ infers hs (NegationF c1)).
+          apply IHc1.
+          intros i.
+          intro.
+          apply H.
+          apply OccursImplication.
+          apply or_introl.
+          apply H0.
+        assert (infers hs c2 \/ infers hs (NegationF c2)).
+          apply IHc2.
+          intros i.
+          intro.
+          apply H.
+          apply OccursImplication.
+          apply or_intror.
+          apply H1.
+        destruct H1.
+          apply or_introl.
+          apply ImplicationI.
+          apply (extend_infers hs c2 H1).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H2.
+          destruct H0.
+            apply or_intror.
+            apply NegationI.
+            apply (ContradictionI (Insert (ImplicationF c1 c2) hs) c2).
+            apply (ImplicationE (Insert (ImplicationF c1 c2) hs) c1 c2).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs c1 H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply (extend_infers hs (NegationF c2) H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply or_introl.
+            apply ImplicationI.
+            apply ContradictionE.
+            apply (ContradictionI (Insert c1 hs) c1).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs (NegationF c1) H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+      - intros hs.
+        intro.
+        assert (infers hs c1 \/ infers hs (NegationF c1)).
+          apply IHc1.
+          intros i.
+          intro.
+          apply H.
+          apply OccursBiconditional.
+          apply or_introl.
+          apply H0.
+        assert (infers hs c2 \/ infers hs (NegationF c2)).
+          apply IHc2.
+          intros i.
+          intro.
+          apply H.
+          apply OccursBiconditional.
+          apply or_intror.
+          apply H1.
+        destruct H0.
+          destruct H1.
+            apply or_introl.
+            apply BiconditionalI.
+            apply (extend_infers hs c2 H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply (extend_infers hs c1 H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply or_intror.
+            apply NegationI.
+            apply (ContradictionI (Insert (BiconditionalF c1 c2) hs) c2).
+            apply (BiconditionalE1 (Insert (BiconditionalF c1 c2) hs) c1 c2).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs c1 H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply (extend_infers hs (NegationF c2) H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+          destruct H1.
+            apply or_intror.
+            apply NegationI.
+            apply (ContradictionI (Insert (BiconditionalF c1 c2) hs) c1).
+            apply (BiconditionalE2 (Insert (BiconditionalF c1 c2) hs) c1 c2).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs c2 H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply (extend_infers hs (NegationF c1) H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply or_introl.
+            apply BiconditionalI.
+            apply ContradictionE.
+            apply (ContradictionI (Insert c1 hs) c1).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs (NegationF c1) H0).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+            apply ContradictionE.
+            apply (ContradictionI (Insert c2 hs) c2).
+            apply Assumption.
+            apply Union_intror.
+            apply In_singleton.
+            apply (extend_infers hs (NegationF c2) H1).
+            intros p.
+            intro.
+            apply Union_introl.
+            apply H2.
+    Qed.
+
     Inductive ProofLine : FormulaSet -> FormulaSet :=
     | TrueL :
       forall hs : FormulaSet,
@@ -2821,12 +3165,59 @@ Module PropositionalLogic.
       In Formula (ProofLine hs) (NegationF (AtomF i))
     .
 
-    Axiom ProofLine_property :
+    Lemma ProofLine_property :
       forall hs : FormulaSet,
       ~ infers hs ContradictionF ->
       forall p : Formula,
       ~ infers (ProofLine hs) p ->
       ~ infers (MaximalConsistentSet hs) p.
+    Proof.
+      intros hs.
+      intro.
+      intros p.
+      intro.
+      assert (infers (ProofLine hs) p \/ infers (ProofLine hs) (NegationF p)).
+        apply (Occurs_property1 p (ProofLine hs)).
+        intros i.
+        intro.
+        destruct (InFormula_dec (AtomF i) (ProofLine hs)).
+          tauto.
+          apply or_intror.
+          apply FalseL.
+          intro.
+          apply n.
+          apply TrueL.
+          apply H2.
+      destruct H1.
+        tauto.
+        intro.
+        assert (infers (MaximalConsistentSet hs) (NegationF p)).
+          apply (extend_infers (ProofLine hs) (NegationF p) H1).
+          intros h.
+          intro.
+          inversion H3.
+          subst.
+          apply H4.
+          subst.
+          assert (~ infers (MaximalConsistentSet hs) (AtomF i)).
+            apply (MaximalConsistentSet_property3 hs H).
+            apply H4.
+            destruct (Formula_is_enumerable (AtomF i)) as [k].
+            apply (UnionsLindenbaum hs (NegationF (AtomF i)) (S k)).
+            simpl.
+            rewrite <- H6.
+            apply InsertF.
+            intro.
+            apply H5.
+            rewrite <- H6.
+            apply (extend_infers (Lindenbaum hs k) (enumerateFormula k) H7).
+            intros h.
+            apply (UnionsLindenbaum hs h k).
+        contradiction (MaximalConsistentSet_property2 hs).
+          apply (ContradictionI (MaximalConsistentSet hs) p).
+          apply H2.
+          apply H3.
+    Qed.
 
     Definition MakeLine (hs : FormulaSet) : Assignment :=
       fun i : PropVar => if InFormula_dec (AtomF i) (MaximalConsistentSet hs) then true else false
