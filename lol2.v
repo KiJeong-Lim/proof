@@ -3223,7 +3223,7 @@ Module PropositionalLogic.
       fun i : PropVar => if InFormula_dec (AtomF i) (MaximalConsistentSet hs) then true else false
     .
 
-    Theorem ModelExistsIfConsistent :
+    Lemma ModelExistsIfConsistent :
       forall hs : FormulaSet,
       ~ infers hs ContradictionF ->
       forall h : Formula,
@@ -3290,7 +3290,7 @@ Module PropositionalLogic.
         contradiction H3.
     Qed.
 
-    Corollary completeness :
+    Theorem completeness :
       forall hs : FormulaSet,
       forall c : Formula,
       ~ infers hs c ->
@@ -3343,8 +3343,8 @@ Module PropositionalLogic.
         simpl.
         apply Union_intror.
         apply In_singleton.
-        rewrite H3 in H4.
-        inversion H4.
+      rewrite H3 in H4.
+      inversion H4.
     Qed.
 
   End Completeness.
