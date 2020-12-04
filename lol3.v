@@ -958,27 +958,103 @@ Module PropositionalLogic.
   Section Semantics.
 
     Class CountableBooleanAlgebra (B : Type) : Type :=
-      { trueB : B
+      { eqB : B -> B -> Prop
+      ; trueB : B
       ; falseB : B
       ; negB : B -> B
       ; andB : B -> B -> B
       ; orB : B -> B -> B
       ; enumB : nat -> B
-      ; CBA_axm_1 : forall b1 : B, andB b1 b1 = b1
-      ; CBA_axm_2 : forall b1 : B, orB b1 b1 = b1
-      ; CBA_axm_3 : forall b1 : B, forall b2 : B, andB b1 b2 = andB b2 b1
-      ; CBA_axm_4 : forall b1 : B, forall b2 : B, orB b1 b2 = orB b2 b1
-      ; CBA_axm_5 : forall b1 : B, forall b2 : B, forall b3 : B, andB b1 (andB b2 b3) = andB (andB b1 b2) b3
-      ; CBA_axm_6 : forall b1 : B, forall b2 : B, forall b3 : B, orB b1 (orB b2 b3) = orB (orB b1 b2) b3
-      ; CBA_axm_7 : forall b1 : B, forall b2 : B, forall b3 : B, andB b1 (orB b2 b3) = orB (andB b1 b2) (andB b1 b3)
-      ; CBA_axm_8 : forall b1 : B, forall b2 : B, forall b3 : B, orB b1 (andB b2 b3) = andB (orB b1 b2) (orB b1 b3)
-      ; CBA_axm_9 : forall b1 : B, andB falseB b1 = falseB
-      ; CBA_axm_10 : forall b1 : B, andB trueB b1 = b1
-      ; CBA_axm_11 : forall b1 : B, orB falseB b1 = b1
-      ; CBA_axm_12 : forall b1 : B, orB trueB b1 = trueB
-      ; CBA_axm_13 : forall b1 : B, andB b1 (negB b1) = falseB
-      ; CBA_axm_14 : forall b1 : B, orB b1 (negB b1) = trueB
-      ; CBA_axm_15 : forall b1 : B, exists n1 : nat, enumB n1 = b1
+      ; CBA_AXM_1 :
+        forall b1 : B,
+        eqB b1 b1
+      ; CBA_AXM_2 :
+        forall b1 : B,
+        forall b2 : B,
+        eqB b1 b2 ->
+        eqB b2 b1
+      ; CBA_AXM_3 :
+        forall b1 : B,
+        forall b2 : B,
+        forall b3 : B,
+        eqB b1 b2 ->
+        eqB b2 b3 ->
+        eqB b1 b3
+      ; CBA_AXM_4 :
+        forall b1 : B,
+        forall b1' : B,
+        eqB b1 b1' ->
+        eqB (negB b1) (negB b1')
+      ; CBA_AXM_5 :
+        forall b1 : B,
+        forall b1' : B,
+        forall b2 : B,
+        forall b2' : B,
+        eqB b1 b1' ->
+        eqB b2 b2' ->
+        eqB (orB b1 b2) (orB b1' b2')
+      ; CBA_AXM_6 :
+        forall b1 : B,
+        forall b1' : B,
+        forall b2 : B,
+        forall b2' : B,
+        eqB b1 b1' ->
+        eqB b2 b2' ->
+        eqB (andB b1 b2) (andB b1' b2')
+      ; CBA_axm_1 :
+        forall b1 : B,
+        eqB (andB b1 b1) b1
+      ; CBA_axm_2 :
+        forall b1 : B,
+        eqB (orB b1 b1) b1
+      ; CBA_axm_3 :
+        forall b1 : B,
+        forall b2 : B,
+        eqB (andB b1 b2) (andB b2 b1)
+      ; CBA_axm_4 :
+        forall b1 : B,
+        forall b2 : B,
+        eqB (orB b1 b2) (orB b2 b1)
+      ; CBA_axm_5 :
+        forall b1 : B,
+        forall b2 : B,
+        forall b3 : B,
+        eqB (andB b1 (andB b2 b3)) (andB (andB b1 b2) b3)
+      ; CBA_axm_6 :
+        forall b1 : B,
+        forall b2 : B,
+        forall b3 : B, eqB (orB b1 (orB b2 b3)) (orB (orB b1 b2) b3)
+      ; CBA_axm_7 :
+        forall b1 : B,
+        forall b2 : B,
+        forall b3 : B,
+        eqB (andB b1 (orB b2 b3)) (orB (andB b1 b2) (andB b1 b3))
+      ; CBA_axm_8 :
+        forall b1 : B,
+        forall b2 : B,
+        forall b3 : B,
+        eqB (orB b1 (andB b2 b3)) (andB (orB b1 b2) (orB b1 b3))
+      ; CBA_axm_9 :
+        forall b1 : B,
+        eqB (andB falseB b1) falseB
+      ; CBA_axm_10 :
+        forall b1 : B,
+        eqB (andB trueB b1) b1
+      ; CBA_axm_11 :
+        forall b1 : B,
+        eqB (orB falseB b1) b1
+      ; CBA_axm_12 :
+        forall b1 : B,
+        eqB (orB trueB b1) trueB
+      ; CBA_axm_13 :
+        forall b1 : B,
+        eqB (andB b1 (negB b1)) falseB
+      ; CBA_axm_14 :
+        forall b1 : B,
+        eqB (orB b1 (negB b1)) trueB
+      ; CBA_axm_15 :
+        forall b1 : B,
+        exists n1 : nat, enumB n1 = b1
       }
     .
 
@@ -986,53 +1062,88 @@ Module PropositionalLogic.
 
     Variable cba : CountableBooleanAlgebra B.
 
-    Definition leq_CBA (b1 : B) (b2 : B) : Prop :=
-      andB b1 b2 = b1
-    .
+    Notation "b1 == b2" := (eqB b1 b2) (at level 80).
+
+    Notation "b1 =< b2" := (eqB (andB b1 b2) b1) (at level 80).
 
     Lemma leq_CBA_refl :
       forall b1 : B,
-      leq_CBA b1 b1.
+      b1 =< b1.
     Proof.
       intros b1.
       apply CBA_axm_1.
     Qed.
 
+    Lemma leq_CBA_refl' :
+      forall b1 : B,
+      forall b2 : B,
+      b1 == b2 ->
+      b1 =< b2.
+    Proof.
+      intros b1 b2.
+      intro.
+      assert (b2 == andB b1 b2).
+        apply CBA_AXM_2.
+        assert (andB b1 b2 == andB b2 b2).
+          apply CBA_AXM_6.
+        apply H.
+        apply CBA_AXM_1.
+        apply (CBA_AXM_3 _ _ _ H0).
+        apply leq_CBA_refl.
+      apply CBA_AXM_2.
+      apply (CBA_AXM_3 _ _ _ H).
+      apply H0.
+    Qed.
+
     Lemma leq_CBA_asym :
       forall b1 : B,
       forall b2 : B,
-      leq_CBA b1 b2 ->
-      leq_CBA b2 b1 ->
-      b1 = b2.
+      b1 =< b2 ->
+      b2 =< b1 ->
+      b1 == b2.
     Proof.
       intros b1 b2 H1 H2.
-      assert (andB b1 b2 = andB b2 b1).
+      assert (andB b1 b2 == andB b2 b1).
         apply CBA_axm_3.
-      assert (andB b1 b2 = b1).
+      assert (andB b1 b2 == b1).
         apply H1.
-      assert (andB b2 b1 = b2).
+      assert (andB b2 b1 == b2).
         apply H2.
-      rewrite H0 in H.
-      rewrite H3 in H.
-      apply H.
+      apply (CBA_AXM_3 b1 (andB b1 b2) b2).
+      apply (CBA_AXM_2).
+      apply H0.
+      apply (CBA_AXM_3 (andB b1 b2) (andB b2 b1) b2 H H3).
     Qed.
 
     Lemma leq_CBA_trans :
       forall b1 : B,
       forall b2 : B,
       forall b3 : B,
-      leq_CBA b1 b2 ->
-      leq_CBA b2 b3 ->
-      leq_CBA b1 b3.
+      b1 =< b2 ->
+      b2 =< b3 ->
+      b1 =< b3.
     Proof.
       intros b1 b2 b3 H1 H2.
-      unfold leq_CBA in *.
-      assert (andB b1 (andB b2 b3) = andB (andB b1 b2) b3).
+      assert (andB b1 (andB b2 b3) == andB (andB b1 b2) b3).
         apply CBA_axm_5.
-        rewrite H2 in H.
-        rewrite H1 in H.
-        rewrite <- H.
-        tauto.
+      assert (andB (andB b1 b2) b3 == andB b1 b3).
+        apply CBA_AXM_6.
+        apply H1.
+        apply CBA_AXM_1.
+      assert (andB b1 (andB b2 b3) == andB b1 b3).
+        apply (CBA_AXM_3 (andB b1 (andB b2 b3)) (andB (andB b1 b2) b3) (andB b1 b3) H H0).
+      assert (andB b1 (andB b2 b3) == andB b1 b2).
+        apply CBA_AXM_6.
+        apply CBA_AXM_1.
+        apply H2.
+      assert (andB b1 b3 == andB b1 b2).
+        apply (CBA_AXM_3 (andB b1 b3) (andB b1 (andB b2 b3)) (andB b1 b2)).
+        apply CBA_AXM_2.
+        apply H3.
+        apply H4.
+      apply (CBA_AXM_3 (andB b1 b3) (andB b1 b2) b1).
+      apply H5.
+      apply H1.
     Qed.
 
     Lemma leq_CBA_and :
@@ -1040,52 +1151,74 @@ Module PropositionalLogic.
       forall b2 : B,
       forall b3 : B,
       forall b4 : B,
-      leq_CBA b1 b3 ->
-      leq_CBA b2 b4 ->
-      leq_CBA (andB b1 b2) (andB b3 b4).
+      b1 =< b3 ->
+      b2 =< b4 ->
+      andB b1 b2 =< andB b3 b4.
     Proof.
       intros b1 b2 b3 b4.
       intro.
       intro.
-      unfold leq_CBA in *.
-      assert (andB (andB b1 b2) (andB b3 b4) = andB (andB b1 b3) (andB b2 b4)).
-        assert (andB b1 (andB b3 (andB b2 b4)) = andB (andB b1 b3) (andB b2 b4)).
+      assert (andB (andB b1 b2) (andB b3 b4) == andB (andB b1 b3) (andB b2 b4)).
+        assert (andB (andB b1 b3) (andB b2 b4) == andB b1 (andB b3 (andB b2 b4))).
+          apply CBA_AXM_2.
           apply CBA_axm_5.
-        rewrite <- H1.
-        assert (andB b3 (andB b2 b4) = andB (andB b3 b2) b4).
+        assert (andB b1 (andB b3 (andB b2 b4)) == andB b1 (andB (andB b3 b2) b4)).
+          apply CBA_AXM_6.
+          apply CBA_AXM_1.
           apply CBA_axm_5.
-        rewrite H2.
-        assert (andB b3 b2 = andB b2 b3).
+        assert (andB b1 (andB (andB b3 b2) b4) == andB b1 (andB (andB b2 b3) b4)).
+          apply CBA_AXM_6.
+          apply CBA_AXM_1.
+          apply CBA_AXM_6.
           apply CBA_axm_3.
-        rewrite H3.
-        assert (andB b2 (andB b3 b4) = andB (andB b2 b3) b4).
+          apply CBA_AXM_1.
+        assert (andB b1 (andB (andB b2 b3) b4) == andB b1 (andB (andB b2 b3) b4)).
+          apply CBA_AXM_6.
+          apply CBA_AXM_1.
+          apply CBA_AXM_1.
+        assert (andB b1 (andB (andB b2 b3) b4) == andB b1 (andB b2 (andB b3 b4))).
+          apply CBA_AXM_6.
+          apply CBA_AXM_1.
+          apply CBA_AXM_2.
           apply CBA_axm_5.
-        rewrite <- H4.
-        assert (andB b1 (andB b2 (andB b3 b4)) = andB (andB b1 b2) (andB b3 b4)).
+        assert (andB b1 (andB b2 (andB b3 b4)) == andB (andB b1 b2) (andB b3 b4)).
           apply CBA_axm_5.
-        rewrite <- H5.
-        tauto.
-      rewrite H in H1.
-      rewrite H0 in H1.
-      apply H1.
+        apply CBA_AXM_2.
+        apply (CBA_AXM_3 _ _ _ H1).
+        apply (CBA_AXM_3 _ _ _ H2).
+        apply (CBA_AXM_3 _ _ _ H3).
+        apply (CBA_AXM_3 _ _ _ H4).
+        apply (CBA_AXM_3 _ _ _ H5).
+        apply (CBA_AXM_3 _ _ _ H6).
+        apply CBA_AXM_1.
+      assert (andB (andB b1 b3) (andB b2 b4) == andB b1 b2).
+        apply CBA_AXM_6.
+        apply H.
+        apply H0.
+      apply (CBA_AXM_3 _ _ _ H1).
+      apply H2.
     Qed.
 
     Definition isFilter (filter : Ensemble B) :=
-      (exists x : B, filter x) /\ (forall b1 : B, forall b2 : B, filter b1 -> leq_CBA b1 b2 -> filter b2) /\ (forall b1 : B, forall b2 : B, filter b1 -> filter b2 -> filter (andB b1 b2))
+      (exists x : B, filter x) /\ (forall b1 : B, forall b2 : B, filter b1 -> b1 =< b2 -> filter b2) /\ (forall b1 : B, forall b2 : B, forall b : B, filter b1 -> filter b2 -> b == andB b1 b2 -> filter b)
     .
 
     Inductive FiniteMeet : Ensemble B -> nat -> Ensemble B :=
     | FiniteMeetZ :
-      forall bs1 : Ensemble B,
-      In B (FiniteMeet bs1 0) trueB
+      forall b : B,
+      forall bs : Ensemble B,
+      b == trueB ->
+      In B (FiniteMeet bs 0) b
     | FiniteMeetS :
+      forall b : B,
       forall bs : Ensemble B,
       forall n : nat,
       forall b1 : B,
       forall b2 : B,
       In B bs b1 ->
       In B (FiniteMeet bs n) b2 ->
-      In B (FiniteMeet bs (S n)) (andB b1 b2)
+      b == andB b1 b2 ->
+      In B (FiniteMeet bs (S n)) b
     .
 
     Lemma FiniteMeet_plus :
@@ -1096,36 +1229,66 @@ Module PropositionalLogic.
       forall b2 : B,
       In B (FiniteMeet bs n1) b1 ->
       In B (FiniteMeet bs n2) b2 ->
-      In B (FiniteMeet bs (n1 + n2)) (andB b1 b2).
+      exists b : B, In B (FiniteMeet bs (n1 + n2)) b /\ b == andB b1 b2.
     Proof.
       intros bs n1.
       induction n1.
       - intros n2 b1 b2 H1 H2.
         inversion H1.
         subst.
-        assert (andB trueB b2 = b2).
-          apply CBA_axm_10.
         assert (0 + n2 = n2).
           lia.
-        rewrite H.
         rewrite H0.
+        exists b2.
+        constructor.
         apply H2.
+        assert (andB b1 b2 == andB trueB b2).
+          apply CBA_AXM_6.
+          apply H.
+          apply CBA_AXM_1.
+        apply CBA_AXM_2.
+        apply (CBA_AXM_3 _ _ _ H3).
+        apply (CBA_axm_10).
       - intros n2 b1 b2 H1 H2.
         inversion H1.
         subst.
-        assert (In B (FiniteMeet bs (n1 + n2)) (andB b3 b2)).
-          apply IHn1.
+        assert (exists b' : B, In B (FiniteMeet bs (n1 + n2)) b' /\ b' == andB b3 b2).
+          destruct (IHn1 n2 b3 b2 H3 H2) as [b'].
+          destruct H.
+          exists b'.
+          constructor.
+          apply H.
           apply H4.
-          apply H2.
+        destruct H as [b'].
+        exists (andB b1 b2).
         simpl.
-        assert (andB (andB b0 b3) b2 = andB b0 (andB b3 b2)).
-          assert (andB b0 (andB b3 b2) = andB (andB b0 b3) b2).
+        assert (andB (andB b1 b3) b2 == andB b1 (andB b3 b2)).
+          assert (andB b1 (andB b3 b2) == andB (andB b1 b3) b2).
             apply CBA_axm_5.
-          intuition.
-        rewrite H3.
-        apply (FiniteMeetS bs (n1 + n2) b0 (andB b3 b2)).
+          apply CBA_AXM_2.
+          apply (CBA_axm_5).
+        destruct H.
+        constructor.
+        apply (FiniteMeetS (andB b1 b2) bs (n1 + n2) b0 b').
         apply H0.
         apply H.
+        assert (andB b1 b2 == andB (andB b0 b3) b2).
+          apply CBA_AXM_6.
+          apply H5.
+          apply CBA_AXM_1.
+        assert (andB (andB b0 b3) b2 == andB b0 (andB b3 b2)).
+          apply CBA_AXM_2.
+          apply CBA_axm_5.
+        assert (andB b0 (andB b3 b2) == andB b0 b').
+          apply CBA_AXM_6.
+          apply CBA_AXM_1.
+          apply CBA_AXM_2.
+          apply H6.
+        apply (CBA_AXM_3 _ _ _ H7).
+        apply (CBA_AXM_3 _ _ _ H8).
+        apply (CBA_AXM_3 _ _ _ H9).
+        apply (CBA_AXM_1).
+        apply CBA_AXM_1.
     Qed.
 
     Lemma FiniteMeet_subset :
@@ -1141,14 +1304,16 @@ Module PropositionalLogic.
         intros b H0.
         inversion H0.
         subst.
-        apply (FiniteMeetZ bs2).
+        apply (FiniteMeetZ b).
+        apply H1.
       - intros bs1 bs2 H.
         intros b H0.
         inversion H0.
         subst.
-        apply (FiniteMeetS bs2 n b1 b2).
+        apply (FiniteMeetS b bs2 n b1 b2).
         apply (H b1 H2).
-        apply (IHn bs1 bs2 H b2 H4).
+        apply (IHn bs1 bs2 H b2 H3).
+        apply H5.
     Qed.
 
     Inductive Closure : Ensemble B -> Ensemble B :=
@@ -1158,7 +1323,7 @@ Module PropositionalLogic.
       forall n : nat,
       forall b1 : B,
       In B (FiniteMeet bs n) b1 ->
-      leq_CBA b1 b ->
+      b1 =< b ->
       In B (Closure bs) b
     .
 
@@ -1186,7 +1351,8 @@ Module PropositionalLogic.
       constructor.
       exists trueB.
       apply (InClosure bs trueB 0 trueB).
-      apply (FiniteMeetZ bs).
+      apply (FiniteMeetZ trueB).
+      apply CBA_AXM_1.
       apply CBA_axm_10.
       constructor.
       intros b1 b2.
@@ -1199,39 +1365,58 @@ Module PropositionalLogic.
       apply (leq_CBA_trans b0 b1 b2).
       apply H2.
       apply H0.
-      intros b1 b2 H1 H2.
+      intros b1 b2 b H1 H2 H3.
       inversion H1.
       subst.
       inversion H2.
       subst.
-      apply (InClosure bs (andB b1 b2) (n + n0) (andB b0 b3)).
-      apply (FiniteMeet_plus bs n n0 b0 b3).
+      destruct (FiniteMeet_plus bs n n0 b3 b4) as [b'].
       apply H.
-      apply H3.
-      apply leq_CBA_and.
-      apply H0.
       apply H4.
+      destruct H6.
+      apply (InClosure bs b (n + n0) b').
+      apply H6.
+      assert (andB b3 b4 =< andB b1 b2).
+        apply (leq_CBA_and b3 b4 b1 b2).
+        apply H0.
+        apply H5.
+      apply (CBA_AXM_3 (andB b' b) (andB (andB b3 b4) (andB b1 b2)) b').
+      apply CBA_AXM_6.
+      apply H7.
+      apply H3.
+      apply CBA_AXM_2.
+      apply (CBA_AXM_3 _ _ _ H7).
+      apply CBA_AXM_2.
+      apply H8.
     Qed.
 
     Lemma fact_2_of_1_2_8 :
       forall bs : Ensemble B,
       isFilter bs ->
-      In B bs trueB.
+      forall b : B,
+      b == trueB ->
+      In B bs b.
     Proof.
       intros bs.
       intro.
+      intros b.
+      intro HHH.
       destruct H.
       destruct H0.
       destruct H as [b1].
       apply (H0 b1).
       apply H.
-      assert (andB b1 trueB = b1).
-        assert (andB trueB b1 = b1).
+      assert (andB b1 trueB == b1).
+        assert (andB trueB b1 == b1).
           apply CBA_axm_10.
-        assert (andB b1 trueB = andB trueB b1).
+        assert (andB b1 trueB == andB trueB b1).
           apply CBA_axm_3.
-        rewrite H2 in H3.
-        apply H3.
+        apply (CBA_AXM_3 _ _ _  H3 H2).
+      assert (andB b1 b == andB b1 trueB).
+        apply (CBA_AXM_6).
+        apply CBA_AXM_1.
+        apply HHH.
+      apply (CBA_AXM_3 _ _ _ H3).
       apply H2.
     Qed.
 
@@ -1245,15 +1430,19 @@ Module PropositionalLogic.
       intros b.
       intro.
       apply (InClosure bs b 1 b).
-      assert (andB b trueB = b).
-        assert (andB b trueB = andB trueB b).
+      assert (andB b trueB == b).
+        assert (andB b trueB == andB trueB b).
           apply CBA_axm_3.
-        rewrite H1.
-        apply CBA_axm_10.
-      rewrite <- H1.
-      apply (FiniteMeetS bs 0 b trueB).
+        assert (andB trueB b == b).
+          apply CBA_axm_10.
+        apply (CBA_AXM_3 _ _ _ H1).
+        apply H2.
+      apply (FiniteMeetS b bs 0 b trueB).
       apply H0.
-      apply (FiniteMeetZ bs).
+      apply (FiniteMeetZ trueB bs).
+      apply CBA_AXM_1.
+      apply CBA_AXM_2.
+      apply H1.
       apply (leq_CBA_refl b).
     Qed.
 
@@ -1305,6 +1494,7 @@ Module PropositionalLogic.
         subst.
         apply fact_2_of_1_2_8.
         apply H.
+        apply H1.
       - destruct H.
         destruct H0.
         intros b H2.
@@ -1312,7 +1502,24 @@ Module PropositionalLogic.
         subst.
         apply (H1 b1 b2).
         apply H4.
-        apply (IHn b2 H6).
+        apply (IHn b2 H5).
+        apply H7.
+    Qed.
+
+    Lemma proposition_1_2_9 :
+      forall bs : Ensemble B,
+      forall b1 : B,
+      forall b2 : B,
+      isFilter bs ->
+      b1 == b2 ->
+      In B bs b1 ->
+      In B bs b2.
+    Proof.
+      intros bs b1 b2 H0 H1 H2.
+      assert (b1 =< b2).
+        apply (leq_CBA_refl').
+        apply H1.
+      
     Qed.
 
   End Semantics.
