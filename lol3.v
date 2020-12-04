@@ -4,6 +4,10 @@ Require Export Peano_dec.
 Require Export Lia.
 Require Export Ensembles.
 
+(*
+  Constructive Completeness Proofs and Delimited Control
+  - Danko Ilik
+*)
 
 Module Helper.
 
@@ -950,5 +954,367 @@ Module PropositionalLogic.
     Qed.
 
   End Syntax.
+
+  Section Semantics.
+
+    Class CountableBooleanAlgebra (B : Type) : Type :=
+      { trueB : B
+      ; falseB : B
+      ; negB : B -> B
+      ; andB : B -> B -> B
+      ; orB : B -> B -> B
+      ; enumB : nat -> B
+      ; CBA_axm_1 : forall b1 : B, andB b1 b1 = b1
+      ; CBA_axm_2 : forall b1 : B, orB b1 b1 = b1
+      ; CBA_axm_3 : forall b1 : B, forall b2 : B, andB b1 b2 = andB b2 b1
+      ; CBA_axm_4 : forall b1 : B, forall b2 : B, orB b1 b2 = orB b2 b1
+      ; CBA_axm_5 : forall b1 : B, forall b2 : B, forall b3 : B, andB b1 (andB b2 b3) = andB (andB b1 b2) b3
+      ; CBA_axm_6 : forall b1 : B, forall b2 : B, forall b3 : B, orB b1 (orB b2 b3) = orB (orB b1 b2) b3
+      ; CBA_axm_7 : forall b1 : B, forall b2 : B, forall b3 : B, andB b1 (orB b2 b3) = orB (andB b1 b2) (andB b1 b3)
+      ; CBA_axm_8 : forall b1 : B, forall b2 : B, forall b3 : B, orB b1 (andB b2 b3) = andB (orB b1 b2) (orB b1 b3)
+      ; CBA_axm_9 : forall b1 : B, andB falseB b1 = falseB
+      ; CBA_axm_10 : forall b1 : B, andB trueB b1 = b1
+      ; CBA_axm_11 : forall b1 : B, orB falseB b1 = b1
+      ; CBA_axm_12 : forall b1 : B, orB trueB b1 = trueB
+      ; CBA_axm_13 : forall b1 : B, andB b1 (negB b1) = falseB
+      ; CBA_axm_14 : forall b1 : B, orB b1 (negB b1) = trueB
+      ; CBA_axm_15 : forall b1 : B, exists n1 : nat, enumB n1 = b1
+      }
+    .
+
+    Variable B : Type.
+
+    Variable cba : CountableBooleanAlgebra B.
+
+    Definition leq_CBA (b1 : B) (b2 : B) : Prop :=
+      andB b1 b2 = b1
+    .
+
+    Lemma leq_CBA_refl :
+      forall b1 : B,
+      leq_CBA b1 b1.
+    Proof.
+      intros b1.
+      apply CBA_axm_1.
+    Qed.
+
+    Lemma leq_CBA_asym :
+      forall b1 : B,
+      forall b2 : B,
+      leq_CBA b1 b2 ->
+      leq_CBA b2 b1 ->
+      b1 = b2.
+    Proof.
+      intros b1 b2 H1 H2.
+      assert (andB b1 b2 = andB b2 b1).
+        apply CBA_axm_3.
+      assert (andB b1 b2 = b1).
+        apply H1.
+      assert (andB b2 b1 = b2).
+        apply H2.
+      rewrite H0 in H.
+      rewrite H3 in H.
+      apply H.
+    Qed.
+
+    Lemma leq_CBA_trans :
+      forall b1 : B,
+      forall b2 : B,
+      forall b3 : B,
+      leq_CBA b1 b2 ->
+      leq_CBA b2 b3 ->
+      leq_CBA b1 b3.
+    Proof.
+      intros b1 b2 b3 H1 H2.
+      unfold leq_CBA in *.
+      assert (andB b1 (andB b2 b3) = andB (andB b1 b2) b3).
+        apply CBA_axm_5.
+        rewrite H2 in H.
+        rewrite H1 in H.
+        rewrite <- H.
+        tauto.
+    Qed.
+
+    Lemma leq_CBA_and :
+      forall b1 : B,
+      forall b2 : B,
+      forall b3 : B,
+      forall b4 : B,
+      leq_CBA b1 b3 ->
+      leq_CBA b2 b4 ->
+      leq_CBA (andB b1 b2) (andB b3 b4).
+    Proof.
+      intros b1 b2 b3 b4.
+      intro.
+      intro.
+      unfold leq_CBA in *.
+      assert (andB (andB b1 b2) (andB b3 b4) = andB (andB b1 b3) (andB b2 b4)).
+        assert (andB b1 (andB b3 (andB b2 b4)) = andB (andB b1 b3) (andB b2 b4)).
+          apply CBA_axm_5.
+        rewrite <- H1.
+        assert (andB b3 (andB b2 b4) = andB (andB b3 b2) b4).
+          apply CBA_axm_5.
+        rewrite H2.
+        assert (andB b3 b2 = andB b2 b3).
+          apply CBA_axm_3.
+        rewrite H3.
+        assert (andB b2 (andB b3 b4) = andB (andB b2 b3) b4).
+          apply CBA_axm_5.
+        rewrite <- H4.
+        assert (andB b1 (andB b2 (andB b3 b4)) = andB (andB b1 b2) (andB b3 b4)).
+          apply CBA_axm_5.
+        rewrite <- H5.
+        tauto.
+      rewrite H in H1.
+      rewrite H0 in H1.
+      apply H1.
+    Qed.
+
+    Definition isFilter (filter : Ensemble B) :=
+      (exists x : B, filter x) /\ (forall b1 : B, forall b2 : B, filter b1 -> leq_CBA b1 b2 -> filter b2) /\ (forall b1 : B, forall b2 : B, filter b1 -> filter b2 -> filter (andB b1 b2))
+    .
+
+    Inductive FiniteMeet : Ensemble B -> nat -> Ensemble B :=
+    | FiniteMeetZ :
+      forall bs1 : Ensemble B,
+      In B (FiniteMeet bs1 0) trueB
+    | FiniteMeetS :
+      forall bs : Ensemble B,
+      forall n : nat,
+      forall b1 : B,
+      forall b2 : B,
+      In B bs b1 ->
+      In B (FiniteMeet bs n) b2 ->
+      In B (FiniteMeet bs (S n)) (andB b1 b2)
+    .
+
+    Lemma FiniteMeet_plus :
+      forall bs : Ensemble B,
+      forall n1 : nat,
+      forall n2 : nat,
+      forall b1 : B,
+      forall b2 : B,
+      In B (FiniteMeet bs n1) b1 ->
+      In B (FiniteMeet bs n2) b2 ->
+      In B (FiniteMeet bs (n1 + n2)) (andB b1 b2).
+    Proof.
+      intros bs n1.
+      induction n1.
+      - intros n2 b1 b2 H1 H2.
+        inversion H1.
+        subst.
+        assert (andB trueB b2 = b2).
+          apply CBA_axm_10.
+        assert (0 + n2 = n2).
+          lia.
+        rewrite H.
+        rewrite H0.
+        apply H2.
+      - intros n2 b1 b2 H1 H2.
+        inversion H1.
+        subst.
+        assert (In B (FiniteMeet bs (n1 + n2)) (andB b3 b2)).
+          apply IHn1.
+          apply H4.
+          apply H2.
+        simpl.
+        assert (andB (andB b0 b3) b2 = andB b0 (andB b3 b2)).
+          assert (andB b0 (andB b3 b2) = andB (andB b0 b3) b2).
+            apply CBA_axm_5.
+          intuition.
+        rewrite H3.
+        apply (FiniteMeetS bs (n1 + n2) b0 (andB b3 b2)).
+        apply H0.
+        apply H.
+    Qed.
+
+    Lemma FiniteMeet_subset :
+      forall n : nat,
+      forall bs1 : Ensemble B,
+      forall bs2 : Ensemble B,
+      Included B bs1 bs2 ->
+      Included B (FiniteMeet bs1 n) (FiniteMeet bs2 n).
+    Proof.
+      intros n.
+      induction n.
+      - intros bs1 bs2 H.
+        intros b H0.
+        inversion H0.
+        subst.
+        apply (FiniteMeetZ bs2).
+      - intros bs1 bs2 H.
+        intros b H0.
+        inversion H0.
+        subst.
+        apply (FiniteMeetS bs2 n b1 b2).
+        apply (H b1 H2).
+        apply (IHn bs1 bs2 H b2 H4).
+    Qed.
+
+    Inductive Closure : Ensemble B -> Ensemble B :=
+    | InClosure :
+      forall bs : Ensemble B,
+      forall b : B,
+      forall n : nat,
+      forall b1 : B,
+      In B (FiniteMeet bs n) b1 ->
+      leq_CBA b1 b ->
+      In B (Closure bs) b
+    .
+
+    Definition inconsistent (bs1 : Ensemble B) : Prop :=
+      In B bs1 falseB
+    .
+
+    Definition equiconsistent (bs1 : Ensemble B) (bs2 : Ensemble B) : Prop :=
+      inconsistent bs1 <-> inconsistent bs2
+    .
+
+    Definition element_complete (bs1 : Ensemble B) (b2 : B) : Prop :=
+      equiconsistent bs1 (Closure (Add B bs1 b2)) -> In B bs1 b2
+    .
+
+    Definition complete (bs1 : Ensemble B) : Prop :=
+      forall b2 : B, element_complete bs1 b2
+    .
+
+    Lemma fact_1_of_1_2_8 :
+      forall bs : Ensemble B,
+      isFilter (Closure bs).
+    Proof.
+      intros bs.
+      constructor.
+      exists trueB.
+      apply (InClosure bs trueB 0 trueB).
+      apply (FiniteMeetZ bs).
+      apply CBA_axm_10.
+      constructor.
+      intros b1 b2.
+      intro.
+      intro.
+      inversion H.
+      subst.
+      apply (InClosure bs b2 n b0).
+      apply H1.
+      apply (leq_CBA_trans b0 b1 b2).
+      apply H2.
+      apply H0.
+      intros b1 b2 H1 H2.
+      inversion H1.
+      subst.
+      inversion H2.
+      subst.
+      apply (InClosure bs (andB b1 b2) (n + n0) (andB b0 b3)).
+      apply (FiniteMeet_plus bs n n0 b0 b3).
+      apply H.
+      apply H3.
+      apply leq_CBA_and.
+      apply H0.
+      apply H4.
+    Qed.
+
+    Lemma fact_2_of_1_2_8 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      In B bs trueB.
+    Proof.
+      intros bs.
+      intro.
+      destruct H.
+      destruct H0.
+      destruct H as [b1].
+      apply (H0 b1).
+      apply H.
+      assert (andB b1 trueB = b1).
+        assert (andB trueB b1 = b1).
+          apply CBA_axm_10.
+        assert (andB b1 trueB = andB trueB b1).
+          apply CBA_axm_3.
+        rewrite H2 in H3.
+        apply H3.
+      apply H2.
+    Qed.
+
+    Lemma fact_3_of_1_2_8 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      Included B bs (Closure bs).
+    Proof.
+      intros bs.
+      intro.
+      intros b.
+      intro.
+      apply (InClosure bs b 1 b).
+      assert (andB b trueB = b).
+        assert (andB b trueB = andB trueB b).
+          apply CBA_axm_3.
+        rewrite H1.
+        apply CBA_axm_10.
+      rewrite <- H1.
+      apply (FiniteMeetS bs 0 b trueB).
+      apply H0.
+      apply (FiniteMeetZ bs).
+      apply (leq_CBA_refl b).
+    Qed.
+
+    Lemma fact_4_of_1_2_8 :
+      forall bs1 : Ensemble B,
+      forall bs2 : Ensemble B,
+      Included B bs1 bs2 ->
+      Included B (Closure bs1) (Closure bs2).
+    Proof.
+      intros bs1 bs2 H.
+      intros b H0.
+      inversion H0.
+      subst.
+      assert (Included B (FiniteMeet bs1 n) (FiniteMeet bs2 n)).
+        apply FiniteMeet_subset.
+        apply H.
+      apply (InClosure bs2 b n b1).
+      apply (H3 b1 H1).
+      apply H2.
+    Qed.
+
+    Lemma fact_5_of_1_2_8 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      Included B (Closure bs) bs.
+    Proof.
+      intros bs.
+      intro.
+      cut (
+        forall n : nat,
+        Included B (FiniteMeet bs n) bs
+      ).
+        intro.
+        intros b H1.
+        inversion H1.
+        subst.
+        destruct H.
+        destruct H4.
+        assert (Included B (FiniteMeet bs n) bs).
+          apply (H0 n).
+        apply (H4 b1 b).
+        apply (H6 b1).
+        apply H2.
+        apply H3.
+      intros n.
+      induction n.
+      - intros b H0.
+        inversion H0.
+        subst.
+        apply fact_2_of_1_2_8.
+        apply H.
+      - destruct H.
+        destruct H0.
+        intros b H2.
+        inversion H2.
+        subst.
+        apply (H1 b1 b2).
+        apply H4.
+        apply (IHn b2 H6).
+    Qed.
+
+  End Semantics.
 
 End PropositionalLogic.
