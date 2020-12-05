@@ -1731,6 +1731,238 @@ Module PropositionalLogic.
             apply H8.
     Qed.
 
+    Lemma lemma_2_of_1_2_13 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      forall n1 : nat,
+      forall n2 : nat,
+      equiconsistent (SequenceConstruction bs n1) (SequenceConstruction bs n2).
+    Proof.
+      intros bs H n1 n2.
+      assert (equiconsistent bs (SequenceConstruction bs n1)).
+        apply lemma_1_of_1_2_13.
+        apply H.
+      assert (equiconsistent bs (SequenceConstruction bs n2)).
+        apply lemma_1_of_1_2_13.
+        apply H.
+      unfold equiconsistent in *.
+      tauto.
+    Qed.
+
+    Inductive InfiniteConstruction : Ensemble B -> Ensemble B :=
+    | InInfiniteConstruction :
+      forall bs : Ensemble B,
+      forall n : nat,
+      forall b : B,
+      In B (SequenceConstruction bs n) b ->
+      In B (InfiniteConstruction bs) b
+    .
+
+    Lemma lemma_3_of_1_2_13 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      Included B bs (InfiniteConstruction bs) /\ equiconsistent bs (InfiniteConstruction bs).
+    Proof.
+      intros bs H.
+      constructor.
+      intros b H0.
+      apply (InInfiniteConstruction bs 0 b).
+      simpl.
+      apply H0.
+      constructor.
+      intro.
+      apply (InInfiniteConstruction bs 0 falseB).
+      simpl.
+      apply H0.
+      intro.
+      inversion H0.
+      subst.
+      destruct (lemma_1_of_1_2_13 bs H n).
+      tauto.
+    Qed.
+
+    Theorem theorem_1_2_14 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      let bs' := InfiniteConstruction bs in
+      isFilter bs' /\ equiconsistent bs bs' /\ complete bs'.
+    Proof.
+      intros bs H bs'.
+      assert (Included B bs bs' /\ equiconsistent bs bs').
+        apply lemma_3_of_1_2_13.
+        apply H.
+      destruct H0.
+      constructor.
+      constructor.
+      destruct H.
+      destruct H as [b1].
+      exists b1.
+      apply (H0 b1 H).
+      constructor.
+      intros b1 b2 H4 H5.
+      inversion H4.
+      subst.
+      apply (InInfiniteConstruction bs n b2).
+      destruct (lemma_1_2_11 bs H n).
+      destruct H6.
+      apply (H6 b1 b2).
+      apply H2.
+      apply H5.
+      intros b1 b2 b H3 H4 H5.
+      inversion H3.
+      subst.
+      inversion H4.
+      subst.
+      assert (n <= n0 \/ n0 <= n).
+        lia.
+      destruct H7.
+      assert (Included B (SequenceConstruction bs n) (SequenceConstruction bs n0)).
+        apply lemma_1_2_12.
+        apply H7.
+      apply (InInfiniteConstruction bs n0 b).
+      apply (proposition_1_2_9 (SequenceConstruction bs n0) (andB b1 b2) b).
+      apply lemma_1_2_11.
+      apply H.
+      apply CBA_AXM_2.
+      apply H5.
+      apply fact_5_of_1_2_8.
+      apply lemma_1_2_11.
+      apply H.
+      apply (InClosure (SequenceConstruction bs n0) (andB b1 b2) 2 (andB b1 b2)).
+      apply (FiniteMeetS (andB b1 b2) (SequenceConstruction bs n0) 1 b1 b2).
+      apply (H8 b1 H2).
+      apply (FiniteMeetS b2 (SequenceConstruction bs n0) 0 b2 trueB).
+      apply H6.
+      apply (FiniteMeetZ).
+      apply CBA_AXM_1.
+      apply CBA_AXM_2.
+      assert (andB b2 trueB == andB trueB b2).
+        apply CBA_axm_3.
+      apply (CBA_AXM_3 _ _ _ H9).
+      apply CBA_axm_10.
+      apply CBA_AXM_1.
+      apply leq_CBA_refl.
+      assert (Included B (SequenceConstruction bs n0) (SequenceConstruction bs n)).
+        apply lemma_1_2_12.
+        apply H7.
+      apply (InInfiniteConstruction bs n b).
+      apply (proposition_1_2_9 (SequenceConstruction bs n) (andB b1 b2) b).
+      apply lemma_1_2_11.
+      apply H.
+      apply CBA_AXM_2.
+      apply H5.
+      apply fact_5_of_1_2_8.
+      apply lemma_1_2_11.
+      apply H.
+      apply (InClosure (SequenceConstruction bs n) (andB b1 b2) 2 (andB b1 b2)).
+      apply (FiniteMeetS (andB b1 b2) (SequenceConstruction bs n) 1 b1 b2).
+      apply H2.
+      apply (FiniteMeetS b2 (SequenceConstruction bs n) 0 b2 trueB).
+      apply (H8 b2 H6).
+      apply (FiniteMeetZ).
+      apply CBA_AXM_1.
+      apply CBA_AXM_2.
+      assert (andB b2 trueB == andB trueB b2).
+        apply CBA_axm_3.
+      apply (CBA_AXM_3 _ _ _ H9).
+      apply CBA_axm_10.
+      apply CBA_AXM_1.
+      apply leq_CBA_refl.
+      constructor.
+      apply H1.
+      unfold complete.
+      intros b'.
+      intro.
+      destruct (CBA_axm_15 b') as [n'].
+      assert (equiconsistent (SequenceConstruction bs n') (Closure (Add B (SequenceConstruction bs n') b'))).
+        constructor.
+        intro.
+        apply fact_3_of_1_2_8.
+        apply Union_introl.
+        apply H4.
+        intro.
+        assert (inconsistent (Closure (Add B bs' b'))).
+          apply (fact_4_of_1_2_8 (Add B (SequenceConstruction bs n') b') (Add B bs' b')).
+          intros b.
+          intro.
+          inversion H5.
+          subst.
+          apply Union_introl.
+          apply (InInfiniteConstruction bs n' b).
+          apply H6.
+          inversion H6.
+          subst.
+          apply Union_intror.
+          apply In_singleton.
+        apply H4.
+      assert (equiconsistent (SequenceConstruction bs n') bs').
+        assert (equiconsistent bs bs').
+          apply lemma_3_of_1_2_13.
+          apply H.
+        assert (equiconsistent bs (SequenceConstruction bs n')).
+          apply lemma_1_of_1_2_13.
+          apply H.
+        unfold equiconsistent in *.
+        tauto.
+      apply (proj2 H6).
+      apply (proj2 H2).
+      apply H5.
+      assert (In B (SequenceConstruction bs (S n')) b').
+        simpl.
+        apply fact_3_of_1_2_8.
+        apply Union_intror.
+        apply (InConstruction).
+        subst.
+        apply H4.
+        subst.
+        apply CBA_AXM_1.
+      apply (InInfiniteConstruction bs (S n') b').
+      apply H5.
+    Qed.
+
+    Definition isUltraFilter (bs : Ensemble B) :=
+      forall bs1 : Ensemble B, isFilter bs1 -> equiconsistent bs bs1 -> Included B bs bs1 -> Included B bs1 bs
+    .
+
+    Corollary corollary_1_2_16 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      isUltraFilter (InfiniteConstruction bs).
+    Proof.
+      intros bs H.
+      intros bs1 H0 H1 H2.
+      intros b H3.
+      assert (equiconsistent (InfiniteConstruction bs) (Closure (Add B (InfiniteConstruction bs) b))).
+        constructor.
+        intro.
+        apply fact_3_of_1_2_8.
+        apply Union_introl.
+        apply H4.
+        intro.
+        assert (inconsistent (Closure bs1)).
+          apply (fact_4_of_1_2_8 (Add B (InfiniteConstruction bs) b) bs1).
+          intros b'.
+          intro.
+          inversion H5.
+          subst.
+          apply (H2 b' H6).
+          inversion H6.
+          subst.
+          apply H3.
+          apply H4.
+        apply (proj2 H1).
+        assert (Included B (Closure bs1) bs1).
+          apply fact_5_of_1_2_8.
+          apply H0.
+        apply (H6 falseB H5).
+      destruct (theorem_1_2_14 bs H).
+      destruct H6.
+      unfold complete in *.
+      unfold element_complete in *.
+      apply (H7 b).
+      apply H4.
+    Qed.
+
   End Semantics.
 
 End PropositionalLogic.
