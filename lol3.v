@@ -1200,8 +1200,37 @@ Module PropositionalLogic.
     Qed.
 
     Definition isFilter (filter : Ensemble B) :=
-      (exists x : B, filter x) /\ (forall b1 : B, forall b2 : B, filter b1 -> b1 =< b2 -> filter b2) /\ (forall b1 : B, forall b2 : B, forall b : B, filter b1 -> filter b2 -> b == andB b1 b2 -> filter b)
+      (exists b1 : B, filter b1) /\ (forall b1 : B, forall b2 : B, filter b1 -> b1 =< b2 -> filter b2) /\ (forall b1 : B, forall b2 : B, forall b : B, filter b1 -> filter b2 -> b == andB b1 b2 -> filter b)
     .
+
+    Lemma isFilter_refl' :
+      forall bs1 : Ensemble B,
+      isFilter bs1 ->
+      forall bs2 : Ensemble B,
+      Included B bs1 bs2 ->
+      Included B bs2 bs1 ->
+      isFilter bs2.
+    Proof.
+      intros bs1 H0 bs2 H1 H2.
+      destruct H0.
+      destruct H0.
+      constructor.
+      destruct H as [b1].
+      exists b1.
+      apply (H1 b1 H).
+      constructor.
+      intros b1 b2 H4 H5.
+      apply (H1 b2).
+      apply (H0 b1 b2).
+      apply (H2 b1 H4).
+      apply H5.
+      intros b1 b2 b H4 H5 H6.
+      apply (H1 b).
+      apply (H3 b1 b2 b).
+      apply (H2 b1 H4).
+      apply (H2 b2 H5).
+      apply H6.
+    Qed.
 
     Inductive FiniteMeet : Ensemble B -> nat -> Ensemble B :=
     | FiniteMeetZ :
@@ -1422,27 +1451,24 @@ Module PropositionalLogic.
 
     Lemma fact_3_of_1_2_8 :
       forall bs : Ensemble B,
-      isFilter bs ->
       Included B bs (Closure bs).
     Proof.
       intros bs.
-      intro.
-      intros b.
-      intro.
+      intros b H0.
       apply (InClosure bs b 1 b).
       assert (andB b trueB == b).
         assert (andB b trueB == andB trueB b).
           apply CBA_axm_3.
         assert (andB trueB b == b).
           apply CBA_axm_10.
-        apply (CBA_AXM_3 _ _ _ H1).
-        apply H2.
+        apply (CBA_AXM_3 _ _ _ H).
+        apply H1.
       apply (FiniteMeetS b bs 0 b trueB).
       apply H0.
       apply (FiniteMeetZ trueB bs).
       apply CBA_AXM_1.
       apply CBA_AXM_2.
-      apply H1.
+      apply H.
       apply (leq_CBA_refl b).
     Qed.
 
@@ -1519,7 +1545,190 @@ Module PropositionalLogic.
       assert (b1 =< b2).
         apply (leq_CBA_refl').
         apply H1.
-      
+      destruct H0.
+      destruct H3.
+      apply (H3 b1 b2).
+      apply H2.
+      apply H.
+    Qed.
+
+    Inductive Construction : Ensemble B -> nat -> Ensemble B :=
+    | InConstruction :
+      forall bs : Ensemble B,
+      forall n : nat,
+      forall b : B,
+      equiconsistent bs (Closure (Add B bs (enumB n))) ->
+      enumB n == b ->
+      In B (Construction bs n) b
+    .
+
+    Fixpoint SequenceConstruction (bs : Ensemble B) (n : nat) : Ensemble B :=
+      match n with
+      | 0 => bs
+      | S n' =>
+        let bs' := SequenceConstruction bs n' in
+        Closure (Union B bs' (Construction bs' n'))
+      end
+    .
+
+    Lemma lemma_1_2_11 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      forall n : nat,
+      isFilter (SequenceConstruction bs n).
+    Proof.
+      intros bs H n.
+      induction n.
+      - simpl.
+        apply H.
+      - simpl.
+        apply fact_1_of_1_2_8.
+    Qed.
+
+    Lemma lemma_1_2_12 :
+      forall bs : Ensemble B,
+      forall n1 : nat,
+      forall n2 : nat,
+      n1 <= n2 ->
+      Included B (SequenceConstruction bs n1) (SequenceConstruction bs n2).
+    Proof.
+      intros bs n1 n2 H.
+      induction H.
+      - intros b H0.
+        apply H0.
+      - intros b H0.
+        simpl.
+        assert (In B (SequenceConstruction bs m) b).
+          apply (IHle b H0).
+        apply (fact_4_of_1_2_8 (SequenceConstruction bs m)).
+        intros b0 H3.
+        apply Union_introl.
+        apply H3.
+        apply fact_3_of_1_2_8.
+        apply H1.
+    Qed.
+
+    Lemma lemma_1_of_1_2_13 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      forall n : nat,
+      equiconsistent bs (SequenceConstruction bs n).
+    Proof.
+      intros bs H n.
+      induction n.
+      - simpl.
+        unfold equiconsistent.
+        tauto.
+      - constructor.
+        * intro.
+          assert (Included B (SequenceConstruction bs n) (SequenceConstruction bs (S n))).
+          apply lemma_1_2_12.
+          lia.
+          destruct IHn.
+          apply H1.
+          apply H2.
+          apply H0.
+        * intro.
+          inversion H0.
+          subst.
+          apply (proj2 IHn).
+          assert (falseB == b1).
+            assert (andB b1 falseB == andB falseB b1).
+              apply CBA_axm_3.
+            assert (andB falseB b1 == falseB).
+              apply CBA_axm_9.
+            apply (leq_CBA_asym).
+            apply H4.
+            apply H2.
+          cut (
+            forall l : nat,
+            forall b : B,
+            In B (FiniteMeet (Union B (SequenceConstruction bs n) (Construction (SequenceConstruction bs n) n)) l) b ->
+            In B (SequenceConstruction bs n) b \/ equiconsistent (SequenceConstruction bs n) (Closure (Add B (SequenceConstruction bs n) (enumB n)))
+          ).
+            intro.
+            destruct (H4 n0 b1 H1).
+            apply (proposition_1_2_9 (SequenceConstruction bs n) b1 falseB).
+            apply lemma_1_2_11.
+            apply H.
+            apply CBA_AXM_2.
+            apply H3.
+            apply H5.
+            apply (proj2 H5).
+            apply (InClosure (Add B (SequenceConstruction bs n) (enumB n)) falseB n0 b1).
+            assert (forall i : nat, forall b : B, In B (FiniteMeet (Union B (SequenceConstruction bs n)(Construction (SequenceConstruction bs n) n)) i) b ->  (FiniteMeet (Add B (SequenceConstruction bs n) (enumB n)) i) b).
+              induction i.
+                intros b.
+                intro.
+                inversion H6.
+                subst.
+                apply (FiniteMeetZ b (Add B (SequenceConstruction bs n) (enumB n)) H7).
+                intros b.
+                intro.
+                inversion H6.
+                subst.
+                inversion H8.
+                subst.
+                apply (FiniteMeetS b (Add B (SequenceConstruction bs n) (enumB n)) i b2 b3).
+                apply Union_introl.
+                apply H7.
+                apply (IHi).
+                apply H9.
+                apply H11.
+                subst.
+                simpl.
+                apply (FiniteMeetS b (Add B (SequenceConstruction bs n) (enumB n)) i (enumB n) b3).
+                apply Union_intror.
+                apply In_singleton.
+                apply (IHi).
+                apply H9.
+                inversion H7.
+                subst.
+                assert (andB (enumB n) b3 == andB b2 b3).
+                  apply CBA_AXM_6.
+                  apply H12.
+                  apply CBA_AXM_1.
+                apply (CBA_AXM_3 _ _ _ H11).
+                apply CBA_AXM_2.
+                apply H13.
+              apply (H6 n0 b1).
+              apply H1.
+              apply H2.
+          intros l.
+          induction l.
+          + intros b.
+            intro.
+            inversion H4.
+            subst.
+            apply or_introl.
+            apply fact_2_of_1_2_8.
+            apply lemma_1_2_11.
+            apply H.
+            apply H5.
+          + intros b.
+            intro.
+            inversion H4.
+            subst.
+            assert (isFilter (SequenceConstruction bs n)).
+              apply lemma_1_2_11.
+              apply H.
+            destruct (IHl b3 H7).
+            inversion H6.
+            subst.
+            apply or_introl.
+            destruct H5.
+            destruct H11.
+            apply (H12 b2 b3 b).
+            apply H10.
+            apply H8.
+            apply H9.
+            subst.
+            inversion H10.
+            subst.
+            apply or_intror.
+            apply H11.
+            apply or_intror.
+            apply H8.
     Qed.
 
   End Semantics.
