@@ -2648,4 +2648,176 @@ Module PropositionalLogic.
 
   End Soundness.
 
+  Section Completeness.
+
+    Program Instance LindenbaumBooleanAlgebra : CountableBooleanAlgebra Formula :=
+      { eqB := fun p1 : Formula => fun p2 : Formula => infers (Singleton Formula p1) p2 /\ infers (Singleton Formula p2) p1
+      ; trueB := NegationF ContradictionF
+      ; falseB := ContradictionF
+      ; andB := ConjunctionF
+      ; enumB := enumerateFormula
+      }
+    .
+    Next Obligation.
+      constructor.
+      apply Assumption.
+      apply In_singleton.
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply (cut_property (Singleton Formula b1) b2 b3).
+      apply H.
+      apply (extend_infers (Singleton Formula b2) b3 H0).
+      intros b.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+      apply (cut_property (Singleton Formula b3) b2 b1).
+      apply H1.
+      apply (extend_infers (Singleton Formula b2) b1 H2).
+      intros b.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply (cut_property (Singleton Formula (ConjunctionF b1 b2)) b1).
+      apply (ConjunctionE1 _ _ b2).
+      apply Assumption.
+      apply In_singleton.
+      apply (extend_infers (Singleton Formula b1) b1' H).
+      intros h.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+      apply (cut_property (Singleton Formula (ConjunctionF b1 b2)) b2).
+      apply (ConjunctionE2 _ b1 _).
+      apply Assumption.
+      apply In_singleton.
+      apply (extend_infers (Singleton Formula b2) b2' H0).
+      intros h.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply (cut_property (Singleton Formula (ConjunctionF b1' b2')) b1').
+      apply (ConjunctionE1 _ _ b2').
+      apply Assumption.
+      apply In_singleton.
+      apply (extend_infers (Singleton Formula b1') b1 H2).
+      intros h.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+      apply (cut_property (Singleton Formula (ConjunctionF b1' b2')) b2').
+      apply (ConjunctionE2 _ b1' _).
+      apply Assumption.
+      apply In_singleton.
+      apply (extend_infers (Singleton Formula b2') b2 H1).
+      intros h.
+      intro.
+      inversion H3.
+      subst.
+      apply Union_intror.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE1 _ b1 b1).
+      apply Assumption.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply Assumption.
+      apply In_singleton.
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply (ConjunctionE2 _ b1 b2).
+      apply Assumption.
+      apply In_singleton.
+      apply (ConjunctionE1 _ b1 b2).
+      apply Assumption.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE2 _ b2 b1).
+      apply Assumption.
+      apply In_singleton.
+      apply (ConjunctionE1 _ b2 b1).
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 (ConjunctionF b2 b3)).
+      apply Assumption.
+      apply In_singleton.
+      apply (ConjunctionE1 _ b2 b3).
+      apply (ConjunctionE2 _ b1 (ConjunctionF b2 b3)).
+      apply Assumption.
+      apply In_singleton.
+      apply (ConjunctionE2 _ b2 b3).
+      apply (ConjunctionE2 _ b1 (ConjunctionF b2 b3)).
+      apply Assumption.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 b2).
+      apply (ConjunctionE1 _ (ConjunctionF b1 b2) b3).
+      apply Assumption.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE2 _ b1 b2).
+      apply (ConjunctionE1 _ (ConjunctionF b1 b2) b3).
+      apply Assumption.
+      apply In_singleton.
+      apply (ConjunctionE2 _ (ConjunctionF b1 b2) b3).
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE1 _ ContradictionF b1).
+      apply Assumption.
+      apply In_singleton.
+      apply (ContradictionE _ (ConjunctionF ContradictionF b1)).
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE2 _ (NegationF ContradictionF) b1).
+      apply Assumption.
+      apply In_singleton.
+      apply ConjunctionI.
+      apply NegationI.
+      apply Assumption.
+      apply Union_intror.
+      apply In_singleton.
+      apply Assumption.
+      apply In_singleton.
+    Qed.
+    Next Obligation.
+      apply (Formula_is_enumerable b1).
+    Qed.
+
+  End Completeness.
+
 End PropositionalLogic.
