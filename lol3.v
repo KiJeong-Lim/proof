@@ -1940,15 +1940,15 @@ Module PropositionalLogic.
     .
 
     Definition preservesImplication (structure : Formula -> Prop) : Prop :=
-      forall p1 : Formula, forall p2 : Formula, satisfies structure (DisjunctionF p1 p2) <-> (satisfies structure p1 -> satisfies structure p2)
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (ImplicationF p1 p2) <-> (satisfies structure p1 -> satisfies structure p2)
     .
 
     Definition preservesBiconditional (structure : Formula -> Prop) : Prop :=
-      forall p1 : Formula, forall p2 : Formula, satisfies structure (DisjunctionF p1 p2) <-> (satisfies structure p1 <-> satisfies structure p2)
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (BiconditionalF p1 p2) <-> (satisfies structure p1 <-> satisfies structure p2)
     .
 
     Definition isStructure (structure : Formula -> Prop) : Prop :=
-      preservesContradiction structure /\ preservesNegation structure /\ preservesConjunction structure /\ preservesDisjunction structure /\ preservesImplication structure /\ preservesBiconditional structure
+      preservesContradiction structure /\ preservesNegation structure /\ preservesConjunction structure /\ preservesDisjunction structure /\ preservesImplication structure /\ preservesBiconditional structure /\ (forall p1 : Formula, satisfies structure (NegationF (NegationF p1)) -> satisfies structure p1)
     .
 
     Definition entails (hs : Ensemble Formula) (c : Formula) : Prop :=
@@ -2126,5 +2126,526 @@ Module PropositionalLogic.
     Qed.
 
   End InferenceRules.
+
+  Section Soundness.
+
+    Lemma extend_infers :
+      forall hs1 : Ensemble Formula,
+      forall c : Formula,
+      infers hs1 c ->
+      forall hs2 : Ensemble Formula,
+      Included Formula hs1 hs2 ->
+      infers hs2 c.
+    Proof.
+      intros hs1 c.
+      intro.
+      induction H.
+      - intros hs2.
+        intro.
+        apply (Assumption hs2 h).
+        apply (H0 h H).
+      - intros hs2.
+        intro.
+        apply (ContradictionI hs2 a).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (ContradictionE hs2 a).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (NegationI hs2 a).
+        apply (IHinfers (Add Formula hs2 a)).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (NegationE hs2 a).
+        apply (IHinfers (Add Formula hs2 (NegationF a))).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (ConjunctionI hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (ConjunctionE1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (ConjunctionE2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionI1 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionI2 hs2 a b).
+        apply (IHinfers hs2 H0).
+      - intros hs2.
+        intro.
+        apply (DisjunctionE hs2 a b c).
+        apply (IHinfers1 hs2 H2).
+        apply (IHinfers2 (Add Formula hs2 a)).
+        apply Included_Add.
+        apply H2.
+        apply (IHinfers3 (Add Formula hs2 b)).
+        apply Included_Add.
+        apply H2.
+      - intros hs2.
+        intro.
+        apply (ImplicationI hs2 a b).
+        apply (IHinfers (Add Formula hs2 a)).
+        apply Included_Add.
+        apply H0.
+      - intros hs2.
+        intro.
+        apply (ImplicationE hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BiconditionalI hs2 a b).
+        apply (IHinfers1 (Add Formula hs2 a)).
+        apply Included_Add.
+        apply H1.
+        apply (IHinfers2 (Add Formula hs2 b)).
+        apply Included_Add.
+        apply H1.
+      - intros hs2.
+        intro.
+        apply (BiconditionalE1 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+      - intros hs2.
+        intro.
+        apply (BiconditionalE2 hs2 a b).
+        apply (IHinfers1 hs2 H1).
+        apply (IHinfers2 hs2 H1).
+    Qed.
+
+    Lemma Assumption_preserves :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      In Formula hs a ->
+      entails hs a.
+    Proof.
+      intros hs c H.
+      apply (extend_entails (Singleton Formula c) c).
+      intros v.
+      intros.
+      apply H1.
+      apply In_singleton.
+      intros h.
+      intro.
+      inversion H0.
+      subst.
+      apply H.
+    Qed.
+
+    Lemma ContradictionI_preserves :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      entails hs a ->
+      entails hs (NegationF a) ->
+      entails hs ContradictionF.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesNegation v).
+        unfold isStructure in H1.
+        intuition.
+      assert (satisfies v a).
+        apply (H v H1 H2).
+      assert (satisfies v (NegationF a)).
+        apply (H0 v H1 H2).
+      contradiction (proj1 (H3 a)).
+    Qed.
+
+    Lemma ContradictionE_preserves :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      entails hs ContradictionF ->
+      entails hs a.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesContradiction v).
+        unfold isStructure in H0.
+        intuition.
+      assert (satisfies v ContradictionF).
+        apply (H v H0 H1).
+      contradiction (proj1 H2).
+    Qed.
+
+    Lemma NegationI_preserves :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      entails (Add Formula hs a) ContradictionF ->
+      entails hs (NegationF a).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesNegation v).
+        unfold isStructure in H0.
+        intuition.
+      assert (preservesContradiction v).
+        unfold isStructure in H0.
+        intuition.
+      apply (proj2 (H2 a)).
+      intro.
+      assert (satisfies v ContradictionF).
+        apply (H v).
+        apply H0.
+        intros h.
+        intro.
+        inversion H5.
+        subst.
+        apply (H1 h H6).
+        subst.
+        inversion H6.
+        subst.
+        apply H4.
+      contradiction (proj1 H3).
+    Qed.
+
+    Lemma NegationE_preserves :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      entails (Add Formula hs (NegationF a)) ContradictionF ->
+      entails hs a.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesNegation v).
+        unfold isStructure in H0.
+        intuition.
+      assert (preservesContradiction v).
+        unfold isStructure in H0.
+        intuition.
+      assert (forall p1 : Formula, satisfies v (NegationF (NegationF p1)) -> satisfies v p1).
+        unfold isStructure in H0.
+        intuition.
+      apply (H4 a).
+      apply (NegationI_preserves hs (NegationF a)).
+      apply H.
+      apply H0.
+      apply H1.
+    Qed.
+
+    Lemma ConjunctionI_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs a ->
+      entails hs b ->
+      entails hs (ConjunctionF a b).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesConjunction v).
+        unfold isStructure in H1.
+        intuition.
+      apply (proj2 (H3 a b)).
+      constructor.
+      apply H.
+      apply H1.
+      apply H2.
+      apply H0.
+      apply H1.
+      apply H2.
+    Qed.
+
+    Lemma ConjunctionE1_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs (ConjunctionF a b) ->
+      entails hs a.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesConjunction v).
+        unfold isStructure in H0.
+        intuition.
+      destruct (proj1 (H2 a b)).
+        apply H.
+        apply H0.
+        apply H1.
+      apply H3.
+    Qed.
+
+    Lemma ConjunctionE2_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs (ConjunctionF a b) ->
+      entails hs b.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesConjunction v).
+        unfold isStructure in H0.
+        intuition.
+      destruct (proj1 (H2 a b)).
+        apply H.
+        apply H0.
+        apply H1.
+      apply H4.
+    Qed.
+
+    Lemma DisjunctionI1_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs a ->
+      entails hs (DisjunctionF a b).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesDisjunction v).
+        unfold isStructure in H0.
+        intuition.
+      apply (proj2 (H2 a b)).
+      apply or_introl.
+      apply H.
+      apply H0.
+      apply H1.
+    Qed.
+
+    Lemma DisjunctionI2_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs b ->
+      entails hs (DisjunctionF a b).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesDisjunction v).
+        unfold isStructure in H0.
+        intuition.
+      apply (proj2 (H2 a b)).
+      apply or_intror.
+      apply H.
+      apply H0.
+      apply H1.
+    Qed.
+
+    Lemma DisjunctionE_preserves :
+      forall hs : Ensemble Formula,
+      forall a b c : Formula,
+      entails hs (DisjunctionF a b) ->
+      entails (Add Formula hs a) c ->
+      entails (Add Formula hs b) c ->
+      entails hs c.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesDisjunction v).
+        unfold isStructure in H2.
+        intuition.
+      assert (satisfies v a \/ satisfies v b).
+        apply (proj1 (H4 a b)).
+        apply H.
+        apply H2.
+        apply H3.
+      destruct H5.
+      apply H0.
+      apply H2.
+      intros h.
+      intro.
+      inversion H6.
+      subst.
+      apply H3.
+      apply H7.
+      subst.
+      inversion H7.
+      subst.
+      apply H5.
+      apply H1.
+      apply H2.
+      intros h.
+      intro.
+      inversion H6.
+      subst.
+      apply H3.
+      apply H7.
+      subst.
+      inversion H7.
+      subst.
+      apply H5.
+    Qed.
+
+    Lemma ImplicationI_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails (Add Formula hs a) b ->
+      entails hs (ImplicationF a b).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesImplication v).
+        unfold isStructure in H0.
+        intuition.
+      apply (proj2 (H2 a b)).
+      intro.
+      apply H.
+      apply H0.
+      intros h.
+      intro.
+      inversion H4.
+      subst.
+      apply (H1 h).
+      apply H5.
+      inversion H5.
+      subst.
+      apply H3.
+    Qed.
+
+    Lemma ImplicationE_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs (ImplicationF a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesImplication v).
+        unfold isStructure in H1.
+        intuition.
+      apply (proj1 (H3 a b)).
+      apply H.
+      apply H1.
+      apply H2.
+      apply H0.
+      apply H1.
+      apply H2.
+    Qed.
+
+    Lemma BiconditionalI_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails (Add Formula hs a) b ->
+      entails (Add Formula hs b) a ->
+      entails hs (BiconditionalF a b).
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesBiconditional v).
+        unfold isStructure in H1.
+        intuition.
+      apply (proj2 (H3 a b)).
+      constructor.
+      intro.
+      apply H.
+      apply H1.
+      intros h.
+      intro.
+      inversion H5.
+      subst.
+      apply (H2 h).
+      apply H6.
+      inversion H6.
+      subst.
+      apply H4.
+      intro.
+      apply H0.
+      apply H1.
+      intros h.
+      intro.
+      inversion H5.
+      subst.
+      apply (H2 h).
+      apply H6.
+      inversion H6.
+      subst.
+      apply H4.
+    Qed.
+
+    Lemma BiconditionalE1_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs (BiconditionalF a b) ->
+      entails hs a ->
+      entails hs b.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesBiconditional v).
+        unfold isStructure in H1.
+        intuition.
+      apply (proj1 (H3 a b)).
+      apply H.
+      apply H1.
+      apply H2.
+      apply H0.
+      apply H1.
+      apply H2.
+    Qed.
+
+    Lemma BiconditionalE2_preserves :
+      forall hs : Ensemble Formula,
+      forall a b : Formula,
+      entails hs (BiconditionalF a b) ->
+      entails hs b ->
+      entails hs a.
+    Proof.
+      intros.
+      intros v.
+      intros.
+      assert (preservesBiconditional v).
+        unfold isStructure in H1.
+        intuition.
+      apply (proj1 (H3 a b)).
+      apply H.
+      apply H1.
+      apply H2.
+      apply H0.
+      apply H1.
+      apply H2.
+    Qed.
+
+    Theorem Soundness :
+      forall hs : Ensemble Formula,
+      forall c : Formula,
+      infers hs c ->
+      entails hs c.
+    Proof.
+      intros hs c H.
+      induction H.
+      - apply (Assumption_preserves hs h H).
+      - apply (ContradictionI_preserves hs a IHinfers1 IHinfers2).
+      - apply (ContradictionE_preserves hs a IHinfers).
+      - apply (NegationI_preserves hs a IHinfers).
+      - apply (NegationE_preserves hs a IHinfers).
+      - apply (ConjunctionI_preserves hs a b IHinfers1 IHinfers2).
+      - apply (ConjunctionE1_preserves hs a b IHinfers).
+      - apply (ConjunctionE2_preserves hs a b IHinfers).
+      - apply (DisjunctionI1_preserves hs a b IHinfers).
+      - apply (DisjunctionI2_preserves hs a b IHinfers).
+      - apply (DisjunctionE_preserves hs a b c IHinfers1 IHinfers2 IHinfers3).
+      - apply (ImplicationI_preserves hs a b IHinfers).
+      - apply (ImplicationE_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalI_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalE1_preserves hs a b IHinfers1 IHinfers2).
+      - apply (BiconditionalE2_preserves hs a b IHinfers1 IHinfers2).
+    Qed.
+
+  End Soundness.
 
 End PropositionalLogic.
