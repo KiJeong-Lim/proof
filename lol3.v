@@ -2827,11 +2827,22 @@ Module PropositionalLogic.
       forall hs : Ensemble Formula,
       forall c : Formula,
       infers hs c ->
-      exists hs' : Ensemble Formula, Included Formula hs' hs /\ infers hs' c /\ (exists bound : nat, forall h : Formula, In Formula hs' h -> exists n : nat, enumerateFormula n = h /\ n < bound).
+      exists hs' : Ensemble Formula, (forall h : Formula, In Formula hs' h \/ ~ In Formula hs' h) /\ Included Formula hs' hs /\ infers hs' c /\ (exists bound : nat, forall h : Formula, In Formula hs' h -> exists n : nat, enumerateFormula n = h /\ n < bound).
     Proof.
       intros hs c H.
       induction H.
       - exists (Singleton Formula h).
+        constructor.
+        intros p.
+        destruct (eq_Formula_dec h p).
+        apply or_introl.
+        subst.
+        apply In_singleton.
+        apply or_intror.
+        intro.
+        subst.
+        inversion H0.
+        apply (n H1).
         constructor.
         intros p.
         intro.
@@ -2853,7 +2864,26 @@ Module PropositionalLogic.
         lia.
       - destruct IHinfers1 as [hs1' H1].
         destruct IHinfers2 as [hs2' H2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         exists (Union Formula hs1' hs2').
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H3.
+        destruct (HHH2 h).
+        apply or_introl.
+        apply Union_intror.
+        apply H4.
+        apply or_intror.
+        intro.
+        inversion H5.
+        subst.
+        apply (H3 H6).
+        subst.
+        apply (H4 H6).
         destruct H1.
         destruct H3.
         destruct H2.
@@ -2899,9 +2929,12 @@ Module PropositionalLogic.
         apply H9.
         lia.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists hs1.
+        constructor.
+        apply HHH1.
         constructor.
         apply H0.
         constructor.
@@ -2911,9 +2944,30 @@ Module PropositionalLogic.
         exists bound1.
         apply H2.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists (Subtract Formula hs1 a).
+        constructor.
+        intros h.
+        destruct (eq_Formula_dec a h).
+        apply or_intror.
+        intro.
+        inversion H3.
+        subst.
+        apply H5.
+        apply In_singleton.
+        destruct (HHH1 h).
+        apply or_introl.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        apply (n H5).
+        apply or_intror.
+        intro.
+        inversion H4.
+        apply (H3 H5).
         assert (Included Formula (Subtract Formula hs1 a) hs).
           intros p.
           intro.
@@ -2951,20 +3005,41 @@ Module PropositionalLogic.
         inversion H5.
         apply H6.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists (Subtract Formula hs1 (NegationF a)).
+        constructor.
+        intros h.
+        destruct (eq_Formula_dec (NegationF a) h).
+        apply or_intror.
+        intro.
+        inversion H3.
+        subst.
+        apply H5.
+        apply In_singleton.
+        destruct (HHH1 h).
+        apply or_introl.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        apply (n H5).
+        apply or_intror.
+        intro.
+        inversion H4.
+        apply (H3 H5).
         assert (Included Formula (Subtract Formula hs1 (NegationF a)) hs).
-          intros p.
+          intros h.
           intro.
           inversion H3.
-          assert (In Formula (Add Formula hs (NegationF a)) p).
-            apply H0.
-            apply H4.
+          assert (In Formula (Add Formula hs (NegationF a)) h).
+            apply (H0 h H4).
           inversion H6.
           subst.
           apply H7.
-          tauto.
+          subst.
+          contradiction H5.
         constructor.
         apply H3.
         assert (Included Formula hs1 (Add Formula (Subtract Formula hs1 (NegationF a)) (NegationF a))).
@@ -2992,11 +3067,30 @@ Module PropositionalLogic.
         apply H6.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         destruct H1.
         destruct H3.
         destruct H2.
         destruct H5.
         exists (Union Formula hs1 hs2).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H7.
+        destruct (HHH2 h).
+        apply or_introl.
+        apply Union_intror.
+        apply H8.
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        apply (H7 H10).
+        subst.
+        apply (H8 H10).
         assert (Included Formula hs1 (Union Formula hs1 hs2)).
           intros p.
           intro.
@@ -3040,36 +3134,48 @@ Module PropositionalLogic.
         tauto.
         lia.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists hs1.
+        constructor.
+        apply HHH1.
         constructor.
         apply H0.
         constructor.
         apply (ConjunctionE1 hs1 a b H1).
         apply H2.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists hs1.
+        constructor.
+        apply HHH1.
         constructor.
         apply H0.
         constructor.
         apply (ConjunctionE2 hs1 a b H1).
         apply H2.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists hs1.
+        constructor.
+        apply HHH1.
         constructor.
         apply H0.
         constructor.
         apply (DisjunctionI1 hs1 a b H1).
         apply H2.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists hs1.
+        constructor.
+        apply HHH1.
         constructor.
         apply H0.
         constructor.
@@ -3078,6 +3184,9 @@ Module PropositionalLogic.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
         destruct IHinfers3 as [hs3].
+        destruct H2 as [HHH1].
+        destruct H3 as [HHH2].
+        destruct H4 as [HHH3].
         destruct H2.
         destruct H5.
         destruct H3.
@@ -3085,6 +3194,97 @@ Module PropositionalLogic.
         destruct H4.
         destruct H9.
         exists (Union Formula hs1 (Union Formula (Subtract Formula hs2 a) (Subtract Formula hs3 b))).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H11.
+        destruct (HHH2 h).
+        destruct (eq_Formula_dec a h).
+        destruct (HHH3 h).
+        destruct (eq_Formula_dec b h).
+        apply or_intror.
+        intro.
+        inversion H14.
+        subst.
+        contradiction H11.
+        subst.
+        inversion H15.
+        subst.
+        inversion H16.
+        apply H18.
+        apply In_singleton.
+        subst.
+        inversion H16.
+        apply H18.
+        apply In_singleton.
+        apply or_introl.
+        apply Union_intror.
+        apply Union_intror.
+        constructor.
+        apply H13.
+        intro.
+        contradiction n.
+        inversion H14.
+        tauto.
+        apply or_intror.
+        intro.
+        inversion H14.
+        subst.
+        contradiction H11.
+        subst.
+        inversion H15.
+        subst.
+        inversion H16.
+        contradiction H18.
+        apply In_singleton.
+        subst.
+        inversion H16.
+        contradiction H13.
+        apply or_introl.
+        apply Union_intror.
+        apply Union_introl.
+        constructor.
+        apply H12.
+        intro.
+        inversion H13.
+        contradiction n.
+        destruct (HHH3 h).
+        destruct (eq_Formula_dec b h).
+        apply or_intror.
+        intro.
+        inversion H14.
+        subst.
+        contradiction H11.
+        subst.
+        inversion H15.
+        subst.
+        inversion H16.
+        contradiction H12.
+        subst.
+        inversion H16.
+        contradiction H18.
+        apply In_singleton.
+        apply or_introl.
+        apply Union_intror.
+        apply Union_intror.
+        constructor.
+        apply H13.
+        intro.
+        inversion H14.
+        contradiction H15.
+        apply or_intror.
+        intro.
+        inversion H14.
+        contradiction H11.
+        inversion H15.
+        subst.
+        inversion H17.
+        contradiction H12.
+        subst.
+        inversion H17.
+        contradiction H13.
         assert (Included Formula hs2 (Add Formula (Subtract Formula hs2 a) a)).
           intros p.
           intro.
@@ -3209,9 +3409,31 @@ Module PropositionalLogic.
         tauto.
         lia.
       - destruct IHinfers as [hs1].
+        destruct H0 as [HHH1].
         destruct H0.
         destruct H1.
         exists (Subtract Formula hs1 a).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        destruct (eq_Formula_dec a h).
+        apply or_intror.
+        intro.
+        inversion H4.
+        apply H6.
+        subst.
+        apply In_singleton.
+        apply or_introl.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        apply (n H5).
+        apply or_intror.
+        intro.
+        apply H3.
+        inversion H4.
+        apply H5.
         assert (Included Formula (Subtract Formula hs1 a) hs).
           intros p.
           intro.
@@ -3250,11 +3472,30 @@ Module PropositionalLogic.
         apply H6.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         destruct H1.
         destruct H3.
         destruct H2.
         destruct H5.
         exists (Union Formula hs1 hs2).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H7.
+        destruct (HHH2 h).
+        apply or_introl.
+        apply Union_intror.
+        apply H8.
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        contradiction H7.
+        subst.
+        contradiction H8.
         assert (Included Formula hs1 (Union Formula hs1 hs2)).
           intros p.
           intro.
@@ -3299,38 +3540,119 @@ Module PropositionalLogic.
         lia.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         destruct H1.
         destruct H3.
         destruct H2.
         destruct H5.
         exists (Union Formula (Subtract Formula hs1 a) (Subtract Formula hs2 b)).
         constructor.
+        intros h.
+        destruct (HHH1 h).
+        destruct (eq_Formula_dec a h).
+        destruct (HHH2 h).
+        destruct (eq_Formula_dec b h).
+        subst.
+        apply or_intror.
+        intro.
+        inversion H9.
+        inversion H10.
+        contradiction H13.
+        apply In_singleton.
+        inversion H10.
+        contradiction H13.
+        apply In_singleton.
+        apply or_introl.
+        apply Union_intror.
+        constructor.
+        apply H8.
+        intro.
+        inversion H9.
+        contradiction n.
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        inversion H10.
+        apply H12.
+        apply In_singleton.
+        subst.
+        inversion H10.
+        subst.
+        contradiction H11.
+        apply or_introl.
+        apply Union_introl.
+        constructor.
+        apply H7.
+        intro.
+        inversion H8.
+        contradiction n.
+        destruct (HHH2 h).
+        destruct (eq_Formula_dec b h).
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        inversion H10.
+        contradiction H7.
+        subst.
+        inversion H10.
+        apply H12.
+        apply In_singleton.
+        apply or_introl.
+        apply Union_intror.
+        constructor.
+        apply H8.
+        intro.
+        inversion H9.
+        contradiction n.
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        inversion H10.
+        contradiction H7.
+        subst.
+        inversion H10.
+        contradiction H8.
+        assert (Included Formula hs1 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_introl.
+          apply H7.
+        assert (Included Formula hs2 (Union Formula hs1 hs2)).
+          intros p.
+          intro.
+          apply Union_intror.
+          apply H8.
+        constructor.
         intros p.
         intro.
-        inversion H7.
+        inversion H9.
         destruct (eq_Formula_dec a p).
-        inversion H8.
-        contradiction H11.
+        inversion H10.
+        contradiction H13.
         rewrite e.
         apply In_singleton.
         subst.
         assert (In Formula (Add Formula hs a) p).
-        apply (H1 p (proj1 H8)).
-        inversion H9.
-        apply H10.
-        inversion H10.
+        apply (H1 p (proj1 H10)).
+        inversion H11.
+        apply H12.
+        inversion H12.
         tauto.
         destruct (eq_Formula_dec b p).
-        inversion H8.
-        contradiction H11.
+        inversion H10.
+        contradiction H13.
         rewrite e.
         apply In_singleton.
         subst.
         assert (In Formula (Add Formula hs b) p).
-        apply (H2 p (proj1 H8)).
-        inversion H9.
-        apply H10. 
-        inversion H10.
+        apply (H2 p (proj1 H10)).
+        inversion H11.
+        apply H12. 
+        inversion H12.
         tauto.
         constructor.
         apply (BiconditionalI (Union Formula (Subtract Formula hs1 a) (Subtract Formula hs2 b)) a b).
@@ -3338,7 +3660,7 @@ Module PropositionalLogic.
         intros p.
         intro.
         assert (In Formula (Add Formula hs a) p).
-        apply (H1 p H7).
+        apply (H1 p H9).
         destruct (eq_Formula_dec a p).
         apply Union_intror.
         rewrite e.
@@ -3346,16 +3668,16 @@ Module PropositionalLogic.
         apply Union_introl.
         apply Union_introl.
         constructor.
-        apply H7.
+        apply H9.
         intro.
         apply n.
-        inversion H9.
+        inversion H11.
         tauto.
         apply (extend_infers hs2 a H5).
         intros p.
         intro.
         assert (In Formula (Add Formula hs b) p).
-        apply (H2 p H7).
+        apply (H2 p H9).
         destruct (eq_Formula_dec b p).
         apply Union_intror.
         rewrite e.
@@ -3363,36 +3685,54 @@ Module PropositionalLogic.
         apply Union_introl.
         apply Union_intror.
         constructor.
-        apply H7.
+        apply H9.
         intro.
         apply n.
-        inversion H9.
+        inversion H11.
         tauto.
         destruct H4 as [bound1].
         destruct H6 as [bound2].
         exists (max bound1 bound2).
         intros h.
         intro.
-        inversion H7.
-        destruct (H4 h (proj1 H8)) as [n].
-        destruct H10.
+        inversion H9.
+        destruct (H4 h (proj1 H10)) as [n].
+        destruct H12.
         exists n.
         constructor.
         tauto.
         lia.
-        destruct (H6 h (proj1 H8)) as [n].
-        destruct H10.
+        destruct (H6 h (proj1 H10)) as [n].
+        destruct H12.
         exists n.
         constructor.
         tauto.
         lia.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         destruct H1.
         destruct H3.
         destruct H2.
         destruct H5.
         exists (Union Formula hs1 hs2).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H7.
+        destruct (HHH2 h).
+        apply or_introl.
+        apply Union_intror.
+        apply H8.
+        apply or_intror.
+        intro.
+        inversion H9.
+        subst.
+        contradiction H7.
+        contradiction H8.
         assert (Included Formula hs1 (Union Formula hs1 hs2)).
           intros p.
           intro.
@@ -3437,11 +3777,28 @@ Module PropositionalLogic.
         lia.
       - destruct IHinfers1 as [hs1].
         destruct IHinfers2 as [hs2].
+        destruct H1 as [HHH1].
+        destruct H2 as [HHH2].
         destruct H1.
         destruct H3.
         destruct H2.
         destruct H5.
         exists (Union Formula hs1 hs2).
+        constructor.
+        intros h.
+        destruct (HHH1 h).
+        apply or_introl.
+        apply Union_introl.
+        apply H7.
+        destruct (HHH2 h).
+        apply or_introl.
+        apply Union_intror.
+        apply H8.
+        apply or_intror.
+        intro.
+        inversion H9.
+        contradiction H7.
+        contradiction H8.
         assert (Included Formula hs1 (Union Formula hs1 hs2)).
           intros p.
           intro.
@@ -3540,6 +3897,121 @@ Module PropositionalLogic.
       subst.
       apply Union_intror.
       apply In_singleton.
+    Qed.
+
+    Lemma TH_subseteq_Closure :
+      forall ps : Ensemble Formula,
+      Included Formula (TH ps) (Closure Formula LindenbaumBooleanAlgebra ps).
+    Proof.
+      cut (
+        forall n : nat,
+        forall hs : Ensemble Formula,
+        forall c : Formula,
+        infers hs c ->
+        (forall h : Formula, In Formula hs h \/ ~ In Formula hs h) ->
+        (forall h : Formula, In Formula hs h -> exists k : nat, enumerateFormula k = h /\ k < n) ->
+        In Formula (FiniteMeet Formula LindenbaumBooleanAlgebra hs n) c
+      ).
+        intro HHH.
+        intros ps.
+        intros p.
+        intro.
+        inversion H.
+        subst.
+        destruct (infers_has_compactness ps p H0) as [hs].
+        destruct H1.
+        destruct H2.
+        destruct H3.
+        destruct H4 as [bound].
+        assert (In Formula (Closure Formula LindenbaumBooleanAlgebra hs) p).
+          apply (InClosure Formula LindenbaumBooleanAlgebra hs p bound p).
+          apply (HHH bound hs p H3 H1 H4).
+          apply CBA_axm_1.
+        assert (Included Formula (Closure Formula LindenbaumBooleanAlgebra hs) (Closure Formula LindenbaumBooleanAlgebra ps)). 
+          apply fact_4_of_1_2_8.
+          apply H2.
+        apply (H6 p H5).
+      intros n.
+      induction n.
+      - intros hs c.
+        intro.
+        intro.
+        intro.
+        assert (Included Formula hs (Empty_set Formula)).
+          intros h.
+          intro.
+          destruct (H1 h H2) as [k].
+          destruct H3.
+          lia.
+        assert (infers (Empty_set Formula) c).
+          apply (extend_infers hs c H).
+          apply H2.
+        apply FiniteMeetZ.
+        constructor.
+        apply NegationI.
+        apply Assumption.
+        apply Union_intror.
+        apply In_singleton.
+        apply (extend_infers (Empty_set Formula) c H3).
+        intros h.
+        intro.
+        inversion H4.
+      - intros hs c.
+        intro.
+        intro.
+        intro.
+        destruct (H0 (enumerateFormula n)).
+        * assert (In Formula (FiniteMeet Formula LindenbaumBooleanAlgebra (Subtract Formula hs (enumerateFormula n)) n) (ImplicationF (enumerateFormula n) c)).
+            apply IHn.
+            apply ImplicationI.
+            apply (extend_infers hs c H).
+            intros h.
+            intro.
+            destruct (eq_Formula_dec (enumerateFormula n) h).
+            subst.
+            apply Union_intror.
+            apply In_singleton.
+            apply Union_introl.
+            constructor.
+            apply H3.
+            intro.
+            inversion H4.
+            contradiction n0.
+            intros h.
+            destruct (eq_Formula_dec (enumerateFormula n) h).
+            apply or_intror.
+            intro.
+            inversion H3.
+            contradiction H5.
+            subst.
+            apply In_singleton.
+            destruct (H0 h).
+            apply or_introl.
+            constructor.
+            apply H3.
+            intro.
+            inversion H4.
+            subst.
+            tauto.
+            apply or_intror.
+            intro.
+            inversion H4.
+            contradiction H3.
+            intros h.
+            intro.
+            inversion H3.
+            destruct (H1 h H4) as [k].
+            exists k.
+            constructor.
+            tauto.
+            assert (k <> n).
+              intro.
+              destruct H6.
+              subst.
+              apply H5.
+              apply In_singleton.
+            lia.
+          
     Qed.
 
     Definition Filter (ps : Ensemble Formula) (n : nat) : Ensemble Formula :=
@@ -3704,4 +4176,90 @@ Module PropositionalLogic.
           apply H6.
     Qed.
 
+    Lemma lemma_2_of_1_3_9 :
+      forall n : nat,
+      forall ps : Ensemble Formula,
+      Included Formula (TH (AxiomSet ps n)) (Filter ps n).
+    Proof.
+      intros n.
+      unfold Filter.
+      induction n.
+      - simpl.
+        intros ps p.
+        intro.
+        apply H.
+      - intros ps p.
+        simpl.
+        intro.
+        inversion H.
+        subst.
+
+    Qed.
+
+    Lemma lemma_3_of_1_3_9 :
+      forall ps : Ensemble Formula,
+      Included Formula (CompleteFilter ps) (TH (FullAxiomSet ps)).
+    Proof.
+      intros ps.
+      intros p.
+      intro.
+      inversion H.
+      subst.
+      assert (In Formula (TH (AxiomSet ps n)) p).
+        apply lemma_1_of_1_3_9.
+        apply H0.
+      inversion H1.
+      subst.
+      apply InTH.
+      apply (extend_infers (AxiomSet ps n) p H2).
+      intros h.
+      intro.
+      apply (InFullAxiomSet ps n h).
+      apply H3.
+    Qed.
+
+    Lemma lemma_4_of_1_3_9 :
+      forall ps : Ensemble Formula,
+      Included Formula (TH (FullAxiomSet ps)) (CompleteFilter ps).
+    Proof.
+      intros ps p.
+      intro.
+      inversion H.
+      subst.
+      cut (
+        forall bound : nat,
+        forall hs : Ensemble Formula,
+        Included Formula hs (FullAxiomSet ps) ->
+        infers hs p ->
+        (forall h : Formula, In Formula hs h -> exists n : nat, enumerateFormula n = h /\ n < bound) ->
+        In Formula (Filter ps bound) p
+      ).
+    Qed.
+
   End Completeness.
+
+End PropositionalLogic.
+
+forall bs : Ensemble B,
+forall n1 : nat,
+forall n2 : nat,
+n1 <= n2 ->
+Included B (SequenceConstruction bs n1) (SequenceConstruction bs n2).
+
+Inductive FiniteMeet : Ensemble B -> nat -> Ensemble B :=
+| FiniteMeetZ :
+  forall b : B,
+  forall bs : Ensemble B,
+  b == trueB ->
+  In B (FiniteMeet bs 0) b
+| FiniteMeetS :
+  forall b : B,
+  forall bs : Ensemble B,
+  forall n : nat,
+  forall b1 : B,
+  forall b2 : B,
+  In B bs b1 ->
+  In B (FiniteMeet bs n) b2 ->
+  b == andB b1 b2 ->
+  In B (FiniteMeet bs (S n)) b
+.
