@@ -1184,7 +1184,7 @@ Module CountableBooleanAlgebra.
       apply HHH.
     Qed.
 
-  Section TheoryOfCBA.
+  End TheoryOfCBA.
 
 End CountableBooleanAlgebra.
 
@@ -1741,5 +1741,215 @@ Module PropositionalLogic.
     Qed.
 
   End Syntax.
+
+  Section Semantics.
+
+    Definition satisfies (structure : Formula -> Prop) (p : Formula) : Prop :=
+      structure p
+    .
+
+    Definition preservesContradiction (structure : Formula -> Prop) : Prop :=
+      satisfies structure ContradictionF <-> (False)
+    .
+
+    Definition preservesNegation (structure : Formula -> Prop) : Prop :=
+      forall p1 : Formula, satisfies structure (NegationF p1) <-> (~ satisfies structure p1)
+    .
+
+    Definition preservesConjunction (structure : Formula -> Prop) : Prop :=
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (ConjunctionF p1 p2) <-> (satisfies structure p1 /\ satisfies structure p2)
+    .
+
+    Definition preservesDisjunction (structure : Formula -> Prop) : Prop :=
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (DisjunctionF p1 p2) <-> (satisfies structure p1 \/ satisfies structure p2)
+    .
+
+    Definition preservesImplication (structure : Formula -> Prop) : Prop :=
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (ImplicationF p1 p2) <-> (satisfies structure p1 -> satisfies structure p2)
+    .
+
+    Definition preservesBiconditional (structure : Formula -> Prop) : Prop :=
+      forall p1 : Formula, forall p2 : Formula, satisfies structure (BiconditionalF p1 p2) <-> (satisfies structure p1 <-> satisfies structure p2)
+    .
+
+    Definition isStructure (structure : Formula -> Prop) : Prop :=
+      preservesContradiction structure /\ preservesNegation structure /\ preservesConjunction structure /\ preservesDisjunction structure /\ preservesImplication structure /\ preservesBiconditional structure /\ (forall p1 : Formula, satisfies structure (NegationF (NegationF p1)) -> satisfies structure p1)
+    .
+
+    Definition entails (hs : Ensemble Formula) (c : Formula) : Prop :=
+      forall structure : Formula -> Prop, isStructure structure -> (forall h : Formula, member h hs -> satisfies structure h) -> satisfies structure c 
+    .
+
+    Lemma extend_entails :
+      forall hs1 : Ensemble Formula,
+      forall c : Formula,
+      entails hs1 c ->
+      forall hs2 : Ensemble Formula,
+      isSubsetOf hs1 hs2 ->
+      entails hs2 c.
+    Proof.
+      intros hs1 c.
+      intro.
+      intros hs2.
+      intro.
+      intros structure.
+      intro.
+      intro.
+      apply H.
+      apply H1.
+      intros h.
+      intro.
+      apply H2.
+      apply H0.
+      apply H3.
+    Qed.
+    
+  End Semantics.
+
+  Section InferenceRules.
+
+    Inductive infers : Ensemble Formula -> Formula -> Prop :=
+    | ByAssumption :
+      forall hs : Ensemble Formula,
+      forall h : Formula,
+      member h hs ->
+      infers hs h
+    | ContradictionI :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      infers hs a ->
+      infers hs (NegationF a) ->
+      infers hs ContradictionF
+    | ContradictionE :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      infers hs ContradictionF ->
+      infers hs a
+    | NegationI :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      infers (insert a hs) ContradictionF ->
+      infers hs (NegationF a)
+    | NegationE :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      infers (insert (NegationF a) hs) ContradictionF ->
+      infers hs a
+    | ConjunctionI :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs a ->
+      infers hs b ->
+      infers hs (ConjunctionF a b)
+    | ConjunctionE1 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ConjunctionF a b) ->
+      infers hs a
+    | ConjunctionE2 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ConjunctionF a b) ->
+      infers hs b
+    | DisjunctionI1 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs a ->
+      infers hs (DisjunctionF a b)
+    | DisjunctionI2 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs b ->
+      infers hs (DisjunctionF a b)
+    | DisjunctionE :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      forall c : Formula,
+      infers hs (DisjunctionF a b) ->
+      infers (insert a hs) c ->
+      infers (insert b hs) c ->
+      infers hs c
+    | ImplicationI :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers (insert a hs) b ->
+      infers hs (ImplicationF a b)
+    | ImplicationE :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (ImplicationF a b) ->
+      infers hs a ->
+      infers hs b
+    | BiconditionalI :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers (insert a hs) b ->
+      infers (insert b hs) a ->
+      infers hs (BiconditionalF a b)
+    | BiconditionalE1 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (BiconditionalF a b) ->
+      infers hs a ->
+      infers hs b
+    | BiconditionalE2 :
+      forall hs : Ensemble Formula,
+      forall a : Formula,
+      forall b : Formula,
+      infers hs (BiconditionalF a b) ->
+      infers hs b ->
+      infers hs a
+    .
+
+    Example exclusive_middle :
+      forall p : Formula,
+      infers empty (DisjunctionF p (NegationF p)).
+    Proof.
+      intros p.
+      apply (NegationE empty (DisjunctionF p (NegationF p))).
+      apply (ContradictionI (insert (NegationF (DisjunctionF p (NegationF p))) empty) (DisjunctionF p (NegationF p))).
+      apply (DisjunctionI2 (insert (NegationF (DisjunctionF p (NegationF p))) empty) p (NegationF p)).
+      apply (NegationI (insert (NegationF (DisjunctionF p (NegationF p))) empty) p).
+      apply (ContradictionI (insert p (insert (NegationF (DisjunctionF p (NegationF p))) empty)) (DisjunctionF p (NegationF p))).
+      apply (DisjunctionI1 (insert p (insert (NegationF (DisjunctionF p (NegationF p))) empty)) p (NegationF p)).
+      apply (ByAssumption (insert p (insert (NegationF (DisjunctionF p (NegationF p))) empty)) p).
+      apply UnionR.
+      apply Singleton.
+      apply (ByAssumption (insert p (insert (NegationF (DisjunctionF p (NegationF p))) empty)) (NegationF (DisjunctionF p (NegationF p)))).
+      apply UnionL.
+      apply UnionR.
+      apply Singleton.
+      apply (ByAssumption (insert (NegationF (DisjunctionF p (NegationF p))) empty) (NegationF (DisjunctionF p (NegationF p)))).
+      apply UnionR.
+      apply Singleton.
+    Qed.
+
+    Lemma cut_property :
+      forall hs : Ensemble Formula,
+      forall p1 : Formula,
+      forall p2 : Formula,
+      infers hs p1 ->
+      infers (insert p1 hs) p2 ->
+      infers hs p2.
+    Proof.
+      intros hs p1 p2.
+      intro.
+      intro.
+      assert (infers hs (ImplicationF p1 p2)).
+        apply (ImplicationI hs p1 p2 H0).
+      apply (ImplicationE hs p1 p2 H1 H).
+    Qed.
+
+  End InferenceRules.
 
 End PropositionalLogic.
