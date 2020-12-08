@@ -352,7 +352,7 @@ Module Helper.
       fun x : A => member x (difference xs2 (singleton x1))
     .
 
-    Lemma Included_Add {A : Type} :
+    Lemma isSubsetOf_insert {A : Type} :
       forall x1 : A,
       forall xs2 : Ensemble A,
       forall xs3 : Ensemble A,
@@ -1205,6 +1205,88 @@ Module CountableBooleanAlgebra.
       apply HHH.
     Qed.
 
+    Definition isUltraFilter (bs : Ensemble B) :=
+      isFilter bs /\ (forall bs' : Ensemble B, isFilter bs' -> equiconsistent bs bs' -> isSubsetOf bs bs' -> isSubsetOf bs' bs)
+    .
+
+    Corollary corollary_1_2_16 :
+      forall bs : Ensemble B,
+      isFilter bs ->
+      isUltraFilter (CompleteFilter bs).
+    Proof.
+      intros bs HHH.
+      destruct (theorem_1_2_14 bs HHH).
+      destruct H0.
+      destruct H1.
+      constructor.
+      apply H0.
+      intros bs' HHH'.
+      intro.
+      intro.
+      intros b.
+      intro.
+      cut (
+        equiconsistent (CompleteFilter bs) (Cl (insert b (CompleteFilter bs)))
+      ).
+        intro.
+        apply H1.
+        apply H6.
+      constructor.
+      intro.
+      destruct H6 as [b'].
+      destruct H6.
+      exists b'.
+      constructor.
+      apply fact_3_of_1_2_8.
+      apply UnionL.
+      apply H6.
+      apply H7.
+      intro.
+      apply (proj2 H3).
+      assert (inconsistent (Cl (insert b bs'))).
+        assert (isSubsetOf (insert b (CompleteFilter bs)) (insert b bs')).
+          intros p.
+          intro.
+          inversion H7.
+          subst.
+          apply UnionL.
+          apply H4.
+          apply H8.
+          subst.
+          apply UnionR.
+          apply H8.
+        destruct H6 as [b'].
+        destruct H6.
+        exists b'.
+        constructor.
+        assert (isSubsetOf (Cl (insert b (CompleteFilter bs))) (Cl (insert b bs'))).
+          apply fact_4_of_1_2_8.
+          apply H7.
+        apply H9.
+        apply H6.
+        apply H8.
+      destruct H7 as [b'].
+      destruct H7.
+      exists b'.
+      constructor.
+      apply fact_5_of_1_2_8.
+      apply HHH'.
+      assert (isSubsetOf (Cl (insert b bs')) (Cl bs')).
+        apply fact_4_of_1_2_8.
+        intros p.
+        intro.
+        inversion H9.
+        subst.
+        apply H10.
+        subst.
+        inversion H10.
+        subst.
+        apply H5.
+      apply H9.
+      apply H7.
+      apply H8.
+    Qed.
+
   End TheoryOfCBA.
 
 End CountableBooleanAlgebra.
@@ -2003,13 +2085,13 @@ Module PropositionalLogic.
         intro.
         apply (NegationI hs2 a).
         apply (IHInfers (insert a hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H0.
       - intros hs2.
         intro.
         apply (NegationE hs2 a).
         apply (IHInfers (insert (NegationF a) hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H0.
       - intros hs2.
         intro.
@@ -2037,16 +2119,16 @@ Module PropositionalLogic.
         apply (DisjunctionE hs2 a b c).
         apply (IHInfers1 hs2 H2).
         apply (IHInfers2 (insert a hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H2.
         apply (IHInfers3 (insert b hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H2.
       - intros hs2.
         intro.
         apply (ImplicationI hs2 a b).
         apply (IHInfers (insert a hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H0.
       - intros hs2.
         intro.
@@ -2057,10 +2139,10 @@ Module PropositionalLogic.
         intro.
         apply (BiconditionalI hs2 a b).
         apply (IHInfers1 (insert a hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H1.
         apply (IHInfers2 (insert b hs2)).
-        apply Included_Add.
+        apply isSubsetOf_insert.
         apply H1.
       - intros hs2.
         intro.
@@ -2493,5 +2575,18 @@ Module PropositionalLogic.
     Qed.
 
   End Soundness.
+
+  Section LindenbaumBooleanAlgebra.
+
+    Program Instance LBA : CBA Formula :=
+      { eqB := fun p1 : Formula => fun p2 : Formula => Infers (singleton p1) p2 /\ Infers (singleton p2) p1
+      ; trueB := NegationF ContradictionF
+      ; falseB := ContradictionF
+      ; andB := ConjunctionF
+      ; enumB := enumerateFormula
+      }
+    .
+
+  End LindenbaumBooleanAlgebra.
 
 End PropositionalLogic.
