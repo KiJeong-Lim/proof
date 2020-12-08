@@ -72,6 +72,47 @@ Module Helper.
       lia.
     Qed.
     
+    Lemma second_principle_of_finite_induction :
+      forall phi : nat -> Prop,
+      let phi' : nat -> Prop := fun k : nat => (forall i : nat, i < k -> phi i) in
+      (forall k : nat, phi' k -> phi k) ->
+      (forall n : nat, phi n).
+    Proof.
+      intros phi.
+      intros phi'.
+      intro.
+      cut (
+        (forall n : nat, phi n /\ phi' n)
+      ).
+        intro.
+        intros n.
+        destruct (H0 n).
+        apply H1.
+      intros n.
+      induction n.
+      - assert (phi' 0).
+          intros i.
+          lia.
+        constructor.
+        apply H.
+        apply H0.
+        apply H0.
+      - assert (phi' (S n)).
+          intros i.
+          intro.
+          inversion H0.
+          destruct IHn.
+          apply H1.
+          subst.
+          destruct IHn.
+          apply (H3 i).
+          lia.
+        constructor.
+        apply H.
+        apply H0.
+        apply H0.
+    Qed.
+    
   End Section1.
 
   Section Section2.
@@ -3931,87 +3972,23 @@ Module PropositionalLogic.
           apply fact_4_of_1_2_8.
           apply H2.
         apply (H6 p H5).
-      intros n.
-      induction n.
-      - intros hs c.
+      assert (
+        forall Phi : nat -> Prop,
+        forall n : nat,
+        ((forall m : nat, m < n -> Phi m) -> Phi n) ->
+        Phi n
+      ).
+        intros phi.
+        intros n.
+        induction n.
         intro.
+        apply H.
+        intros m.
         intro.
+        lia.
         intro.
-        assert (Included Formula hs (Empty_set Formula)).
-          intros h.
-          intro.
-          destruct (H1 h H2) as [k].
-          destruct H3.
-          lia.
-        assert (infers (Empty_set Formula) c).
-          apply (extend_infers hs c H).
-          apply H2.
-        apply FiniteMeetZ.
-        constructor.
-        apply NegationI.
-        apply Assumption.
-        apply Union_intror.
-        apply In_singleton.
-        apply (extend_infers (Empty_set Formula) c H3).
-        intros h.
-        intro.
-        inversion H4.
-      - intros hs c.
-        intro.
-        intro.
-        intro.
-        destruct (H0 (enumerateFormula n)).
-        * assert (In Formula (FiniteMeet Formula LindenbaumBooleanAlgebra (Subtract Formula hs (enumerateFormula n)) n) (ImplicationF (enumerateFormula n) c)).
-            apply IHn.
-            apply ImplicationI.
-            apply (extend_infers hs c H).
-            intros h.
-            intro.
-            destruct (eq_Formula_dec (enumerateFormula n) h).
-            subst.
-            apply Union_intror.
-            apply In_singleton.
-            apply Union_introl.
-            constructor.
-            apply H3.
-            intro.
-            inversion H4.
-            contradiction n0.
-            intros h.
-            destruct (eq_Formula_dec (enumerateFormula n) h).
-            apply or_intror.
-            intro.
-            inversion H3.
-            contradiction H5.
-            subst.
-            apply In_singleton.
-            destruct (H0 h).
-            apply or_introl.
-            constructor.
-            apply H3.
-            intro.
-            inversion H4.
-            subst.
-            tauto.
-            apply or_intror.
-            intro.
-            inversion H4.
-            contradiction H3.
-            intros h.
-            intro.
-            inversion H3.
-            destruct (H1 h H4) as [k].
-            exists k.
-            constructor.
-            tauto.
-            assert (k <> n).
-              intro.
-              destruct H6.
-              subst.
-              apply H5.
-              apply In_singleton.
-            lia.
-          
+        assert (forall m : nat, m <= n -> phi m).
+          intros
     Qed.
 
     Definition Filter (ps : Ensemble Formula) (n : nat) : Ensemble Formula :=
