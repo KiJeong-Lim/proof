@@ -5,7 +5,7 @@ Require Export Lia.
 Require Export Ensembles.
 
 (*
-  Constructive Completeness Proofs and Delimited Control
+  Constructive_Completeness_Proofs_and_Delimited_Control
   - Danko Ilik
 *)
 
@@ -3944,51 +3944,26 @@ Module PropositionalLogic.
       forall ps : Ensemble Formula,
       Included Formula (TH ps) (Closure Formula LindenbaumBooleanAlgebra ps).
     Proof.
-      cut (
-        forall n : nat,
-        forall hs : Ensemble Formula,
-        forall c : Formula,
-        infers hs c ->
-        (forall h : Formula, In Formula hs h \/ ~ In Formula hs h) ->
-        (forall h : Formula, In Formula hs h -> exists k : nat, enumerateFormula k = h /\ k < n) ->
-        In Formula (FiniteMeet Formula LindenbaumBooleanAlgebra hs n) c
-      ).
-        intro HHH.
-        intros ps.
-        intros p.
-        intro.
-        inversion H.
-        subst.
-        destruct (infers_has_compactness ps p H0) as [hs].
-        destruct H1.
-        destruct H2.
-        destruct H3.
-        destruct H4 as [bound].
-        assert (In Formula (Closure Formula LindenbaumBooleanAlgebra hs) p).
-          apply (InClosure Formula LindenbaumBooleanAlgebra hs p bound p).
-          apply (HHH bound hs p H3 H1 H4).
-          apply CBA_axm_1.
-        assert (Included Formula (Closure Formula LindenbaumBooleanAlgebra hs) (Closure Formula LindenbaumBooleanAlgebra ps)). 
-          apply fact_4_of_1_2_8.
-          apply H2.
-        apply (H6 p H5).
-      assert (
-        forall Phi : nat -> Prop,
-        forall n : nat,
-        ((forall m : nat, m < n -> Phi m) -> Phi n) ->
-        Phi n
-      ).
-        intros phi.
-        intros n.
-        induction n.
-        intro.
+      intros ps.
+      intros p.
+      intro.
+      destruct H.
+      induction H.
+      - apply (InClosure Formula LindenbaumBooleanAlgebra hs h 1 h).
+        apply (FiniteMeetS Formula LindenbaumBooleanAlgebra h hs 0 h trueB).
         apply H.
-        intros m.
-        intro.
-        lia.
-        intro.
-        assert (forall m : nat, m <= n -> phi m).
-          intros
+        apply FiniteMeetZ.
+        apply CBA_AXM_1.
+        apply CBA_AXM_2.
+        apply (CBA_AXM_3 (andB h trueB) (andB trueB h) h).
+        apply CBA_axm_3.
+        apply CBA_axm_10.
+        apply CBA_axm_1.
+      - inversion IHinfers1.
+        subst.
+        inversion IHinfers2.
+        subst.
+        apply (FiniteMeet_plus)
     Qed.
 
     Definition Filter (ps : Ensemble Formula) (n : nat) : Ensemble Formula :=
