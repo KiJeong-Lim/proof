@@ -413,7 +413,7 @@ Module CountableBooleanAlgebra.
       ; absorption_orB_andB : forall b1 : B, forall b2 : B, eqB (orB b1 (andB b1 b2)) b1
       ; falseB_zero_andB : forall b1 : B, eqB (andB b1 falseB) falseB
       ; trueB_zero_orB : forall b1 : B, eqB (orB b1 trueB) trueB
-      ; falseB_unit_orB : forall b1 : B, eqB (andB b1 falseB) b1
+      ; falseB_unit_orB : forall b1 : B, eqB (orB b1 falseB) b1
       ; trueB_unit_andB : forall b1 : B, eqB (andB b1 trueB) b1
       ; andB_negB : forall b1 : B, eqB (andB b1 (negB b1)) falseB
       ; orB_negB : forall b1 : B, eqB (orB b1 (negB b1)) trueB 
@@ -2580,12 +2580,520 @@ Module PropositionalLogic.
 
     Program Instance LBA : CBA Formula :=
       { eqB := fun p1 : Formula => fun p2 : Formula => Infers (singleton p1) p2 /\ Infers (singleton p2) p1
-      ; trueB := NegationF ContradictionF
+      ; trueB := ImplicationF ContradictionF ContradictionF
       ; falseB := ContradictionF
+      ; negB := NegationF
       ; andB := ConjunctionF
+      ; orB := DisjunctionF
       ; enumB := enumerateFormula
       }
     .
+    
+    Next Obligation.
+      assert (Infers (singleton b1) b1).
+        apply ByAssumption.
+        apply Singleton.
+      tauto.
+    Defined.
+    
+    Next Obligation.
+      constructor.
+      apply (CutProperty (singleton b1) b2 b3).
+      apply H.
+      apply (extendInfers (singleton b2) b3 H0).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (CutProperty (singleton b3) b2 b1).
+      apply H1.
+      apply (extendInfers (singleton b2) b1 H2).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+    Defined.
+    
+    Next Obligation.
+      assert (Infers (singleton (ImplicationF ContradictionF ContradictionF)) (ImplicationF ContradictionF ContradictionF)).
+        apply ByAssumption.
+        apply Singleton.
+      tauto.
+    Defined.
+    
+    Next Obligation.
+      assert (Infers (singleton ContradictionF) ContradictionF).
+        apply ByAssumption.
+        apply Singleton.
+      tauto.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply NegationI.
+      apply (ContradictionI (insert b1' (singleton (NegationF b1))) b1).
+      apply (extendInfers (singleton b1') b1 H0).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H1.
+      apply ByAssumption.
+      apply UnionL.
+      apply Singleton.
+      apply NegationI.
+      apply (ContradictionI (insert b1 (singleton (NegationF b1'))) b1').
+      apply (extendInfers (singleton b1) b1' H).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H1.
+      apply ByAssumption.
+      apply UnionL.
+      apply Singleton.
+    Defined.
+    
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply (CutProperty (singleton (ConjunctionF b1 b2)) b1 b1').
+      apply (ConjunctionE1 (singleton (ConjunctionF b1 b2)) b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply (extendInfers (singleton b1) b1' H).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (CutProperty (singleton (ConjunctionF b1 b2)) b2 b2').
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 b2)) b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply (extendInfers (singleton b2) b2' H0).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply ConjunctionI.
+      apply (CutProperty (singleton (ConjunctionF b1' b2')) b1' b1).
+      apply (ConjunctionE1 (singleton (ConjunctionF b1' b2')) b1' b2').
+      apply ByAssumption.
+      apply Singleton.
+      apply (extendInfers (singleton b1') b1 H2).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (CutProperty (singleton (ConjunctionF b1' b2')) b2' b2).
+      apply (ConjunctionE2 (singleton (ConjunctionF b1' b2')) b1' b2').
+      apply ByAssumption.
+      apply Singleton.
+      apply (extendInfers (singleton b2') b2 H1).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE (singleton (DisjunctionF b1 b2)) b1 b2 (DisjunctionF b1' b2')).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b1 (singleton (DisjunctionF b1 b2))) b1' b2').
+      apply (extendInfers (singleton b1) b1' H).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (DisjunctionI2 (insert b2 (singleton (DisjunctionF b1 b2))) b1' b2').
+      apply (extendInfers (singleton b2) b2' H0).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (DisjunctionE (singleton (DisjunctionF b1' b2')) b1' b2' (DisjunctionF b1 b2)).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b1' (singleton (DisjunctionF b1' b2'))) b1 b2).
+      apply (extendInfers (singleton b1') b1 H2).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+      apply (DisjunctionI2 (insert b2' (singleton (DisjunctionF b1' b2'))) b1 b2).
+      apply (extendInfers (singleton b2') b2 H1).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H3.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply ConjunctionI.
+      apply (ConjunctionE1 (singleton (ConjunctionF b1 (ConjunctionF b2 b3))) b1 (ConjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE1 (singleton (ConjunctionF b1 (ConjunctionF b2 b3))) b2 b3).
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 (ConjunctionF b2 b3))) b1 (ConjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 (ConjunctionF b2 b3))) b2 b3).
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 (ConjunctionF b2 b3))) b1 (ConjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE1 (singleton (ConjunctionF (ConjunctionF b1 b2) b3)) b1 b2).
+      apply (ConjunctionE1 (singleton (ConjunctionF (ConjunctionF b1 b2) b3)) (ConjunctionF b1 b2) b3).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE2 (singleton (ConjunctionF (ConjunctionF b1 b2) b3)) b1 b2).
+      apply (ConjunctionE1 (singleton (ConjunctionF (ConjunctionF b1 b2) b3)) (ConjunctionF b1 b2) b3).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE2 (singleton (ConjunctionF (ConjunctionF b1 b2) b3)) (ConjunctionF b1 b2) b3).
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE (singleton (DisjunctionF b1 (DisjunctionF b2 b3))) b1 (DisjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b1 (singleton (DisjunctionF b1 (DisjunctionF b2 b3)))) (DisjunctionF b1 b2) b3).
+      apply (DisjunctionI1 (insert b1 (singleton (DisjunctionF b1 (DisjunctionF b2 b3)))) b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE (insert (DisjunctionF b2 b3) (singleton (DisjunctionF b1 (DisjunctionF b2 b3)))) b2 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b2 (insert (DisjunctionF b2 b3) (singleton (DisjunctionF b1 (DisjunctionF b2 b3))))) (DisjunctionF b1 b2) b3).
+      apply (DisjunctionI2 (insert b2 (insert (DisjunctionF b2 b3) (singleton (DisjunctionF b1 (DisjunctionF b2 b3))))) b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI2 (insert b3 (insert (DisjunctionF b2 b3) (singleton (DisjunctionF b1 (DisjunctionF b2 b3))))) (DisjunctionF b1 b2) b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE (singleton (DisjunctionF (DisjunctionF b1 b2) b3)) (DisjunctionF b1 b2) b3).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionE (insert (DisjunctionF b1 b2) (singleton (DisjunctionF (DisjunctionF b1 b2) b3))) b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b1 (insert (DisjunctionF b1 b2) (singleton (DisjunctionF (DisjunctionF b1 b2) b3)))) b1 (DisjunctionF b2 b3)).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI2 (insert b2 (insert (DisjunctionF b1 b2) (singleton (DisjunctionF (DisjunctionF b1 b2) b3)))) b1 (DisjunctionF b2 b3)).
+      apply (DisjunctionI1 (insert b2 (insert (DisjunctionF b1 b2) (singleton (DisjunctionF (DisjunctionF b1 b2) b3)))) b2 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI2 (insert b3 (singleton (DisjunctionF (DisjunctionF b1 b2) b3))) b1 (DisjunctionF b2 b3)).
+      apply (DisjunctionI2 (insert b3 (singleton (DisjunctionF (DisjunctionF b1 b2) b3))) b2 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE1 (singleton (ConjunctionF b1 b1)) b1 b1).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply ByAssumption.
+      apply Singleton.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE (singleton (DisjunctionF b1 b1)) b1 b1 b1).
+      apply ByAssumption.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 b2)) b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE1 (singleton (ConjunctionF b1 b2)) b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE2 (singleton (ConjunctionF b2 b1)) b2 b1).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE1 (singleton (ConjunctionF b2 b1)) b2 b1).
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE (singleton (DisjunctionF b1 b2)) b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionI2 (insert b1 (singleton (DisjunctionF b1 b2))) b2 b1).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b2 (singleton (DisjunctionF b1 b2))) b2 b1).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE (singleton (DisjunctionF b2 b1)) b2 b1).
+      apply ByAssumption.
+      apply Singleton.
+      apply (DisjunctionI2 (insert b2 (singleton (DisjunctionF b2 b1))) b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionI1 (insert b1 (singleton (DisjunctionF b2 b1))) b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE (singleton (ConjunctionF b1 (DisjunctionF b2 b3))) b2 b3).
+      apply (ConjunctionE2 (singleton (ConjunctionF b1 (DisjunctionF b2 b3))) b1 (DisjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 (DisjunctionF b2 b3)).
+      apply ByAssumption.
+      apply UnionL.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 (DisjunctionF b2 b3)).
+      apply ByAssumption.
+      apply UnionL.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE _ (ConjunctionF b1 b2) (ConjunctionF b1 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply (ConjunctionE2 _ b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply ConjunctionI.
+      apply (ConjunctionE1 _ b1 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply (ConjunctionE2 _ b1 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply ConjunctionI.
+      apply (DisjunctionE _ b1 (ConjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply (ConjunctionE1 _ b2 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE _ b1 (ConjunctionF b2 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply (ConjunctionE2 _ b2 b3).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE _ b1 b2).
+      apply (ConjunctionE1 _ (DisjunctionF b1 b2) (DisjunctionF b1 b3)).
+      apply ByAssumption.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (DisjunctionE _ b1 b3).
+      apply (ConjunctionE2 _ (DisjunctionF b1 b2) (DisjunctionF b1 b3)).
+      apply ByAssumption.
+      apply UnionL.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply ConjunctionI.
+      apply ByAssumption.
+      apply UnionL.
+      apply UnionR.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE1 _ b1 (DisjunctionF b1 b2)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply ByAssumption.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE _ b1 (ConjunctionF b1 b2)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (ConjunctionE1 _ b1 b2).
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE2 _ b1 ContradictionF).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply ContradictionE.
+      apply ByAssumption.
+      apply Singleton.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply ImplicationI.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI2.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (DisjunctionE _ b1 ContradictionF).
+      apply ByAssumption.
+      apply Singleton.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply ContradictionE.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply DisjunctionI1.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (ConjunctionE1 _ b1 (ImplicationF ContradictionF ContradictionF)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply ByAssumption.
+      apply Singleton.
+      apply ImplicationI.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply (ContradictionI _ b1).
+      apply (ConjunctionE1 _ b1 (NegationF b1)).
+      apply ByAssumption.
+      apply Singleton.
+      apply (ConjunctionE2 _ b1 (NegationF b1)).
+      apply ByAssumption.
+      apply Singleton.
+      apply ContradictionE.
+      apply ByAssumption.
+      apply Singleton.
+    Defined.
+
+    Next Obligation.
+      constructor.
+      apply ImplicationI.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      apply (extendInfers empty (DisjunctionF b1 (NegationF b1)) (ExclusiveMiddle b1)).
+      intros p.
+      intro.
+      inversion H.
+    Defined.
+
+    Next Obligation.
+      apply Formula_is_enumerable.
+    Defined.
 
   End LindenbaumBooleanAlgebra.
 
