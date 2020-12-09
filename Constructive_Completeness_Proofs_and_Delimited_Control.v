@@ -3223,6 +3223,239 @@ Module PropositionalLogic.
       apply H.
     Qed.
 
+    Lemma andBs_LBA :
+      forall ps : list Formula,
+      forall hs : Ensemble Formula,
+      (forall p : Formula, In p ps -> member p hs) ->
+      forall c : Formula,
+      Infers (singleton (fold_right andB trueB ps)) c <-> (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Infers hs' c).
+    Proof.
+      intros ps.
+      induction ps.
+      - intros hs.
+        intro.
+        intros c.
+        constructor.
+        intro.
+        exists empty.
+        constructor.
+        intros p.
+        constructor.
+        intro.
+        inversion H1.
+        intro.
+        inversion H1.
+        apply (ConjunctionE2 _ (ImplicationF ContradictionF ContradictionF) c).
+        apply (cut_property empty (ImplicationF ContradictionF ContradictionF) (ConjunctionF (ImplicationF ContradictionF ContradictionF) c)).
+        apply ImplicationI.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply ConjunctionI.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply (extendInfers (singleton (fold_right andB trueB [])) c H0).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H1.
+        intro.
+        destruct H0 as [hs'].
+        destruct H0.
+        assert (isSubsetOf hs' empty).
+          intros p.
+          intro.
+          assert (In p []).
+            apply H0.
+          apply H2.
+        inversion H3.
+        assert (Infers empty c).
+          apply (extendInfers hs' c H1).
+          apply H2.
+        apply (extendInfers empty c H3).
+          intros p.
+          intro.
+          inversion H4.
+      - intros hs.
+        intro.
+        intros c.
+        constructor.
+        intro.
+        assert (forall p : Formula, In p ps -> member p hs).
+          intros p.
+          intro.
+          apply H.
+          simpl.
+          tauto.
+        assert (Infers (singleton (fold_right andB trueB ps)) (ImplicationF a c)).
+          apply ImplicationI.
+          apply (cut_property (insert a (singleton (fold_right andB trueB ps))) (fold_right andB trueB (a :: ps)) c).
+          simpl.
+          apply ConjunctionI.
+          apply ByAssumption.
+          apply UnionR.
+          apply Singleton.
+          apply ByAssumption.
+          apply UnionL.
+          apply Singleton.
+          apply (extendInfers (singleton (fold_right andB trueB (a :: ps))) c H0).
+          intros p.
+          intro.
+          apply UnionR.
+          apply H2.
+        assert (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Infers hs' (ImplicationF a c)).
+          apply (proj1 (IHps hs H1 (ImplicationF a c)) H2).
+        destruct H3 as [hs'].
+        exists (insert a hs').
+        destruct H3.
+        constructor.
+        intros p.
+        constructor.
+        intro.
+        inversion H5.
+        subst.
+        apply UnionR.
+        apply Singleton.
+        apply UnionL.
+        apply H3.
+        apply H6.
+        intro.
+        inversion H5.
+        subst.
+        simpl.
+        apply or_intror.
+        apply H3.
+        apply H6.
+        subst.
+        inversion H6.
+        subst.
+        simpl.
+        tauto.
+        apply (cut_property (insert a hs') (ImplicationF a c) c).
+        apply (extendInfers hs' (ImplicationF a c) H4).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H5.
+        apply (ImplicationE _ a c).
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply ByAssumption.
+        apply UnionL.
+        apply UnionR.
+        apply Singleton.
+        intro.
+        destruct (in_dec eq_Formula_dec a ps).
+        * assert (forall p : Formula, In p ps -> member p hs).
+            intros p.
+            intro.
+            apply H.
+            simpl.
+            tauto.
+          assert (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Infers hs' c).
+            destruct H0 as [hs'].
+            destruct H0.
+            exists hs'.
+            constructor.
+            intros h.
+            constructor.
+            intro.
+            apply H0.
+            simpl.
+            tauto.
+            intro.
+            assert (In h (a :: ps)).
+              apply (proj2 (H0 h) H3).
+            destruct H4.
+            subst.
+            apply i.
+            apply H4.
+            apply H2.
+          assert (Infers (singleton (fold_right andB trueB ps)) c).
+            apply (proj2 (IHps hs H1 c) H2).
+          apply (cut_property (singleton (fold_right andB trueB (a :: ps)))  (fold_right andB trueB ps) c).
+          simpl.
+          apply (ConjunctionE2 _ a _).
+          apply ByAssumption.
+          apply Singleton.
+          apply (extendInfers (singleton (fold_right andB trueB ps)) c H3).
+          intros p.
+          intro.
+          apply UnionR.
+          apply H4.
+        * assert (forall p : Formula, In p ps -> member p (delete a hs)).
+            intros p.
+            intro.
+            constructor.
+            apply H.
+            simpl.
+            tauto.
+            intro.
+            inversion H2.
+            subst.
+            contradiction n.
+          assert (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Infers hs' (ImplicationF a c)).
+            destruct H0 as [hs'].
+            destruct H0.
+            exists (delete a hs').
+            constructor.
+            intros h.
+            constructor.
+            intro.
+            constructor.
+            apply H0.
+            simpl.
+            tauto.
+            intro.
+            inversion H4.
+            subst.
+            contradiction n.
+            intro.
+            destruct H3.
+            assert (In h (a :: ps)).
+              apply H0.
+              apply H3.
+            destruct H5.
+            contradiction H4.
+            subst.
+            apply Singleton.
+            apply H5.
+            apply ImplicationI.
+            apply (extendInfers hs' c H2).
+            intros h.
+            intro.
+            destruct (eq_Formula_dec a h).
+            subst.
+            apply UnionR.
+            apply Singleton.
+            apply UnionL.
+            constructor.
+            apply H3.
+            intro.
+            contradiction n0.
+            inversion H4.
+            tauto.
+          assert (Infers (singleton (fold_right andB trueB ps)) (ImplicationF a c)).
+            apply (proj2 (IHps (delete a hs) H1 (ImplicationF a c)) H2).
+          apply (ImplicationE _ a c).
+          apply (cut_property (singleton (fold_right andB trueB (a :: ps))) (fold_right andB trueB ps) (ImplicationF a c)).
+          simpl.
+          apply (ConjunctionE2 _ a _).
+          apply ByAssumption.
+          apply Singleton.
+          apply (extendInfers (singleton (fold_right andB trueB ps)) (ImplicationF a c) H3).
+          intros p.
+          intro.
+          apply UnionR.
+          apply H4.
+          simpl.
+          apply (ConjunctionE1 _ _ (fold_right ConjunctionF (ImplicationF ContradictionF ContradictionF) ps)).
+          apply ByAssumption.
+          apply Singleton.
+    Qed.
+
   End LindenbaumBooleanAlgebra.
 
   Section Completeness.
@@ -3280,6 +3513,48 @@ Module PropositionalLogic.
       apply H1.
     Qed.
 
+    Lemma Cl_subset_TH :
+      forall hs : Ensemble Formula,
+      isSubsetOf (Cl Formula LBA hs) (TH hs).
+    Proof.
+      intros hs.
+      cut (
+        forall ps : list Formula,
+        (forall p : Formula, In p ps -> member p hs) ->
+        forall c : Formula,
+        eqB (andB (fold_right andB trueB ps) c) (fold_right andB trueB ps) ->
+        (exists hs' : Ensemble Formula, isSubsetOf hs' hs /\ Infers hs' c)
+      ).
+        intro.
+        intros p.
+        intro.
+        inversion H0.
+        subst.
+        destruct (H ps H1 p H2) as [hs'].
+        destruct H3.
+        apply InTheory.
+        apply (extendInfers hs' p H4).
+        apply H3.
+      intros ps.
+      intro.
+      intros c.
+      intro.
+      assert (Infers (singleton (fold_right andB trueB ps)) c).
+        apply leq_LBA.
+        apply H0.
+      destruct (proj1 (andBs_LBA ps hs H c) H1) as [hs'].
+      exists hs'.
+      destruct H2.
+      constructor.
+      intros h.
+      intro.
+      apply H.
+      apply H2.
+      apply H4.
+      apply H3.
+    Qed.
+
+    
     Lemma Infers_has_compactness :
       forall hs : Ensemble Formula,
       forall c : Formula,
@@ -3702,6 +3977,25 @@ Module PropositionalLogic.
         apply H7.
     Qed.
 
+    Lemma TH_subset_Cl :
+      forall hs : Ensemble Formula,
+      isSubsetOf (TH hs) (Cl Formula LBA hs).
+    Proof.
+      intros hs.
+      intros c.
+      intro.
+      inversion H.
+      subst.
+      destruct (Infers_has_compactness hs c H0) as [ps].
+      destruct H1.
+      assert (Infers (singleton (fold_right andB trueB ps)) c).
+        apply (proj2 (andBs_LBA ps hs H1 c) H2).
+      apply (Closure Formula LBA ps).
+      apply H1.
+      apply leq_LBA.
+      apply H3.
+    Qed.
+    
   End Completeness.
 
 End PropositionalLogic.
