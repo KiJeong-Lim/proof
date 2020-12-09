@@ -758,6 +758,24 @@ Module CountableBooleanAlgebra.
       forall b2 : B, isElementComplete bs1 b2
     .
 
+    Lemma inconsistent_subset :
+      forall bs1 : Ensemble B,
+      forall bs2 : Ensemble B,
+      isSubsetOf bs1 bs2 ->
+      inconsistent bs1 ->
+      inconsistent bs2.
+    Proof.
+      intros bs1 bs2.
+      intro.
+      intro.
+      destruct H0 as [b'].
+      destruct H0.
+      exists b'.
+      constructor.
+      apply (H b' H0).
+      apply H1.
+    Qed.
+
     Lemma fact_1_of_1_2_8 :
       forall bs : Ensemble B,
       isFilter (Cl bs).
@@ -3994,6 +4012,198 @@ Module PropositionalLogic.
       apply H1.
       apply leq_LBA.
       apply H3.
+    Qed.
+
+    Definition Filter (hs : Ensemble Formula) (n : nat) : Ensemble Formula :=
+      improveFilter Formula LBA (TH hs) n
+    .
+
+    Fixpoint AxmSet (hs : Ensemble Formula) (n : nat) : Ensemble Formula :=
+      match n with
+      | 0 => hs
+      | S n' => union (AxmSet hs n') (Insert Formula LBA (Filter hs n') n')
+      end
+    .
+
+    Lemma inconsistent_property_1 :
+      forall hs : Ensemble Formula,
+      Infers hs ContradictionF <-> inconsistent Formula LBA (Cl Formula LBA hs).
+    Proof.
+      intros hs.
+      constructor.
+      intro.
+      exists ContradictionF.
+      constructor.
+      assert (isSubsetOf (TH hs) (Cl Formula LBA hs)).
+        apply TH_subset_Cl.
+      apply (H0 ContradictionF).
+      apply InTheory.
+      apply H.
+      apply eqB_refl.
+      intro.
+      destruct H as [b'].
+      destruct H.
+      assert (member b' (TH hs)).
+        apply (Cl_subset_TH hs b' H).
+      inversion H1.
+      subst.
+      apply (cut_property hs b' ContradictionF).
+      apply H2.
+      destruct H0.
+      apply (extendInfers (singleton b') ContradictionF H0).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H4.
+    Qed.
+
+    Lemma equiconsistent_property_1 :
+      forall hs1 : Ensemble Formula,
+      forall hs2 : Ensemble Formula,
+      isFilter Formula LBA hs1 ->
+      isFilter Formula LBA hs2 ->
+      equiconsistent Formula LBA hs1 hs2 <-> (Infers hs1 ContradictionF <-> Infers hs2 ContradictionF).
+    Proof.
+      intros hs1 hs2 HHH1 HHH2.
+      constructor.
+      intro.
+      constructor.
+      intro.
+      apply inconsistent_property_1.
+      apply (inconsistent_subset Formula LBA hs2).
+      apply fact_3_of_1_2_8.
+      apply H.
+      apply (inconsistent_subset Formula LBA (Cl Formula LBA hs1)).
+      apply fact_5_of_1_2_8.
+      apply HHH1.
+      apply inconsistent_property_1.
+      apply H0.
+      intro.
+      apply inconsistent_property_1.
+      apply (inconsistent_subset Formula LBA hs1).
+      apply fact_3_of_1_2_8.
+      apply H.
+      apply (inconsistent_subset Formula LBA (Cl Formula LBA hs2)).
+      apply fact_5_of_1_2_8.
+      apply HHH2.
+      apply inconsistent_property_1.
+      apply H0.
+      intro.
+      constructor.
+      intro.
+      apply (inconsistent_subset Formula LBA (Cl Formula LBA hs2)).
+      apply fact_5_of_1_2_8.
+      apply HHH2.
+      apply inconsistent_property_1.
+      apply H.
+      apply inconsistent_property_1.
+      apply (inconsistent_subset Formula LBA hs1).
+      apply fact_3_of_1_2_8.
+      apply H0.
+      intro.
+      apply (inconsistent_subset Formula LBA (Cl Formula LBA hs1)).
+      apply fact_5_of_1_2_8.
+      apply HHH1.
+      apply inconsistent_property_1.
+      apply H.
+      apply inconsistent_property_1.
+      apply (inconsistent_subset Formula LBA hs2).
+      apply fact_3_of_1_2_8.
+      apply H0.
+    Qed.
+
+
+    Lemma lemma_1_of_1_3_9 :
+      forall hs : Ensemble Formula,
+      forall n : nat,
+      isSubsetOf (Filter hs n) (TH (AxmSet hs n)) /\ isSubsetOf (TH (AxmSet hs n)) (Filter hs n).
+    Proof.
+      intros hs n.
+      induction n.
+      - unfold Filter in *.
+        simpl.
+        unfold isSubsetOf.
+        intuition.
+      - destruct IHn.
+        unfold Filter in *.
+        simpl.
+        constructor.
+        * assert (isSubsetOf (Cl Formula LBA (union (improveFilter Formula LBA (TH hs) n) (Insert Formula LBA (improveFilter Formula LBA (TH hs) n) n))) (Cl Formula LBA (TH (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n))))).
+            apply fact_4_of_1_2_8.
+            intros b.
+            intro.
+            inversion H1.
+            subst.
+            assert (member b (TH (AxmSet hs n))).
+              apply (H b H2).
+            inversion H3.
+            subst.
+            apply InTheory.
+            apply (extendInfers (AxmSet hs n) b H4).
+            intros p.
+            intro.
+            apply UnionL.
+            apply H5.
+            subst.
+            apply InTheory.
+            apply ByAssumption.
+            apply UnionR.
+            apply H2.
+          assert (isSubsetOf (Cl Formula LBA (TH (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n)))) (TH (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n)))).
+            apply fact_5_of_1_2_8.
+            apply lemma_1_of_1_3_8.
+          unfold isSubsetOf in *.
+          intuition.
+        * cut (isSubsetOf (Cl Formula LBA (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n))) (Cl Formula LBA (union (improveFilter Formula LBA (TH hs) n) (Insert Formula LBA (improveFilter Formula LBA (TH hs) n) n)))).
+            intro.
+            assert (isSubsetOf (TH (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n))) (Cl Formula LBA (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n)))).
+              apply TH_subset_Cl.
+            unfold isSubsetOf in *.
+            intuition.
+          assert (isSubsetOf (Cl Formula LBA (Cl Formula LBA (union (improveFilter Formula LBA (TH hs) n) (Insert Formula LBA (improveFilter Formula LBA (TH hs) n) n)))) (Cl Formula LBA (union (improveFilter Formula LBA (TH hs) n) (Insert Formula LBA (improveFilter Formula LBA (TH hs) n) n)))).
+            apply fact_5_of_1_2_8.
+            apply fact_1_of_1_2_8.
+          cut (isSubsetOf (Cl Formula LBA (union (AxmSet hs n) (Insert Formula LBA (Filter hs n) n))) (Cl Formula LBA (Cl Formula LBA (union (improveFilter Formula LBA (TH hs) n) (Insert Formula LBA (improveFilter Formula LBA (TH hs) n) n))))).
+            unfold isSubsetOf in *.
+            intuition.
+          apply fact_4_of_1_2_8.
+          intros b.
+          intro.
+          inversion H2.
+          subst.
+          apply (Closure Formula LBA [b]).
+          intros p.
+          intro.
+          inversion H4.
+          subst.
+          apply UnionL.
+          apply (H0 p).
+          apply InTheory.
+          apply ByAssumption.
+          apply H3.
+          inversion H5.
+          apply leq_LBA.
+          simpl.
+          apply (ConjunctionE1 _ b (ImplicationF ContradictionF ContradictionF)).
+          apply ByAssumption.
+          apply Singleton.
+          subst.
+          inversion H3.
+          subst.
+          apply (Closure Formula LBA [enumB n]).
+          intros p.
+          intro.
+          inversion H5.
+          subst.
+          apply UnionR.
+          apply Insertion.
+          apply H4.
+          inversion H6.
+          apply leq_LBA.
+          simpl.
+          apply (ConjunctionE1 _ (enumerateFormula n) (ImplicationF ContradictionF ContradictionF)).
+          apply ByAssumption.
+          apply Singleton.
     Qed.
     
   End Completeness.
