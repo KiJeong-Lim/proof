@@ -6,6 +6,8 @@ Require Export Lia.
 
 Module Helper.
 
+  Import ListNotations.
+
   Section NaturalNumber.
   
     Lemma div_mod_property :
@@ -373,6 +375,110 @@ Module Helper.
       apply H1.
     Qed.
 
+    Lemma subset_append {A : Type} :
+      forall xs1 : list A,
+      forall xs2 : list A,
+      forall xs : Ensemble A,
+      (forall x : A, In x xs1 -> member x xs) ->
+      (forall x : A, In x xs2 -> member x xs) ->
+      (forall x : A, In x (xs1 ++ xs2) -> member x xs).
+    Proof.
+      intros xs1 xs2 xs.
+      intro.
+      intro.
+      intros x.
+      intro.
+      destruct (in_app_or xs1 xs2 x H1).
+      apply (H x H2).
+      apply (H0 x H2).
+    Qed.
+
+    Lemma in_append_iff_member_union {A : Type} :
+      forall xs1 : list A,
+      forall xs2 : list A,
+      forall xs1' : Ensemble A,
+      forall xs2' : Ensemble A,
+      (forall x : A, In x xs1 <-> member x xs1') ->
+      (forall x : A, In x xs2 <-> member x xs2') ->
+      (forall x : A, In x (xs1 ++ xs2) <-> member x (union xs1' xs2')).
+    Proof.
+      intros xs1 xs2 xs1' xs2'.
+      intro.
+      intro.
+      intros x.
+      constructor.
+      intro.
+      destruct (in_app_or xs1 xs2 x H1).
+      apply UnionL.
+      apply (proj1 (H x) H2).
+      apply UnionR.
+      apply (proj1 (H0 x) H2).
+      intro.
+      inversion H1.
+      subst.
+      apply in_or_app.
+      apply or_introl.
+      apply (proj2 (H x) H2).
+      subst.
+      apply in_or_app.
+      apply or_intror.
+      apply (proj2 (H0 x) H2).
+    Qed.
+
+    Lemma subset_remove {A : Type} :
+      forall eq_dec : (forall x1 : A, forall x2 : A, {x1 = x2} + {x1 <> x2}),
+      forall x1 : A,
+      forall xs2 : list A,
+      forall xs : Ensemble A,
+      (forall x : A, In x xs2 -> member x (insert x1 xs)) ->
+      (forall x : A, In x (remove eq_dec x1 xs2) -> member x xs).
+    Proof.
+      intros eq_dec x1 xs2 xs.
+      intro.
+      intros x.
+      intro.
+      destruct (in_remove eq_dec xs2 x x1 H0).
+      assert (member x (insert x1 xs)).
+        apply (H x H1).
+      inversion H3.
+      subst.
+      apply H4.
+      subst.
+      inversion H4.
+      subst.
+      tauto.
+    Qed.
+    
+    Lemma in_remove_iff_member_delete {A : Type} :
+      forall eq_dec : (forall x1 : A, forall x2 : A, {x1 = x2} + {x1 <> x2}),
+      forall x1 : A,
+      forall xs2 : list A,
+      forall xs2' : Ensemble A,
+      (forall x : A, In x xs2 <-> member x xs2') ->
+      (forall x : A, In x (remove eq_dec x1 xs2) <-> member x (delete x1 xs2')).
+    Proof.
+      intros eq_dec x1 xs2 xs2'.
+      intro.
+      intros x.
+      constructor.
+      intro.
+      destruct (in_remove eq_dec xs2 x x1 H0).
+      constructor.
+      apply (proj1 (H x) H1).
+      intro.
+      inversion H3.
+      subst.
+      tauto.
+      intro.
+      destruct H0.
+      apply in_in_remove.
+      intro.
+      apply H1.
+      subst.
+      apply Singleton.
+      apply (proj2 (H x) H0).
+    Qed.
+
   End Ensembles.
 
 End Helper.
@@ -385,7 +491,7 @@ Module CountableBooleanAlgebra.
 
   Section DefinitionOfCBA.
 
-    Class CBA (B : Type) : Type :=
+    Class CountableBooleanAlgebra (B : Type) : Type :=
       { eqB : B -> B -> Prop
       ; trueB : B
       ; falseB : B
@@ -427,7 +533,7 @@ Module CountableBooleanAlgebra.
 
     Variable B : Type.
 
-    Variable cba : CBA B.
+    Variable cba : CountableBooleanAlgebra B.
 
     Notation "b1 == b2" := (eqB b1 b2) (at level 80).
 
@@ -2037,7 +2143,7 @@ Module PropositionalLogic.
       apply Singleton.
     Qed.
 
-    Lemma CutProperty :
+    Lemma cut_property :
       forall hs : Ensemble Formula,
       forall p1 : Formula,
       forall p2 : Formula,
@@ -2578,7 +2684,7 @@ Module PropositionalLogic.
 
   Section LindenbaumBooleanAlgebra.
 
-    Program Instance LBA : CBA Formula :=
+    Program Instance LindenbaumBooleanAlgebra : CountableBooleanAlgebra Formula :=
       { eqB := fun p1 : Formula => fun p2 : Formula => Infers (singleton p1) p2 /\ Infers (singleton p2) p1
       ; trueB := ImplicationF ContradictionF ContradictionF
       ; falseB := ContradictionF
@@ -2598,14 +2704,14 @@ Module PropositionalLogic.
     
     Next Obligation.
       constructor.
-      apply (CutProperty (singleton b1) b2 b3).
+      apply (cut_property (singleton b1) b2 b3).
       apply H.
       apply (extendInfers (singleton b2) b3 H0).
       intros p.
       intro.
       apply UnionR.
       apply H3.
-      apply (CutProperty (singleton b3) b2 b1).
+      apply (cut_property (singleton b3) b2 b1).
       apply H1.
       apply (extendInfers (singleton b2) b1 H2).
       intros p.
@@ -2655,7 +2761,7 @@ Module PropositionalLogic.
     Next Obligation.
       constructor.
       apply ConjunctionI.
-      apply (CutProperty (singleton (ConjunctionF b1 b2)) b1 b1').
+      apply (cut_property (singleton (ConjunctionF b1 b2)) b1 b1').
       apply (ConjunctionE1 (singleton (ConjunctionF b1 b2)) b1 b2).
       apply ByAssumption.
       apply Singleton.
@@ -2664,7 +2770,7 @@ Module PropositionalLogic.
       intro.
       apply UnionR.
       apply H3.
-      apply (CutProperty (singleton (ConjunctionF b1 b2)) b2 b2').
+      apply (cut_property (singleton (ConjunctionF b1 b2)) b2 b2').
       apply (ConjunctionE2 (singleton (ConjunctionF b1 b2)) b1 b2).
       apply ByAssumption.
       apply Singleton.
@@ -2674,7 +2780,7 @@ Module PropositionalLogic.
       apply UnionR.
       apply H3.
       apply ConjunctionI.
-      apply (CutProperty (singleton (ConjunctionF b1' b2')) b1' b1).
+      apply (cut_property (singleton (ConjunctionF b1' b2')) b1' b1).
       apply (ConjunctionE1 (singleton (ConjunctionF b1' b2')) b1' b2').
       apply ByAssumption.
       apply Singleton.
@@ -2683,7 +2789,7 @@ Module PropositionalLogic.
       intro.
       apply UnionR.
       apply H3.
-      apply (CutProperty (singleton (ConjunctionF b1' b2')) b2' b2).
+      apply (cut_property (singleton (ConjunctionF b1' b2')) b2' b2).
       apply (ConjunctionE2 (singleton (ConjunctionF b1' b2')) b1' b2').
       apply ByAssumption.
       apply Singleton.
@@ -3095,6 +3201,507 @@ Module PropositionalLogic.
       apply Formula_is_enumerable.
     Defined.
 
+    Lemma leq_LBA :
+      forall b1 : Formula,
+      forall b2 : Formula,
+      eqB (andB b1 b2) b1 <-> Infers (singleton b1) b2.
+    Proof.
+      intros b1 b2.
+      constructor.
+      intro.
+      destruct H.
+      apply (ConjunctionE2 _ b1 b2).
+      apply H0.
+      intro.
+      constructor.
+      apply (ConjunctionE1 _ b1 b2).
+      apply ByAssumption.
+      apply Singleton.
+      apply ConjunctionI.
+      apply ByAssumption.
+      apply Singleton.
+      apply H.
+    Qed.
+
   End LindenbaumBooleanAlgebra.
+
+  Section Completeness.
+
+    Instance LBA : CountableBooleanAlgebra Formula :=
+      LindenbaumBooleanAlgebra
+    .
+
+    Inductive TH : Ensemble Formula -> Ensemble Formula :=
+    | InTheory :
+      forall hs : Ensemble Formula,
+      forall c : Formula,
+      Infers hs c ->
+      member c (TH hs)
+    .
+
+    Lemma lemma_1_of_1_3_8 :
+      forall bs : Ensemble Formula,
+      isFilter Formula LBA (TH bs).
+    Proof.
+      intros bs.
+      constructor.
+      exists (ImplicationF ContradictionF ContradictionF).
+      apply InTheory.
+      apply ImplicationI.
+      apply ByAssumption.
+      apply UnionR.
+      apply Singleton.
+      constructor.
+      intros b1 b2 H1 H2.
+      destruct H1.
+      apply InTheory.
+      apply (cut_property hs c).
+      apply H.
+      apply (extendInfers (singleton c) b2).
+      apply (proj1 (leq_LBA c b2) H2).
+      intros p.
+      intro.
+      apply UnionR.
+      apply H0.
+      intros b1 b2 b H1 H2 H3.
+      destruct H1.
+      destruct H2.
+      apply InTheory.
+      apply (cut_property hs (ConjunctionF c c0)).
+      apply ConjunctionI.
+      apply H.
+      apply H0.
+      apply (extendInfers (singleton (ConjunctionF c c0)) b).
+      destruct H3.
+      apply H2.
+      intros p.
+      intro.
+      apply UnionR.
+      apply H1.
+    Qed.
+
+    Lemma Infers_has_compactness :
+      forall hs : Ensemble Formula,
+      forall c : Formula,
+      Infers hs c ->
+      exists ps : list Formula, (forall p : Formula, In p ps -> member p hs) /\ (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Infers hs' c).
+    Proof.
+      intros hs c.
+      intro.
+      induction H.
+      - exists [h].
+        constructor.
+        intros p.
+        intro.
+        inversion H0.
+        subst.
+        apply H.
+        inversion H1.
+        exists (singleton h).
+        constructor.
+        intros p.
+        constructor.
+        intro.
+        inversion H0.
+        subst.
+        apply Singleton.
+        inversion H1.
+        intro.
+        inversion H0.
+        subst.
+        simpl.
+        tauto.
+        apply ByAssumption.
+        apply Singleton.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (ps1 ++ ps2).
+        constructor.
+        apply (subset_append ps1 ps2 hs H1 H2).
+        exists (union hs1' hs2').
+        constructor.
+        apply (in_append_iff_member_union ps1 ps2 hs1' hs2' H3 H4).
+        apply (ContradictionI _ a).
+        apply (extendInfers hs1' a H5).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        apply (extendInfers hs2' (NegationF a) H6).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H7.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists ps.
+        constructor.
+        apply H0.
+        exists hs'.
+        constructor.
+        apply H1.
+        apply ContradictionE.
+        apply H2.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists (remove eq_Formula_dec a ps).
+        constructor.
+        apply subset_remove.
+        apply H0.
+        exists (delete a hs').
+        constructor.
+        apply in_remove_iff_member_delete.
+        apply H1.
+        apply NegationI.
+        apply (extendInfers hs' ContradictionF H2).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p a).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        subst.
+        tauto.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists (remove eq_Formula_dec (NegationF a) ps).
+        constructor.
+        apply subset_remove.
+        apply H0.
+        exists (delete (NegationF a) hs').
+        constructor.
+        apply in_remove_iff_member_delete.
+        apply H1.
+        apply NegationE.
+        apply (extendInfers hs' ContradictionF H2).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p (NegationF a)).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        subst.
+        tauto.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (ps1 ++ ps2).
+        constructor.
+        apply (subset_append ps1 ps2 hs H1 H2).
+        exists (union hs1' hs2').
+        constructor.
+        apply (in_append_iff_member_union ps1 ps2 hs1' hs2' H3 H4).
+        apply ConjunctionI.
+        apply (extendInfers hs1' a H5).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        apply (extendInfers hs2' b H6).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H7.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists ps.
+        constructor.
+        apply H0.
+        exists hs'.
+        constructor.
+        apply H1.
+        apply (ConjunctionE1 _ a b).
+        apply H2.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists ps.
+        constructor.
+        apply H0.
+        exists hs'.
+        constructor.
+        apply H1.
+        apply (ConjunctionE2 _ a b).
+        apply H2.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists ps.
+        constructor.
+        apply H0.
+        exists hs'.
+        constructor.
+        apply H1.
+        apply (DisjunctionI1 _ a b).
+        apply H2.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists ps.
+        constructor.
+        apply H0.
+        exists hs'.
+        constructor.
+        apply H1.
+        apply (DisjunctionI2 _ a b).
+        apply H2.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct IHInfers3 as [ps3].
+        destruct H2.
+        destruct H3.
+        destruct H4.
+        destruct H5 as [hs1'].
+        destruct H6 as [hs2'].
+        destruct H7 as [hs3'].
+        destruct H5.
+        destruct H6.
+        destruct H7.
+        exists (ps1 ++ (remove eq_Formula_dec a ps2 ++ remove eq_Formula_dec b ps3)).
+        constructor.
+        apply subset_append.
+        apply H2.
+        apply subset_append.
+        apply subset_remove.
+        apply H3.
+        apply subset_remove.
+        apply H4.
+        exists (union hs1' (union (delete a hs2') (delete b hs3'))).
+        constructor.
+        apply in_append_iff_member_union.
+        apply H5.
+        apply in_append_iff_member_union.
+        apply in_remove_iff_member_delete.
+        apply H6.
+        apply in_remove_iff_member_delete.
+        apply H7.
+        apply (DisjunctionE _ a b c).
+        apply (extendInfers hs1' (DisjunctionF a b) H8).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H11.
+        apply (extendInfers hs2' c H9).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p a).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        apply UnionR.
+        apply UnionL.
+        constructor.
+        apply H11.
+        intro.
+        apply n.
+        inversion H12.
+        tauto.
+        apply (extendInfers hs3' c H10).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p b).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        apply UnionR.
+        apply UnionR.
+        constructor.
+        apply H11.
+        intro.
+        apply n.
+        inversion H12.
+        tauto.
+      - destruct IHInfers as [ps].
+        destruct H0.
+        destruct H1 as [hs'].
+        destruct H1.
+        exists (remove eq_Formula_dec a ps).
+        constructor.
+        apply subset_remove.
+        apply H0.
+        exists (delete a hs').
+        constructor.
+        apply in_remove_iff_member_delete.
+        apply H1.
+        apply ImplicationI.
+        apply (extendInfers hs' b H2).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p a).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        constructor.
+        apply H3.
+        intro.
+        inversion H4.
+        subst.
+        tauto.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (ps1 ++ ps2).
+        constructor.
+        apply (subset_append ps1 ps2 hs H1 H2).
+        exists (union hs1' hs2').
+        constructor.
+        apply (in_append_iff_member_union ps1 ps2 hs1' hs2' H3 H4).
+        apply (ImplicationE _ a b).
+        apply (extendInfers hs1' (ImplicationF a b) H5).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        apply (extendInfers hs2' a H6).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H7.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (remove eq_Formula_dec a ps1 ++ remove eq_Formula_dec b ps2).
+        constructor.
+        apply subset_append.
+        apply subset_remove.
+        apply H1.
+        apply subset_remove.
+        apply H2.
+        exists (union (delete a hs1') (delete b hs2')).
+        constructor.
+        apply in_append_iff_member_union.
+        apply in_remove_iff_member_delete.
+        apply H3.
+        apply in_remove_iff_member_delete.
+        apply H4.
+        apply BiconditionalI.
+        apply (extendInfers hs1' b H5).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p a).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        apply UnionL.
+        constructor.
+        apply H7.
+        intro.
+        inversion H8.
+        subst.
+        tauto.
+        apply (extendInfers hs2' a H6).
+        intros p.
+        intro.
+        destruct (eq_Formula_dec p b).
+        apply UnionR.
+        subst.
+        apply Singleton.
+        apply UnionL.
+        apply UnionR.
+        constructor.
+        apply H7.
+        intro.
+        inversion H8.
+        subst.
+        tauto.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (ps1 ++ ps2).
+        constructor.
+        apply (subset_append ps1 ps2 hs H1 H2).
+        exists (union hs1' hs2').
+        constructor.
+        apply (in_append_iff_member_union ps1 ps2 hs1' hs2' H3 H4).
+        apply (BiconditionalE1 _ a b).
+        apply (extendInfers hs1' (BiconditionalF a b) H5).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        apply (extendInfers hs2' a H6).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H7.
+      - destruct IHInfers1 as [ps1].
+        destruct IHInfers2 as [ps2].
+        destruct H1.
+        destruct H2.
+        destruct H3 as [hs1'].
+        destruct H4 as [hs2'].
+        destruct H3.
+        destruct H4.
+        exists (ps1 ++ ps2).
+        constructor.
+        apply (subset_append ps1 ps2 hs H1 H2).
+        exists (union hs1' hs2').
+        constructor.
+        apply (in_append_iff_member_union ps1 ps2 hs1' hs2' H3 H4).
+        apply (BiconditionalE2 _ a b).
+        apply (extendInfers hs1' (BiconditionalF a b) H5).
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        apply (extendInfers hs2' b H6).
+        intros p.
+        intro.
+        apply UnionR.
+        apply H7.
+    Qed.
+
+  End Completeness.
 
 End PropositionalLogic.
