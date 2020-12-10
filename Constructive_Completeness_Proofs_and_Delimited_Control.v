@@ -3482,6 +3482,197 @@ Module PropositionalLogic.
       LindenbaumBooleanAlgebra
     .
 
+    Lemma andBs_Infers :
+      forall ps : list Formula,
+      forall p : Formula,
+      Infers (singleton (fold_right andB trueB ps)) p <-> (exists hs : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs) /\ Infers hs p).
+    Proof.
+      intros ps.
+      induction ps.
+      - intros.
+        simpl.
+        constructor.
+        * intro.
+          exists empty.
+          constructor.
+          intros h.
+          constructor.
+          tauto.
+          intro.
+          inversion H0.
+          apply (cut_property empty (ImplicationF ContradictionF ContradictionF) p).
+          apply ImplicationI.
+          apply ByAssumption.
+          apply UnionR.
+          apply Singleton.
+          apply (extendInfers (singleton (ImplicationF ContradictionF ContradictionF)) p H).
+          intros h.
+          intro.
+          apply UnionR.
+          apply H0.
+        * intro.
+          destruct H as [hs].
+          destruct H.
+          apply (extendInfers hs p H0).
+          intros h.
+          intro.
+          destruct (proj2 (H h) H1).
+      - intros p.
+        constructor.
+        * intro.
+          assert (exists hs : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs) /\ Infers hs (ImplicationF a p)).
+            apply IHps.
+            apply ImplicationI.
+            apply (cut_property (insert a (singleton (fold_right andB trueB ps))) (fold_right andB trueB (a :: ps)) p).
+            simpl.
+            apply ConjunctionI.
+            apply ByAssumption.
+            apply UnionR.
+            apply Singleton.
+            apply ByAssumption.
+            apply UnionL.
+            apply Singleton.
+            apply (extendInfers (singleton (fold_right andB trueB (a :: ps))) p H).
+            intros h.
+            intro.
+            apply UnionR.
+            apply H0.
+          destruct H0 as [hs].
+          exists (insert a hs).
+          constructor.
+          intros h.
+          simpl.
+          destruct H0.
+          constructor.
+          intro.
+          destruct H2.
+          subst.
+          apply UnionR.
+          apply Singleton.
+          apply UnionL.
+          apply H0.
+          apply H2.
+          intro.
+          inversion H2.
+          subst.
+          apply or_intror.
+          apply H0.
+          apply H3.
+          subst.
+          inversion H3.
+          tauto.
+          destruct H0.
+          apply (cut_property (insert a hs) (ImplicationF a p) p).
+          apply (extendInfers hs (ImplicationF a p) H1).
+          intros h.
+          intro.
+          apply UnionL.
+          apply H2.
+          apply (ImplicationE _ a p).
+          apply (extendInfers hs (ImplicationF a p) H1).
+          intros h.
+          intro.
+          apply UnionL.
+          apply UnionL.
+          apply H2.
+          apply ByAssumption.
+          apply UnionL.
+          apply UnionR.
+          apply Singleton.
+        * intro.
+          destruct H as [hs].
+          destruct H.
+          destruct (in_dec eq_Formula_dec a ps).
+          apply (cut_property (singleton (fold_right andB trueB (a :: ps))) (fold_right andB trueB ps) p).
+          simpl.
+          apply (ConjunctionE2 _ a _).
+          apply ByAssumption.
+          apply Singleton.
+          apply (extendInfers (singleton (fold_right andB trueB ps)) p).
+          apply IHps.
+          exists hs.
+          constructor.
+          intros h.
+          constructor.
+          intro.
+          apply H.
+          simpl.
+          tauto.
+          destruct (eq_Formula_dec a h).
+          intro.
+          subst.
+          apply i.
+          intro.
+          assert (In h (a :: ps)).
+            apply H.
+            apply H1.
+          destruct H2.
+          contradiction n.
+          apply H2.
+          apply H0.
+          intros h.
+          intro.
+          apply UnionR.
+          apply H1.
+          assert (Infers (singleton (fold_right andB trueB ps)) (ImplicationF a p)).
+            apply IHps.
+            exists (delete a hs).
+            constructor.
+            intros h.
+            constructor.
+            intro.
+            destruct (eq_Formula_dec h a).
+            subst.
+            contradiction n.
+            constructor.
+            apply H.
+            intuition.
+            intro.
+            inversion H2.
+            subst.
+            tauto.
+            intro.
+            inversion H1.
+            subst.
+            assert (In h (a :: ps)).
+              apply H.
+            apply H2.
+            destruct H4.
+            contradiction H3.
+            subst.
+            apply Singleton.
+            apply H4.
+            apply ImplicationI.
+            apply (extendInfers hs p H0).
+            intros h.
+            intro.
+            destruct (eq_Formula_dec h a).
+            subst.
+            apply UnionR.
+            apply Singleton.
+            apply UnionL.
+            constructor.
+            apply H1.
+            intro.
+            inversion H2.
+            subst.
+            tauto.
+          apply (cut_property (singleton (fold_right andB trueB (a :: ps))) (fold_right andB trueB ps) p).
+          apply (ConjunctionE2 _ a _).
+          apply ByAssumption.
+          apply Singleton.
+          apply (ImplicationE _ a p).
+          apply (extendInfers (singleton (fold_right andB trueB ps)) (ImplicationF a p) H1).
+          intros h.
+          intro.
+          apply UnionR.
+          apply H2.
+          apply (ConjunctionE1 _ _ (fold_right andB trueB ps)).
+          apply ByAssumption.
+          apply UnionL.
+          apply Singleton.
+    Qed.
+
     Inductive TH : Ensemble Formula -> Ensemble Formula :=
     | InTheory :
       forall hs : Ensemble Formula,
@@ -4014,6 +4205,55 @@ Module PropositionalLogic.
       apply H3.
     Qed.
 
+    Lemma bound_exists :
+      forall ps : list Formula,
+      exists bound : nat,
+      forall p : Formula,
+      In p ps ->
+      exists n : nat, enumerateFormula n = p /\ n < bound.
+    Proof.
+      intros ps.
+      induction ps.
+      - exists 0.
+        simpl.
+        tauto.
+      - destruct (Formula_is_enumerable a) as [bound1].
+        destruct IHps as [bound2].
+        assert (bound1 >= bound2 \/ bound1 < bound2).
+          lia.
+        destruct H1.
+        exists (S bound1).
+        intros p.
+        simpl.
+        intro.
+        destruct H2.
+        exists bound1.
+        constructor.
+        subst.
+        tauto.
+        lia.
+        destruct (H0 p H2) as [n].
+        exists n.
+        destruct H3.
+        constructor.
+        apply H3.
+        lia.
+        exists bound2.
+        intros p.
+        intro.
+        simpl.
+        inversion H2.
+        exists bound1.
+        subst.
+        constructor.
+        tauto.
+        tauto.
+        destruct (H0 p H3) as [n].
+        destruct H4.
+        exists n.
+        tauto.
+    Qed.
+
     Definition Filter (hs : Ensemble Formula) (n : nat) : Ensemble Formula :=
       improveFilter Formula LBA (TH hs) n
     .
@@ -4205,7 +4445,122 @@ Module PropositionalLogic.
           apply ByAssumption.
           apply Singleton.
     Qed.
-    
+
+    Definition MaximalConsistentSet (bs : Ensemble Formula) : Ensemble Formula :=
+      CompleteFilter Formula LBA (TH bs)
+    .
+
+    Inductive FullAxmSet : Ensemble Formula -> Ensemble Formula :=
+    | InFullAxmSet :
+      forall n : nat,
+      forall bs : Ensemble Formula,
+      forall b : Formula,
+      member b (AxmSet bs n) ->
+      member b (FullAxmSet bs)
+    .
+
+    Lemma lemma_2_of_1_3_9 :
+      forall bs : Ensemble Formula,
+      isSubsetOf (MaximalConsistentSet bs) (TH (FullAxmSet bs)).
+    Proof.
+      intros bs.
+      intros p.
+      intro.
+      inversion H.
+      subst.
+      assert (member p (TH (AxmSet bs n))).
+        apply (proj1 (lemma_1_of_1_3_9 bs n) p H0).
+      inversion H1.
+      subst.
+      apply InTheory.
+      apply (extendInfers (AxmSet bs n) p H2).
+      intros b.
+      intro.
+      apply (InFullAxmSet n).
+      apply H3.
+    Qed.
+
+    Lemma lemma_3_of_1_3_9 :
+      forall bs : Ensemble Formula,
+      isSubsetOf (TH (FullAxmSet bs)) (MaximalConsistentSet bs).
+    Proof.
+      intros bs.
+      cut (
+        forall ps : list Formula,
+        (forall p : Formula, In p ps -> member p (FullAxmSet bs)) ->
+        exists m : nat,
+        (forall p : Formula, In p ps -> member p (Filter bs m))
+      ).
+        intro.
+        intros p.
+        intro.
+        inversion H0.
+        subst.
+        destruct (Infers_has_compactness (FullAxmSet bs) p H1) as [ps].
+        destruct H2.
+        destruct (H ps H2) as [m].
+        apply (InCompleteFilter Formula LBA m).
+        assert (isFilter Formula LBA (improveFilter Formula LBA (TH bs) m)).
+          apply lemma_1_of_1_2_11.
+          apply lemma_1_of_1_3_8.
+        inversion H5.
+        destruct H7.
+        apply (H7 (fold_right andB trueB ps) p).
+        apply (fact_5_of_1_2_8 Formula LBA (improveFilter Formula LBA (TH bs) m) H5 (fold_right andB trueB ps)).
+        apply (Closure Formula LBA ps).
+        apply H4.
+        apply andB_idempotent.
+        apply leq_LBA.
+        apply andBs_Infers.
+        apply H3.
+      intros ps.
+      induction ps.
+      - intro.
+        exists 0.
+        simpl.
+        tauto.
+      - intro.
+        assert (forall p : Formula, In p ps -> member p (FullAxmSet bs)).
+          intros p.
+          intro.
+          apply H.
+          simpl.
+          tauto.
+        assert (member a (FullAxmSet bs)).
+          apply H.
+          simpl.
+          tauto.
+        inversion H1.
+        subst.
+        assert (member a (Filter bs n)).
+          apply (proj2 (lemma_1_of_1_3_9 bs n) a).
+          apply InTheory.
+          apply ByAssumption.
+          apply H2.
+        destruct (IHps H0) as [n'].
+        assert (n >= n' \/ n < n').
+          lia.
+        destruct H5.
+        exists n.
+        intros p.
+        simpl.
+        intro.
+        destruct H6.
+        subst.
+        apply H3.
+        apply (lemma_1_of_1_2_12 Formula LBA (TH bs) n' n H5 p (H4 p H6)).
+        exists n'.
+        simpl.
+        intro.
+        intro.
+        destruct H6.
+        assert (n <= n').
+          lia.
+        subst.
+        apply (lemma_1_of_1_2_12 Formula LBA (TH bs) n n' H7 p H3).
+        apply (H4 p H6).
+    Qed.
+
   End Completeness.
 
 End PropositionalLogic.
