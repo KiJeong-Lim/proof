@@ -4817,227 +4817,227 @@ Module PropositionalLogic.
     Variable exclusive_middle : forall P : Prop, P \/ ~ P.
 
     Lemma ModelExistsIfConsistent :
-    forall bs : Ensemble Formula,
-    ~ Infers bs ContradictionF ->
-    isStructure (MaximalConsistentSet bs).
-  Proof.
-    intros bs.
-    intro.
-    assert (forall p : Formula, satisfies (MaximalConsistentSet bs) p <-> Infers (MaximalConsistentSet bs) p).
-      apply theorem_1_3_10.
-    assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (MaximalConsistentSet bs)).
-      assert (inconsistent Formula LBA (MaximalConsistentSet bs) <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
-        apply equiconsistent_property_1.
+      forall bs : Ensemble Formula,
+      ~ Infers bs ContradictionF ->
+      isStructure (MaximalConsistentSet bs).
+    Proof.
+      intros bs.
+      intro.
+      assert (forall p : Formula, satisfies (MaximalConsistentSet bs) p <-> Infers (MaximalConsistentSet bs) p).
+        apply theorem_1_3_10.
+      assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (MaximalConsistentSet bs)).
+        assert (inconsistent Formula LBA (MaximalConsistentSet bs) <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
+          apply equiconsistent_property_1.
+          apply theorem_1_2_14.
+          apply lemma_1_of_1_3_8.
+          apply fact_1_of_1_2_8.
+        constructor.
+        intro.
+        apply (extendInfers (MaximalConsistentSet bs) ContradictionF H1).
+        apply fact_3_of_1_2_8.
+        intro.
+        apply (extendInfers (Cl Formula LBA (MaximalConsistentSet bs)) ContradictionF H1).
+        apply fact_5_of_1_2_8.
         apply theorem_1_2_14.
         apply lemma_1_of_1_3_8.
-        apply fact_1_of_1_2_8.
-      constructor.
-      intro.
-      apply (extendInfers (MaximalConsistentSet bs) ContradictionF H1).
-      apply fact_3_of_1_2_8.
-      intro.
-      apply (extendInfers (Cl Formula LBA (MaximalConsistentSet bs)) ContradictionF H1).
-      apply fact_5_of_1_2_8.
-      apply theorem_1_2_14.
-      apply lemma_1_of_1_3_8.
-      assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
-        apply inconsistent_property_1.
-      intuition.
-    assert (~ inconsistent Formula LBA (MaximalConsistentSet bs)).
-      intro.
-      apply H.
-      assert (inconsistent Formula LBA (TH bs)).
-        apply lemma_3_of_1_2_13.
-        apply lemma_1_of_1_3_8.
+        assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
+          apply inconsistent_property_1.
+        intuition.
+      assert (~ inconsistent Formula LBA (MaximalConsistentSet bs)).
+        intro.
+        apply H.
+        assert (inconsistent Formula LBA (TH bs)).
+          apply lemma_3_of_1_2_13.
+          apply lemma_1_of_1_3_8.
+          apply H2.
+        assert (Infers (TH bs) ContradictionF).
+          apply inconsistent_property_1.
+          apply (inconsistent_subset Formula LBA (TH bs) (Cl Formula LBA (TH bs))).
+          apply fact_3_of_1_2_8.
+          apply H3.
+        assert (member ContradictionF (TH (TH bs))).
+          apply InTheory.
+          apply H4.
+        assert (member ContradictionF (TH bs)).
+          apply (fact_5_of_1_2_8 Formula LBA (TH bs)).
+          apply lemma_1_of_1_3_8.
+          apply TH_subset_Cl.
+          apply H5.
+        inversion H6.
+        subst.
+        apply H7.
+        assert (isMetaDN (MaximalConsistentSet bs) /\ isImplicationFaithful (MaximalConsistentSet bs)).
+          apply theorem_1_3_10.
+        destruct H3.
+        constructor.
+        constructor.
+        intro.
         apply H2.
-      assert (Infers (TH bs) ContradictionF).
-        apply inconsistent_property_1.
-        apply (inconsistent_subset Formula LBA (TH bs) (Cl Formula LBA (TH bs))).
-        apply fact_3_of_1_2_8.
-        apply H3.
-      assert (member ContradictionF (TH (TH bs))).
-        apply InTheory.
-        apply H4.
-      assert (member ContradictionF (TH bs)).
-        apply (fact_5_of_1_2_8 Formula LBA (TH bs)).
-        apply lemma_1_of_1_3_8.
-        apply TH_subset_Cl.
-        apply H5.
-      inversion H6.
-      subst.
-      apply H7.
-      assert (isMetaDN (MaximalConsistentSet bs) /\ isImplicationFaithful (MaximalConsistentSet bs)).
-        apply theorem_1_3_10.
-      destruct H3.
-      constructor.
-      constructor.
-      intro.
-      apply H2.
-      apply H1.
-      apply H0.
-      apply H5.
-      tauto.
-      constructor.
-      intros p1.
-      constructor.
-      intro.
-      intro.
-      apply H2.
-      apply H1.
-      apply (ContradictionI _ p1).
-      apply H0.
-      apply H6.
-      apply H0.
-      apply H5.
-      intro.
-      apply H3.
-      intro.
-      contradiction H5.
-      apply H0.
-      apply NegationE.
-      apply (ContradictionI _ (NegationF p1)).
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      apply (extendInfers (MaximalConsistentSet bs)).
-      apply H0.
-      apply H6.
-      intros p.
-      intro.
-      apply UnionL.
-      apply H7.
-      constructor.
-      intros p1 p2.
-      constructor.
-      intro.
-      constructor.
-      apply H0.
-      apply (ConjunctionE1 _ p1 p2).
-      apply H0.
-      apply H5.
-      apply H0.
-      apply (ConjunctionE2 _ p1 p2).
-      apply H0.
-      apply H5.
-      intro.
-      destruct H5.
-      apply H0.
-      apply ConjunctionI.
-      apply H0.
-      apply H5.
-      apply H0.
-      apply H6.
-      constructor.
-      intros p1 p2.
-      constructor.
-      intro.
-      destruct (exclusive_middle (satisfies (MaximalConsistentSet bs) p1)).
-      apply or_introl.
-      apply H6.
-      apply or_intror.
-      assert (Infers (MaximalConsistentSet bs) (NegationF p1)).
+        apply H1.
         apply H0.
+        apply H5.
+        tauto.
+        constructor.
+        intros p1.
+        constructor.
+        intro.
+        intro.
+        apply H2.
+        apply H1.
+        apply (ContradictionI _ p1).
+        apply H0.
+        apply H6.
+        apply H0.
+        apply H5.
+        intro.
         apply H3.
         intro.
-        contradiction H6.
+        contradiction H5.
         apply H0.
         apply NegationE.
         apply (ContradictionI _ (NegationF p1)).
         apply ByAssumption.
         apply UnionR.
         apply Singleton.
+        apply (extendInfers (MaximalConsistentSet bs)).
+        apply H0.
+        apply H6.
+        intros p.
+        intro.
+        apply UnionL.
+        apply H7.
+        constructor.
+        intros p1 p2.
+        constructor.
+        intro.
+        constructor.
+        apply H0.
+        apply (ConjunctionE1 _ p1 p2).
+        apply H0.
+        apply H5.
+        apply H0.
+        apply (ConjunctionE2 _ p1 p2).
+        apply H0.
+        apply H5.
+        intro.
+        destruct H5.
+        apply H0.
+        apply ConjunctionI.
+        apply H0.
+        apply H5.
+        apply H0.
+        apply H6.
+        constructor.
+        intros p1 p2.
+        constructor.
+        intro.
+        destruct (exclusive_middle (satisfies (MaximalConsistentSet bs) p1)).
+        apply or_introl.
+        apply H6.
+        apply or_intror.
+        assert (Infers (MaximalConsistentSet bs) (NegationF p1)).
+          apply H0.
+          apply H3.
+          intro.
+          contradiction H6.
+          apply H0.
+          apply NegationE.
+          apply (ContradictionI _ (NegationF p1)).
+          apply ByAssumption.
+          apply UnionR.
+          apply Singleton.
+          apply ByAssumption.
+          apply UnionL.
+          apply H7.
+        apply H0.
+        apply (DisjunctionE _ p1 p2).
+        apply H0.
+        apply H5.
+        apply ContradictionE.
+        apply (ContradictionI _ p1).
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply ByAssumption.
+        apply UnionL.
+        apply H0.
+        apply H7.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        intro.
+        destruct H5.
+        apply H0.
+        apply DisjunctionI1.
+        apply H0.
+        apply H5.
+        apply H0.
+        apply DisjunctionI2.
+        apply H0.
+        apply H5.
+        constructor.
+        intros p1 p2.
+        constructor.
+        apply H4.
+        apply H4.
+        constructor.
+        intros p1 p2.
+        constructor.
+        intro.
+        constructor.
+        apply H4.
+        apply H0.
+        apply ImplicationI.
+        apply (BiconditionalE1 _ p1 p2).
+        apply ByAssumption.
+        apply UnionL.
+        apply H5.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply H4.
+        apply H0.
+        apply ImplicationI.
+        apply (BiconditionalE2 _ p1 p2).
+        apply ByAssumption.
+        apply UnionL.
+        apply H5.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        intro.
+        assert (satisfies (MaximalConsistentSet bs) (ImplicationF p1 p2)).
+          apply H4.
+          apply H5.
+        assert (satisfies (MaximalConsistentSet bs) (ImplicationF p2 p1)).
+          apply H4.
+          apply H5.
+        apply H0.
+        apply BiconditionalI.
+        apply (ImplicationE _ p1 p2).
+        apply ByAssumption.
+        apply UnionL.
+        apply H6.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        apply (ImplicationE _ p2 p1).
         apply ByAssumption.
         apply UnionL.
         apply H7.
-      apply H0.
-      apply (DisjunctionE _ p1 p2).
-      apply H0.
-      apply H5.
-      apply ContradictionE.
-      apply (ContradictionI _ p1).
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      apply ByAssumption.
-      apply UnionL.
-      apply H0.
-      apply H7.
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      intro.
-      destruct H5.
-      apply H0.
-      apply DisjunctionI1.
-      apply H0.
-      apply H5.
-      apply H0.
-      apply DisjunctionI2.
-      apply H0.
-      apply H5.
-      constructor.
-      intros p1 p2.
-      constructor.
-      apply H4.
-      apply H4.
-      constructor.
-      intros p1 p2.
-      constructor.
-      intro.
-      constructor.
-      apply H4.
-      apply H0.
-      apply ImplicationI.
-      apply (BiconditionalE1 _ p1 p2).
-      apply ByAssumption.
-      apply UnionL.
-      apply H5.
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      apply H4.
-      apply H0.
-      apply ImplicationI.
-      apply (BiconditionalE2 _ p1 p2).
-      apply ByAssumption.
-      apply UnionL.
-      apply H5.
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      intro.
-      assert (satisfies (MaximalConsistentSet bs) (ImplicationF p1 p2)).
-        apply H4.
+        apply ByAssumption.
+        apply UnionR.
+        apply Singleton.
+        intros p1.
+        intro.
+        apply H3.
+        intro.
+        apply H0.
+        apply (ContradictionI _ (NegationF p1)).
+        apply ByAssumption.
+        apply H6.
+        apply ByAssumption.
         apply H5.
-      assert (satisfies (MaximalConsistentSet bs) (ImplicationF p2 p1)).
-        apply H4.
-        apply H5.
-      apply H0.
-      apply BiconditionalI.
-      apply (ImplicationE _ p1 p2).
-      apply ByAssumption.
-      apply UnionL.
-      apply H6.
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      apply (ImplicationE _ p2 p1).
-      apply ByAssumption.
-      apply UnionL.
-      apply H7.
-      apply ByAssumption.
-      apply UnionR.
-      apply Singleton.
-      intros p1.
-      intro.
-      apply H3.
-      intro.
-      apply H0.
-      apply (ContradictionI _ (NegationF p1)).
-      apply ByAssumption.
-      apply H6.
-      apply ByAssumption.
-      apply H5.
     Qed.
 
     Corollary Completeness :
