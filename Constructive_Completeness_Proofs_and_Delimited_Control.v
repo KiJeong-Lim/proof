@@ -1,3 +1,5 @@
+(* By the grace of God, our foe is utterly vanquished. *)
+
 Require Export Bool.
 Require Export PeanoNat.
 Require Export Peano_dec.
@@ -4446,6 +4448,58 @@ Module PropositionalLogic.
           apply Singleton.
     Qed.
 
+    Lemma RequirementForCompleteness :
+      forall hs : Ensemble Formula,
+      forall c : Formula,
+      Entails hs c ->
+      forall v : Formula -> Prop,
+      isStructure v ->
+      equiconsistent Formula LBA (TH (insert (NegationF c) hs)) v ->
+      isSubsetOf (TH (insert (NegationF c) hs)) v ->
+      isFilter Formula LBA v ->
+      Infers hs c.
+    Proof.
+      intros hs c.
+      intro Entailment.
+      intros v.
+      intro IsStructure.
+      intro Equiconsistent.
+      intro Extensionality.
+      intro IsFilter.
+      apply NegationE.
+      assert (inconsistent Formula LBA (TH (insert (NegationF c) hs))).
+        apply Equiconsistent.
+        assert (inconsistent Formula LBA (Cl Formula LBA v)).
+          apply inconsistent_property_1.
+          apply (ContradictionI _ c).
+          apply ByAssumption.
+          apply Entailment.
+          apply IsStructure.
+          intros h.
+          intro.
+          apply Extensionality.
+          apply InTheory.
+          apply ByAssumption.
+          apply UnionL.
+          apply H.
+          apply ByAssumption.
+          apply Extensionality.
+          apply InTheory.
+          apply ByAssumption.
+          apply UnionR.
+          apply Singleton.
+        apply (inconsistent_subset Formula LBA (Cl Formula LBA v) v).
+        apply fact_5_of_1_2_8.
+        apply IsFilter.
+        apply H.
+      assert (inconsistent Formula LBA (Cl Formula LBA (insert (NegationF c) hs))).
+        apply (inconsistent_subset Formula LBA (TH (insert (NegationF c) hs))).
+        apply TH_subset_Cl.
+        apply H.
+      apply inconsistent_property_1.
+      apply H0.
+    Qed.
+
     Definition MaximalConsistentSet (bs : Ensemble Formula) : Ensemble Formula :=
       CompleteFilter Formula LBA (TH bs)
     .
@@ -4759,67 +4813,6 @@ Module PropositionalLogic.
       apply H.
       apply H6.
       apply H7.
-    Qed.
-
-    Lemma ModelExistsIfConsistent :
-      forall bs : Ensemble Formula,
-      ~ Infers bs ContradictionF ->
-      exists v : Ensemble Formula, (forall b : Formula, member b bs -> satisfies v b) /\ isStructure v.
-    Proof.
-      intros bs.
-      intro.
-      exists (MaximalConsistentSet bs).
-      constructor.
-      intros b.
-      intro.
-      apply (InCompleteFilter Formula LBA 0).
-      simpl.
-      apply InTheory.
-      apply ByAssumption.
-      apply H0.
-      assert (forall p : Formula, satisfies (MaximalConsistentSet bs) p <-> Infers (MaximalConsistentSet bs) p).
-        apply theorem_1_3_10.
-      assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (MaximalConsistentSet bs)).
-        assert (inconsistent Formula LBA (MaximalConsistentSet bs) <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
-          apply equiconsistent_property_1.
-          apply theorem_1_2_14.
-          apply lemma_1_of_1_3_8.
-          apply fact_1_of_1_2_8.
-        constructor.
-        intro.
-        apply (extendInfers (MaximalConsistentSet bs) ContradictionF H1).
-        apply fact_3_of_1_2_8.
-        intro.
-        apply (extendInfers (Cl Formula LBA (MaximalConsistentSet bs)) ContradictionF H1).
-        apply fact_5_of_1_2_8.
-        apply theorem_1_2_14.
-        apply lemma_1_of_1_3_8.
-        assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
-          apply inconsistent_property_1.
-        intuition.
-      assert (~ inconsistent Formula LBA (MaximalConsistentSet bs)).
-        intro.
-        apply H.
-        assert (inconsistent Formula LBA (TH bs)).
-          apply lemma_3_of_1_2_13.
-          apply lemma_1_of_1_3_8.
-          apply H2.
-        assert (Infers (TH bs) ContradictionF).
-          apply inconsistent_property_1.
-          apply (inconsistent_subset Formula LBA (TH bs) (Cl Formula LBA (TH bs))).
-          apply fact_3_of_1_2_8.
-          apply H3.
-        assert (member ContradictionF (TH (TH bs))).
-          apply InTheory.
-          apply H4.
-        assert (member ContradictionF (TH bs)).
-          apply (fact_5_of_1_2_8 Formula LBA (TH bs)).
-          apply lemma_1_of_1_3_8.
-          apply TH_subset_Cl.
-          apply H5.
-        inversion H6.
-        subst.
-        apply H7.
     Qed.
 
   End Completeness.
