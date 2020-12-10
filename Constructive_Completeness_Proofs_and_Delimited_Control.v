@@ -4354,7 +4354,6 @@ Module PropositionalLogic.
       apply H0.
     Qed.
 
-
     Lemma lemma_1_of_1_3_9 :
       forall hs : Ensemble Formula,
       forall n : nat,
