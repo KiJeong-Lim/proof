@@ -4761,6 +4761,67 @@ Module PropositionalLogic.
       apply H7.
     Qed.
 
+    Lemma ModelExistsIfConsistent :
+      forall bs : Ensemble Formula,
+      ~ Infers bs ContradictionF ->
+      exists v : Ensemble Formula, (forall b : Formula, member b bs -> satisfies v b) /\ isStructure v.
+    Proof.
+      intros bs.
+      intro.
+      exists (MaximalConsistentSet bs).
+      constructor.
+      intros b.
+      intro.
+      apply (InCompleteFilter Formula LBA 0).
+      simpl.
+      apply InTheory.
+      apply ByAssumption.
+      apply H0.
+      assert (forall p : Formula, satisfies (MaximalConsistentSet bs) p <-> Infers (MaximalConsistentSet bs) p).
+        apply theorem_1_3_10.
+      assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (MaximalConsistentSet bs)).
+        assert (inconsistent Formula LBA (MaximalConsistentSet bs) <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
+          apply equiconsistent_property_1.
+          apply theorem_1_2_14.
+          apply lemma_1_of_1_3_8.
+          apply fact_1_of_1_2_8.
+        constructor.
+        intro.
+        apply (extendInfers (MaximalConsistentSet bs) ContradictionF H1).
+        apply fact_3_of_1_2_8.
+        intro.
+        apply (extendInfers (Cl Formula LBA (MaximalConsistentSet bs)) ContradictionF H1).
+        apply fact_5_of_1_2_8.
+        apply theorem_1_2_14.
+        apply lemma_1_of_1_3_8.
+        assert (Infers (MaximalConsistentSet bs) ContradictionF <-> inconsistent Formula LBA (Cl Formula LBA (MaximalConsistentSet bs))).
+          apply inconsistent_property_1.
+        intuition.
+      assert (~ inconsistent Formula LBA (MaximalConsistentSet bs)).
+        intro.
+        apply H.
+        assert (inconsistent Formula LBA (TH bs)).
+          apply lemma_3_of_1_2_13.
+          apply lemma_1_of_1_3_8.
+          apply H2.
+        assert (Infers (TH bs) ContradictionF).
+          apply inconsistent_property_1.
+          apply (inconsistent_subset Formula LBA (TH bs) (Cl Formula LBA (TH bs))).
+          apply fact_3_of_1_2_8.
+          apply H3.
+        assert (member ContradictionF (TH (TH bs))).
+          apply InTheory.
+          apply H4.
+        assert (member ContradictionF (TH bs)).
+          apply (fact_5_of_1_2_8 Formula LBA (TH bs)).
+          apply lemma_1_of_1_3_8.
+          apply TH_subset_Cl.
+          apply H5.
+        inversion H6.
+        subst.
+        apply H7.
+    Qed.
+
   End Completeness.
 
 End PropositionalLogic.
