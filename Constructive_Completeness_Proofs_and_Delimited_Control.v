@@ -11,7 +11,7 @@ Module Helper.
   Import ListNotations.
 
   Section NaturalNumber.
-  
+
     Lemma div_mod_property :
       forall a : nat,
       forall b : nat,
@@ -70,7 +70,7 @@ Module Helper.
         lia.
       lia.
     Qed.
-    
+
     Lemma second_principle_of_finite_induction :
       forall phi : nat -> Prop,
       let phi' : nat -> Prop := fun k : nat => (forall i : nat, i < k -> phi i) in
@@ -1542,7 +1542,7 @@ Module PropositionalLogic.
     | ImplicationF : forall p1 : Formula, forall p2 : Formula, Formula
     | BiconditionalF : forall p1 : Formula, forall p2 : Formula, Formula
     .
-    
+
     Proposition eq_Formula_dec :
       forall p1 p2 : Formula,
       {p1 = p2} + {p1 <> p2}.
@@ -1816,7 +1816,7 @@ Module PropositionalLogic.
       | BiconditionalF p1 p2 => S (max (rankOfFormula p1) (rankOfFormula p2))
       end
     .
-    
+
     Fixpoint enum_formula_aux (rank : nat) (seed0 : nat) : Formula :=
       match rank with
       | 0 =>
@@ -2134,7 +2134,7 @@ Module PropositionalLogic.
       apply H0.
       apply H3.
     Qed.
-    
+
   End Semantics.
 
   Section InferenceRules.
@@ -2284,7 +2284,7 @@ Module PropositionalLogic.
   End InferenceRules.
 
   Section Soundness.
-    
+
     Lemma extendInfers :
       forall hs1 : Ensemble Formula,
       forall c : Formula,
@@ -2383,7 +2383,7 @@ Module PropositionalLogic.
         apply (IHInfers1 hs2 H1).
         apply (IHInfers2 hs2 H1).
     Qed.
-    
+
     Lemma ByAssumption_preserves :
       forall hs : Ensemble Formula,
       forall a : Formula,
@@ -2816,14 +2816,14 @@ Module PropositionalLogic.
       ; enumB := enumerateFormula
       }
     .
-    
+
     Next Obligation.
       assert (Infers (singleton b1) b1).
         apply ByAssumption.
         apply Singleton.
       tauto.
     Defined.
-    
+
     Next Obligation.
       constructor.
       apply (cut_property (singleton b1) b2 b3).
@@ -2841,14 +2841,14 @@ Module PropositionalLogic.
       apply UnionR.
       apply H3.
     Defined.
-    
+
     Next Obligation.
       assert (Infers (singleton (ImplicationF ContradictionF ContradictionF)) (ImplicationF ContradictionF ContradictionF)).
         apply ByAssumption.
         apply Singleton.
       tauto.
     Defined.
-    
+
     Next Obligation.
       assert (Infers (singleton ContradictionF) ContradictionF).
         apply ByAssumption.
@@ -4969,7 +4969,7 @@ Module PropositionalLogic.
         apply H7.
         assert (isMetaDN (MaximalConsistentSet bs) /\ isImplicationFaithful (MaximalConsistentSet bs)).
           apply theorem_1_3_10.
-        destruct H3.
+      destruct H3.
       constructor.
       constructor.
       intro.
