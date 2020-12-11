@@ -3867,7 +3867,6 @@ Module PropositionalLogic.
       apply H3.
     Qed.
 
-    
     Lemma Infers_has_compactness :
       forall hs : Ensemble Formula,
       forall c : Formula,
