@@ -4916,7 +4916,7 @@ Module PropositionalLogic.
       apply H7.
     Qed.
 
-    Variable exclusive_middle : forall P : Prop, P \/ ~ P.
+    Parameter exclusive_middle : forall P : Prop, P \/ ~ P.
 
     Lemma ModelExistsIfConsistent :
       forall bs : Ensemble Formula,
@@ -5167,5 +5167,34 @@ Module PropositionalLogic.
     Qed.
 
   End Completeness.
+
+  Section Compactness.
+
+    Theorem Entails_has_compactness :
+      forall hs : Ensemble Formula,
+      forall c : Formula,
+      Entails hs c ->
+      exists ps : list Formula, (forall p : Formula, In p ps -> member p hs) /\ (exists hs' : Ensemble Formula, (forall h : Formula, In h ps <-> member h hs') /\ Entails hs' c).
+    Proof.
+      intros hs c.
+      intro.
+      assert (Infers hs c).
+        apply Completeness.
+        apply H.
+      destruct (Infers_has_compactness hs c H0) as [ps].
+      exists ps.
+      destruct H1.
+      constructor.
+      apply H1.
+      destruct H2 as [hs'].
+      exists hs'.
+      destruct H2.
+      constructor.
+      apply H2.
+      apply Soundness.
+      apply H3.
+    Qed.
+
+  End Compactness.
 
 End PropositionalLogic.
