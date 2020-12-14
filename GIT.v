@@ -6,7 +6,7 @@ Require Export Peano_dec.
 Require Export List.
 Require Export Lia.
 
-Module Helper.
+Module Preliminaries.
 
   Import ListNotations.
 
@@ -490,13 +490,13 @@ Module Helper.
 
   End Ensembles.
 
-End Helper.
+End Preliminaries.
 
 Module The_General_Idea_Behind_Goedel's_Proof.
 
   Import ListNotations.
 
-  Import Helper.
+  Import Preliminaries.
   
   Section Abstract_Forms_Of_Goedel's_and_Tarski's_Theorems.
 
@@ -842,5 +842,13 @@ Module The_General_Idea_Behind_Goedel's_Proof.
     Qed.
 
   End Undecidable_Sentences_of_L.
+
+  Section Exercise.
+
+    Variable E : Type.
+
+    Variable L : GoedelianLanguage E.
+
+  End Exercise.
 
 End The_General_Idea_Behind_Goedel's_Proof.
