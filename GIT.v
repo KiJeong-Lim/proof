@@ -849,6 +849,51 @@ Module The_General_Idea_Behind_Goedel's_Proof.
 
     Variable L : GoedelianLanguage E.
 
+  (*Example exercise_1_1 :
+      isCorrect E L ->
+      isExpressible E L (star E L (provables E L)) ->
+      (forall h : E, exists h' : E, forall n : nat, isProvable (nat_application h' n) <-> isRefutable (nat_application h n)) ->
+      isIncomplete E L.
+    Proof.
+    Qed.
+  *)
+
+    Definition represent (h : E) (ns : Ensemble nat) : Prop :=
+      forall n : nat, isProvable (nat_application h n) <-> member n ns
+    .
+
+    Definition isRepresentable (ns : Ensemble nat) : Prop :=
+      exists h : E, represent h ns
+    .
+
+  (*Example exercise_1_2 :
+      isRepresentable (star E L (refutables E L)) ->
+      (isSubsetOf (intersection isProvable isRefutable) empty) ->
+      isIncomplete E L.
+  *)
+
+  (*Example exercise_1_3 :
+      forall ns : Ensemble nat,
+      isSubsetOf (star E L (refutables E L)) ns ->
+      isSubsetOf (intersection ns (star E L (provables E L))) empty ->
+      isRepresentable ns ->
+      isIncomplete E L.
+  *)
+
+    Definition contrarepresent (h : E) (ns : Ensemble nat) : Prop :=
+      forall n : nat, isRefutable (nat_application h n) <-> member n ns
+    .
+
+    Definition isContraprepresentable (ns : Ensemble nat) : Prop :=
+      exists h : E, represent h ns
+    .
+
+  (*Example exercise_1_4 :
+      isContraprepresentable (star E L (provables E L)) ->
+      (isSubsetOf (intersection isProvable isRefutable) empty) ->
+      isIncomplete E L.
+  *)
+
   End Exercise.
 
 End The_General_Idea_Behind_Goedel's_Proof.
