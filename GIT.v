@@ -490,12 +490,6 @@ Module Helper.
 
   End Ensembles.
 
-  Section Classic.
-
-    Axiom ExclusiveMiddle : forall P : Prop, P \/ ~ P.
-
-  End Classic.
-
 End Helper.
 
 Module The_General_Idea_Behind_Goedel's_Proof.
@@ -549,6 +543,10 @@ Module The_General_Idea_Behind_Goedel's_Proof.
       forall n : nat, isTrue (nat_application h n) <-> member n ns
     .
 
+    Definition isExpressible (ns : Ensemble nat) : Prop :=
+      exists h : E, express h ns
+    .
+
     Inductive star : Ensemble nat -> Ensemble nat :=
     | InStar :
       forall n : nat,
@@ -570,7 +568,7 @@ Module The_General_Idea_Behind_Goedel's_Proof.
 
     Theorem After_Goedel_with_shades_of_Tarski :
       forall L_is_correct : isCorrect,
-      forall star_of_completement_of_provables_is_expressible : exists h : E, express h (star (complement provables)),
+      forall star_of_completement_of_provables_is_expressible : isExpressible (star (complement provables)),
       exists e : E, isTrue e /\ ~ isProvable e.
     Proof.
       intros L_is_correct star_of_completement_of_provables_is_expressible.
@@ -603,28 +601,246 @@ Module The_General_Idea_Behind_Goedel's_Proof.
           apply H3.
         intuition.
       exists (enumE (diagonalize n)).
-      destruct (ExclusiveMiddle (isProvable (enumE (diagonalize n)))).
-      assert (~ isTrue (enumE (diagonalize n))).
-        intuition.
-      contradiction H3.
-      destruct L_is_correct.
-      apply H4.
-      apply H2.
-      intuition.
+      assert (~ isProvable (enumE (diagonalize n))).
+        intro.
+        destruct L_is_correct.
+        assert (isTrue (enumE (diagonalize n))).
+          apply H3.
+          apply H2.
+        apply (proj1 H1).
+        apply H5.
+        apply H2.
+      tauto.
     Qed.
 
     Definition GOAL1 : Prop :=
-      forall ns : Ensemble nat, (exists h : E, express h ns) -> (exists h : E, express h (star ns))
+      forall ns : Ensemble nat, isExpressible ns -> isExpressible (star ns)
     .
 
     Definition GOAL2 : Prop :=
-      forall ns : Ensemble nat, (exists h : E, express h ns) -> (exists h : E, express h (complement ns))
+      forall ns : Ensemble nat, isExpressible ns -> isExpressible (complement ns)
     .
 
     Definition GOAL3 : Prop :=
-      (exists h : E, express h provables)
+      isExpressible provables
     .
 
+    Definition isGoedelSentence (e : E) (ns : Ensemble nat) : Prop :=
+      exists n : nat, (enumE n = e) /\ (isTrue e <-> member n ns)
+    .
+
+    Lemma A_Diagonal_Lemma_a :
+      forall ns : Ensemble nat,
+      isExpressible (star ns) ->
+      exists e : E, isGoedelSentence e ns.
+    Proof.
+      intros ns.
+      intro.
+      destruct H as [h].
+      destruct (E_is_denumerable h) as [n].
+      exists (nat_application h n).
+      assert (isTrue (nat_application h n) <-> member (diagonalize n) ns).
+        assert (member (diagonalize n) ns <-> member n (star ns)).
+          constructor.
+          intro.
+          apply InStar.
+          apply H0.
+          intro.
+          inversion H0.
+          apply H1.
+        assert (isTrue (nat_application h n) <-> member n (star ns)).
+          apply H.
+        intuition.
+      exists (diagonalize n).
+      constructor.
+      apply property_of_diagonalization.
+      apply e.
+      apply H0.
+    Qed.
+
+    Lemma A_Diagonal_Lemma_b :
+      GOAL1 ->
+      forall ns : Ensemble nat,
+      isExpressible ns ->
+      exists e : E, isGoedelSentence e ns.
+    Proof.
+      intros goal_1 ns ns_is_expressible.
+      apply A_Diagonal_Lemma_a.
+      apply goal_1.
+      apply ns_is_expressible.
+    Qed.
+
+    Inductive trues : Ensemble nat :=
+    | InTrues :
+      forall n : nat,
+      isTrue (enumE n) ->
+      member n trues
+    .
+
+    Lemma there_is_no_goedel_sentence_of_complement_of_trues :
+      ~ (exists e : E, isGoedelSentence e (complement trues)).
+    Proof.
+      intro.
+      destruct H as [h].
+      destruct H as [n].
+      destruct H.
+      assert (isTrue h <-> ~ member n trues).
+        assert (member n (complement trues) <-> ~ member n trues).
+          unfold complement.
+          unfold member.
+          tauto.
+        intuition.
+      assert (isTrue h <-> member n trues).
+        constructor.
+        intro.
+        apply InTrues.
+        rewrite H.
+        apply H2.
+        intro.
+        inversion H2.
+        subst.
+        apply H3.
+      intuition.
+    Qed.
+
+    Theorem After_Tarski_1 :
+      ~ isExpressible (star (complement trues)).
+    Proof.
+      intro.
+      destruct (A_Diagonal_Lemma_a (complement trues) H) as [h].
+      apply there_is_no_goedel_sentence_of_complement_of_trues.
+      exists h.
+      apply H0.
+    Qed.
+
+    Theorem After_Tarski_2 :
+      GOAL1 ->
+      ~ isExpressible (complement trues).
+    Proof.
+      intro.
+      intro.
+      apply After_Tarski_1.
+      apply H.
+      apply H0.
+    Qed.
+
+    Theorem After_Tarski_3 :
+      GOAL1 ->
+      GOAL2 ->
+      ~ isExpressible trues.
+    Proof.
+      intro.
+      intro.
+      intro.
+      apply After_Tarski_1.
+      apply H.
+      apply H0.
+      apply H1.
+    Qed.
+
   End Abstract_Forms_Of_Goedel's_and_Tarski's_Theorems.
+
+  Section Undecidable_Sentences_of_L.
+
+    Variable E : Type.
+
+    Variable L : GoedelianLanguage E. 
+
+    Definition isDecidable (e : E) : Prop :=
+      isProvable e \/ isRefutable e
+    .
+
+    Definition isIncomplete : Prop :=
+      exists e : E, ~ isDecidable e
+    .
+
+    Theorem theorem_of_1_2_1 :
+      isCorrect E L ->
+      isExpressible E L (star E L (complement (provables E L))) ->
+      isIncomplete.
+    Proof.
+      intro.
+      intro.
+      destruct (After_Goedel_with_shades_of_Tarski E L H H0) as [e].
+      exists e.
+      intro.
+      destruct H2.
+      tauto.
+      destruct H.
+      assert (member e empty).
+        apply H3.
+        constructor.
+        tauto.
+        tauto.
+      inversion H4.
+    Qed.
+
+    Inductive refutables : Ensemble nat :=
+    | InRefutables :
+      forall n : nat,
+      isRefutable (enumE n) ->
+      member n refutables
+    .
+
+    Theorem theorem_of_1_2_2 :
+      isCorrect E L ->
+      forall k : E,
+      express E L k (star E L refutables) ->
+      forall n : nat,
+      enumE n = k ->
+      ~ isDecidable (nat_application k n).
+    Proof.
+      intro.
+      intros k.
+      intro.
+      intros n.
+      intro.
+      intro.
+      assert (isTrue (nat_application k n) <-> member (diagonalize E L n) refutables).
+        assert (member (diagonalize E L n) refutables <-> member n (star E L refutables)).
+          constructor.
+          intro.
+          apply InStar.
+          apply H3.
+          intro.
+          inversion H3.
+          apply H4.
+        assert (isTrue (nat_application k n) <-> member n (star E L refutables)).
+          apply H0.
+        intuition.
+      assert (enumE (diagonalize E L n) = nat_application (enumE n) n).
+        apply property_of_diagonalization.
+        tauto.
+      destruct H.
+      destruct H2.
+      assert (isTrue (nat_application k n)).
+        apply (H (nat_application k n) H2).
+      assert (member (nat_application k n) (intersection isRefutable isTrue)).
+        constructor.
+        assert (member (diagonalize E L n) refutables).
+          apply (proj1 H3 H6).
+        inversion H7.
+        subst.
+        rewrite <- H4.
+        apply H8.
+        tauto.
+      assert (member (nat_application k n) empty).
+        apply (H5 (nat_application k n) H7).
+      inversion H8.
+      assert (isTrue (nat_application k n)).
+        apply H3.
+        apply InRefutables.
+        rewrite H4.
+        rewrite H1.
+        apply H2.
+      assert (member (nat_application k n) empty).
+        apply H5.
+        constructor.
+        apply H2.
+        apply H6.
+      inversion H7.
+    Qed.
+
+  End Undecidable_Sentences_of_L.
 
 End The_General_Idea_Behind_Goedel's_Proof.
