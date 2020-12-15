@@ -565,8 +565,8 @@ Module The_General_Idea_Behind_Goedel's_Proof.
     .
 
     Theorem After_Goedel_with_shades_of_Tarski :
-      forall L_is_correct : isCorrect,
-      forall star_of_completement_of_provables_is_expressible : isExpressible (star (complement provables)),
+      isCorrect ->
+      isExpressible (star (complement provables)) ->
       exists e : E, isTrue e /\ ~ isProvable e.
     Proof.
       intros L_is_correct star_of_completement_of_provables_is_expressible.
@@ -847,14 +847,65 @@ Module The_General_Idea_Behind_Goedel's_Proof.
 
     Variable L : GoedelianLanguage E.
 
-  (*Example exercise_1_1 :
+    Example exercise_1_1 :
       isCorrect E L ->
       isExpressible E L (star E L (provables E L)) ->
       (forall h : E, exists h' : E, forall n : nat, isProvable (nat_application h' n) <-> isRefutable (nat_application h n)) ->
       isIncomplete E L.
     Proof.
+      intros.
+      destruct H0 as [k].
+      destruct (H1 k) as [k'].
+      destruct (E_is_denumerable k) as [n].
+      destruct (E_is_denumerable k') as [n'].
+      assert (enumE (diagonalize E L n) = nat_application k n).
+        apply property_of_diagonalization.
+        apply e.
+      assert (enumE (diagonalize E L n') = nat_application k' n').
+        apply property_of_diagonalization.
+        apply e0.
+      unfold express in H0.
+      exists (nat_application k n').
+      destruct H.
+      intro.
+      assert (isTrue (nat_application k n') <-> member n' (star E L (provables E L))).
+        apply H0.
+      destruct H6.
+      assert (member n' (star E L (provables E L))).
+        apply H7.
+        apply H.
+        apply H6.
+      assert (isProvable (nat_application k' n')).
+        rewrite <- H4.
+        inversion H8.
+        subst.
+        inversion H9.
+        subst.
+        apply H10.
+      assert (isRefutable (nat_application k n')).
+        apply H2.
+        apply H9.
+      assert (member (nat_application k n') empty).
+        apply H5.
+        constructor.
+        apply H10.
+        apply H.
+        apply H6.
+      inversion H11.
+      assert (isTrue (nat_application k n')).
+        apply H7.
+        apply InStar.
+        apply InProvables.
+        rewrite H4.
+        apply H2.
+        apply H6.
+      assert (member (nat_application k n') empty).
+        apply H5.
+        constructor.
+        apply H6.
+        apply H8.
+      inversion H9.
     Qed.
-  *)
 
     Definition represent (h : E) (ns : Ensemble nat) : Prop :=
       forall n : nat, isProvable (nat_application h n) <-> member n ns
@@ -864,11 +915,55 @@ Module The_General_Idea_Behind_Goedel's_Proof.
       exists h : E, represent h ns
     .
 
-  (*Example exercise_1_2 :
+    Definition isConsistent : Prop :=
+      isSubsetOf (intersection isProvable isRefutable) empty
+    .
+
+    Example exercise_1_2 :
+      isConsistent ->
       isRepresentable (star E L (refutables E L)) ->
-      (isSubsetOf (intersection isProvable isRefutable) empty) ->
       isIncomplete E L.
-  *)
+    Proof.
+      intro.
+      intro.
+      destruct H0 as [k].
+      destruct (E_is_denumerable k) as [n].
+      assert (enumE (diagonalize E L n) = nat_application k n).
+        apply property_of_diagonalization.
+        apply e.
+      exists (nat_application k n).
+      intro.
+      destruct H2.
+      assert (isRefutable (nat_application k n)).
+        assert (member n (star E L (refutables E L))).
+          apply H0.
+          apply H2.
+        inversion H3.
+        subst.
+        inversion H4.
+        subst.
+        subst.
+        rewrite <- H1.
+        apply H5.
+      assert (member (nat_application k n) empty).
+        apply H.
+        constructor.
+        apply H2.
+        apply H3.
+      inversion H4.
+      assert (isProvable (nat_application k n)).
+        apply H0.
+        apply InStar.
+        apply InRefutables.
+        rewrite H1.
+        apply H2.
+      assert (member (nat_application k n) empty).
+        apply H.
+        constructor.
+        apply H3.
+        apply H2.
+      inversion H4.
+    Qed.
 
   (*Example exercise_1_3 :
       forall ns : Ensemble nat,
