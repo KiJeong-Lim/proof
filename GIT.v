@@ -8,8 +8,6 @@ Require Export Lia.
 
 Module Preliminaries.
 
-  Import ListNotations.
-
   Section NaturalNumber.
 
     Lemma div_mod_property :
