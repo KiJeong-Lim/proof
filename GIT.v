@@ -965,27 +965,104 @@ Module The_General_Idea_Behind_Goedel's_Proof.
       inversion H4.
     Qed.
 
-  (*Example exercise_1_3 :
+    Example exercise_1_3 :
       forall ns : Ensemble nat,
       isSubsetOf (star E L (refutables E L)) ns ->
       isSubsetOf (intersection ns (star E L (provables E L))) empty ->
       isRepresentable ns ->
       isIncomplete E L.
-  *)
+    Proof.
+      intros.
+      destruct H1 as [k].
+      destruct (E_is_denumerable k) as [n].
+      assert (enumE (diagonalize E L n) = nat_application k n).
+        apply property_of_diagonalization.
+        apply e.
+      exists (nat_application k n).
+      intro.
+      destruct H3.
+      assert (member n ns).
+        apply H1.
+        apply H3.
+      assert (member n empty).
+        apply H0.
+        constructor.
+        apply H4.
+        apply InStar.
+        apply InProvables.
+        rewrite H2.
+        apply H3.
+      inversion H5.
+      assert (member n ns).
+        apply H.
+        apply InStar.
+        apply InRefutables.
+        rewrite H2.
+        apply H3.
+      assert (member n empty).
+        apply H0.
+        constructor.
+        apply H4.
+        apply InStar.
+        apply InProvables.
+        rewrite H2.
+        apply H1.
+        apply H4.
+      inversion H5.
+    Qed.
 
     Definition contrarepresent (h : E) (ns : Ensemble nat) : Prop :=
       forall n : nat, isRefutable (nat_application h n) <-> member n ns
     .
 
     Definition isContraprepresentable (ns : Ensemble nat) : Prop :=
-      exists h : E, represent h ns
+      exists h : E, contrarepresent h ns
     .
 
-  (*Example exercise_1_4 :
+    Example exercise_1_4 :
+      isConsistent ->
       isContraprepresentable (star E L (provables E L)) ->
-      (isSubsetOf (intersection isProvable isRefutable) empty) ->
       isIncomplete E L.
-  *)
+    Proof.
+      intro.
+      intro.
+      destruct H0 as [k].
+      destruct (E_is_denumerable k) as [n].
+      assert (enumE (diagonalize E L n) = nat_application k n).
+        apply property_of_diagonalization.
+        apply e.
+      exists (nat_application k n).
+      intro.
+      destruct H2.
+      assert (member n (star E L (provables E L))).
+        apply InStar.
+        apply InProvables.
+        rewrite H1.
+        apply H2.
+      assert (isRefutable (nat_application k n)).
+        apply H0.
+        apply H3.
+      assert (member (nat_application k n) empty).
+        apply H.
+        constructor.
+        apply H2.
+        apply H4.
+      inversion H5.
+      assert (member n (star E L (provables E L))).
+        apply H0.
+        apply H2.
+      inversion H3.
+      subst.
+      inversion H4.
+      subst.
+      assert (member (enumE (diagonalize E L n)) empty).
+        apply H.
+        constructor.
+        apply H5.
+        rewrite H1.
+        apply H2.
+      inversion H6.
+    Qed.
 
   End Exercise.
 
