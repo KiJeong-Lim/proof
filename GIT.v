@@ -954,7 +954,6 @@ Module The_General_Idea_Behind_Goedel's_Proof.
         subst.
         inversion H4.
         subst.
-        subst.
         rewrite <- H1.
         apply H5.
       assert (member (nat_application k n) empty).
@@ -1092,14 +1091,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       nat
     .
 
-    Definition Val : Type :=
-      nat
-    .
-
-    Definition Assignment : Type :=
-      Var -> Val
-    .
-
     Inductive Term : Set :=
     | IVar : forall i1 : Var, Term
     | Zero : Term
@@ -1135,17 +1126,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       end
     .
 
-    Fixpoint evalTerm (v : Assignment) (t : Term) : Val :=
-      match t with
-      | IVar i1 => v i1
-      | Zero => 0
-      | Succ t1 => S (evalTerm v t1)
-      | Plus t1 t2 => evalTerm v t1 + evalTerm v t2
-      | Mult t1 t2 => evalTerm v t1 * evalTerm v t2
-      | Expo t1 t2 => (evalTerm v t1)^(evalTerm v t2)
-      end
-    .
-
     Inductive Formula : Set :=
     | Eqn : forall t1 : Term, forall t2 : Term, Formula
     | Leq : forall t1 : Term, forall t2 : Term, Formula
@@ -1173,16 +1153,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       | All i1 f2 => All i1 (applySubst_Formula (filter (fun pair : (Var * Term) => if Nat.eq_dec (fst pair) i1 then true else false) theta) f2)
       end
     .
-
-    Fixpoint evalFormula (v : Assignment) (f : Formula) : Prop :=
-      match f with
-      | Eqn t1 t2 => evalTerm v t1 = evalTerm v t2
-      | Leq t1 t2 => evalTerm v t1 <= evalTerm v t2
-      | Neg f1 => ~ evalFormula v f1
-      | Imp f1 f2 => evalFormula v f1 -> evalFormula v f2
-      | All i1 f2 => forall n : Val, evalFormula (fun i : Var => if Nat.eq_dec i i1 then n else v i) f2
-      end
-    .
   
     Class isExpr (E : Set) : Type :=
       { getFVs : E -> Ensemble Var
@@ -1207,5 +1177,38 @@ Module Tarski's_Theorem_for_Arithmetic.
     .
 
   End The_Language_L_E.
+
+  Section The_Notion_of_Truth_in_L_E.
+    
+    Definition Value : Type :=
+      nat
+    .
+
+    Definition Assignment : Type :=
+      Var -> Value
+    .
+    
+    Fixpoint evalTerm (v : Assignment) (t : Term) : Value :=
+      match t with
+      | IVar i1 => v i1
+      | Zero => 0
+      | Succ t1 => S (evalTerm v t1)
+      | Plus t1 t2 => evalTerm v t1 + evalTerm v t2
+      | Mult t1 t2 => evalTerm v t1 * evalTerm v t2
+      | Expo t1 t2 => (evalTerm v t1)^(evalTerm v t2)
+      end
+    .
+    
+    Fixpoint evalFormula (v : Assignment) (f : Formula) : Prop :=
+      match f with
+      | Eqn t1 t2 => evalTerm v t1 = evalTerm v t2
+      | Leq t1 t2 => evalTerm v t1 <= evalTerm v t2
+      | Neg f1 => ~ evalFormula v f1
+      | Imp f1 f2 => evalFormula v f1 -> evalFormula v f2
+      | All i1 f2 => forall n : Value, evalFormula (fun i : Var => if Nat.eq_dec i i1 then n else v i) f2
+      end
+    .
+
+  End The_Notion_of_Truth_in_L_E.
 
 End Tarski's_Theorem_for_Arithmetic.
