@@ -1081,6 +1081,8 @@ End The_General_Idea_Behind_Goedel's_Proof.
 
 Module Tarski's_Theorem_for_Arithmetic.
 
+  Import ListNotations.
+
   Import Preliminaries.
 
   Import The_General_Idea_Behind_Goedel's_Proof.
@@ -1093,7 +1095,7 @@ Module Tarski's_Theorem_for_Arithmetic.
 
     Inductive Alphabet : Set :=
     | A_Ze : Alphabet
-    | A_Su : Alphabet
+    | A_Sc : Alphabet
     | A_LP : Alphabet
     | A_RP : Alphabet
     | A_Fun : Alphabet
@@ -1107,6 +1109,49 @@ Module Tarski's_Theorem_for_Arithmetic.
     | A_Sharp : Alphabet
     .
 
+    Lemma eq_Alphabet_dec :
+      forall a1 : Alphabet,
+      forall a2 : Alphabet,
+      {a1 = a2} + {a1 <> a2}.
+    Proof.
+      intros a1; induction a1.
+      - intros a2; destruct a2. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto. right; intro; inversion H.
+      - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto.
+    Qed.
+
+    Definition E : Type :=
+      list Alphabet
+    .
+
+    Definition eq_E_dec : forall e1 : E, forall e2 : E, {e1 = e2} + {e1 <> e2} :=
+      list_eq_dec eq_Alphabet_dec
+    .
+
+    Fixpoint mkNumeral (n : nat) : E :=
+      match n with
+      | 0 => [A_Ze]
+      | S n' => mkNumeral n' ++ [A_Sc]
+      end
+    .
+
+    Fixpoint mkIVar (n : nat) : E :=
+      match n with
+      | 0 => [A_Var]
+      | S n' => mkIVar n' ++ [A_Dot]
+      end
+    .
+
     Inductive Term : Set :=
     | IVar : forall i1 : Var, Term
     | Zero : Term
@@ -1116,12 +1161,99 @@ Module Tarski's_Theorem_for_Arithmetic.
     | Expo : forall t1 : Term, forall t2 : Term, Term
     .
 
+    Lemma eq_Term_dec :
+      forall t1 : Term,
+      forall t2 : Term,
+      {t1 = t2} + {t1 <> t2}.
+    Proof.
+      intros t1; induction t1.
+      - intros t2; destruct t2. destruct (Nat.eq_dec i1 i0). left; rewrite e; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros t2; destruct t2. right; intro; inversion H. left; tauto. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros t2; destruct t2. right; intro; inversion H. right; intro; inversion H. destruct (IHt1 t2). left; rewrite e; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros t2; destruct t2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. destruct (IHt1_1 t2_1). rewrite e. destruct (IHt1_2 t2_2). rewrite e0. left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H.
+      - intros t2; destruct t2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. destruct (IHt1_1 t2_1). rewrite e. destruct (IHt1_2 t2_2). rewrite e0. left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n. right; intro; inversion H.
+      - intros t2; destruct t2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. destruct (IHt1_1 t2_1). rewrite e. destruct (IHt1_2 t2_2). rewrite e0. left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n.
+    Qed.
+
+    Inductive isTerm : E -> Prop :=
+    | isIVar :
+      forall i1 : nat,
+      isTerm (mkIVar i1)
+    | isZero :
+      isTerm [A_Ze]
+    | isSucc :
+      forall t1 : E,
+      isTerm t1 ->
+      isTerm (t1 ++ [A_Sc])
+    | isPlus :
+      forall t1 : E,
+      forall t2 : E,
+      isTerm t1 ->
+      isTerm t2 ->
+      isTerm ([A_Fun; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+    | isMult :
+      forall t1 : E,
+      forall t2 : E,
+      isTerm t1 ->
+      isTerm t2 ->
+      isTerm ([A_Fun; A_Dot; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+    | isExpo :
+      forall t1 : E,
+      forall t2 : E,
+      isTerm t1 ->
+      isTerm t2 ->
+      isTerm ([A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+    .
+
     Inductive Formula : Set :=
     | Eqn : forall t1 : Term, forall t2 : Term, Formula
     | Leq : forall t1 : Term, forall t2 : Term, Formula
     | Neg : forall f1 : Formula, Formula
     | Imp : forall f1 : Formula, forall f2 : Formula, Formula
     | All : forall i1 : Var, forall f2 : Formula, Formula
+    .
+
+    Lemma eq_Formula_dec :
+      forall f1 : Formula,
+      forall f2 : Formula,
+      {f1 = f2} + {f1 <> f2}.
+    Proof.
+      intros f1; induction f1.
+      - intros f2; destruct f2. destruct (eq_Term_dec t1 t0). rewrite e. destruct (eq_Term_dec t2 t3). rewrite e0; left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros f2; destruct f2. right; intro; inversion H. destruct (eq_Term_dec t1 t0). rewrite e. destruct (eq_Term_dec t2 t3). rewrite e0; left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H.
+      - intros f2; destruct f2. right; intro; inversion H. right; intro; inversion H. destruct (IHf1 f2). rewrite e; left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H. right; intro; inversion H.
+      - intros f2; destruct f2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. destruct (IHf1_1 f2_1). rewrite e. destruct (IHf1_2 f2_2). rewrite e0. left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n. right; intro; inversion H.
+      - intros f2; destruct f2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. destruct (Nat.eq_dec i1 i0). rewrite e. destruct (IHf1 f2). rewrite e0; left; tauto. right; intro; inversion H; contradiction n. right; intro; inversion H; contradiction n.
+    Qed.
+
+    Inductive isFormula : E -> Prop :=
+    | isEqn :
+      forall t1 : E,
+      forall t2 : E,
+      isTerm t1 ->
+      isTerm t2 ->
+      isFormula (t1 ++ [A_Eqn] ++ t2)
+    | isLeq :
+      forall t1 : E,
+      forall t2 : E,
+      isTerm t1 ->
+      isTerm t2 ->
+      isFormula (t1 ++ [A_Eqn] ++ t2)
+    | isNeg :
+      forall f1 : E,
+      isFormula f1 ->
+      isFormula ([A_Neg] ++ f1)
+    | isImp :
+      forall f1 : E,
+      forall f2 : E,
+      isFormula f1 ->
+      isFormula f2 ->
+      isFormula ([A_LP] ++ f1 ++ [A_Imp] ++ f2 ++ [A_RP])
+    | isAll :
+      forall i1 : Var,
+      forall f2 : E,
+      isFormula f2 ->
+      isFormula ([A_All] ++ mkIVar i1 ++ f2)
     .
 
   End The_Language_L_E.
