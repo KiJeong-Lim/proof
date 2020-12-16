@@ -1091,6 +1091,22 @@ Module Tarski's_Theorem_for_Arithmetic.
       nat
     .
 
+    Inductive Alphabet : Set :=
+    | A_Ze : Alphabet
+    | A_Su : Alphabet
+    | A_LP : Alphabet
+    | A_RP : Alphabet
+    | A_Fun : Alphabet
+    | A_Dot : Alphabet
+    | A_Var : Alphabet
+    | A_Neg : Alphabet
+    | A_Imp : Alphabet
+    | A_All : Alphabet
+    | A_Eqn : Alphabet
+    | A_Leq : Alphabet
+    | A_Sharp : Alphabet
+    .
+
     Inductive Term : Set :=
     | IVar : forall i1 : Var, Term
     | Zero : Term
@@ -1098,6 +1114,26 @@ Module Tarski's_Theorem_for_Arithmetic.
     | Plus : forall t1 : Term, forall t2 : Term, Term
     | Mult : forall t1 : Term, forall t2 : Term, Term
     | Expo : forall t1 : Term, forall t2 : Term, Term
+    .
+
+    Inductive Formula : Set :=
+    | Eqn : forall t1 : Term, forall t2 : Term, Formula
+    | Leq : forall t1 : Term, forall t2 : Term, Formula
+    | Neg : forall f1 : Formula, Formula
+    | Imp : forall f1 : Formula, forall f2 : Formula, Formula
+    | All : forall i1 : Var, forall f2 : Formula, Formula
+    .
+
+  End The_Language_L_E.
+
+  Section The_Notion_of_Truth_in_L_E.
+
+    Definition Value : Type :=
+      nat
+    .
+
+    Definition Assignment : Type :=
+      Var -> Value
     .
 
     Fixpoint getFVs_Term (t : Term) : Ensemble Var :=
@@ -1126,14 +1162,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       end
     .
 
-    Inductive Formula : Set :=
-    | Eqn : forall t1 : Term, forall t2 : Term, Formula
-    | Leq : forall t1 : Term, forall t2 : Term, Formula
-    | Neg : forall f1 : Formula, Formula
-    | Imp : forall f1 : Formula, forall f2 : Formula, Formula
-    | All : forall i1 : Var, forall f2 : Formula, Formula
-    .
-
     Fixpoint getFVs_Formula (f : Formula) : Ensemble Var :=
       match f with
       | Eqn t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
@@ -1153,41 +1181,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       | All i1 f2 => All i1 (applySubst_Formula (filter (fun pair : (Var * Term) => if Nat.eq_dec (fst pair) i1 then true else false) theta) f2)
       end
     .
-  
-    Class isExpr (E : Set) : Type :=
-      { getFVs : E -> Ensemble Var
-      ; applySubst : list (Var * Term) -> E -> E
-      }
-    .
 
-    Definition isClosed {E : Set} {E_isExpr : isExpr E} (e : E) : Prop :=
-      isSubsetOf (getFVs e) empty
-    .
-
-    Instance isExpr_Term : isExpr Term :=
-      { getFVs := getFVs_Term
-      ; applySubst := applySubst_Term
-      }
-    .
-
-    Instance isExpr_Formula : isExpr Formula :=
-      { getFVs := getFVs_Formula
-      ; applySubst := applySubst_Formula
-      }
-    .
-
-  End The_Language_L_E.
-
-  Section The_Notion_of_Truth_in_L_E.
-    
-    Definition Value : Type :=
-      nat
-    .
-
-    Definition Assignment : Type :=
-      Var -> Value
-    .
-    
     Fixpoint evalTerm (v : Assignment) (t : Term) : Value :=
       match t with
       | IVar i1 => v i1
@@ -1198,7 +1192,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       | Expo t1 t2 => (evalTerm v t1)^(evalTerm v t2)
       end
     .
-    
+
     Fixpoint evalFormula (v : Assignment) (f : Formula) : Prop :=
       match f with
       | Eqn t1 t2 => evalTerm v t1 = evalTerm v t2
@@ -1207,6 +1201,34 @@ Module Tarski's_Theorem_for_Arithmetic.
       | Imp f1 f2 => evalFormula v f1 -> evalFormula v f2
       | All i1 f2 => forall n : Value, evalFormula (fun i : Var => if Nat.eq_dec i i1 then n else v i) f2
       end
+    .
+    
+    Class HasMeaning (Expr : Set) : Type :=
+      { getFVs : Expr -> Ensemble Var
+      ; applySubst : list (Var * Term) -> Expr -> Expr
+      ; EvalResult : Type
+      ; runEval : Assignment -> Expr -> EvalResult
+      }
+    .
+
+    Definition isClosed {Expr : Set} {ExprHasMeaning : HasMeaning Expr} (e : Expr) : Prop :=
+      isSubsetOf (getFVs e) empty
+    .
+
+    Instance term_has_meaning : HasMeaning Term :=
+      { getFVs := getFVs_Term
+      ; applySubst := applySubst_Term
+      ; EvalResult := Value
+      ; runEval := evalTerm
+      }
+    .
+
+    Instance formula_has_meaning : HasMeaning Formula :=
+      { getFVs := getFVs_Formula
+      ; applySubst := applySubst_Formula
+      ; EvalResult := Prop
+      ; runEval := evalFormula
+      }
     .
 
   End The_Notion_of_Truth_in_L_E.
