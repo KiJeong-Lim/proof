@@ -5,6 +5,20 @@ Require Export Peano_dec.
 
 Module Classic.
 
+  Lemma axiom_of_choice (A : Set) (B : Set) :
+    forall phi : A -> B -> Prop,
+    (forall x : A, { y : B | phi x y }) ->
+    { f : A -> B | forall x : A, phi x (f x) }.
+  Proof.
+    intros phi.
+    intro H.
+    apply (exist (fun f : A -> B => forall x : A, phi x (f x)) (fun x : A => proj1_sig (H x))).
+    intros x.
+    unfold proj1_sig.
+    destruct (H x).
+    apply p.
+  Qed.
+
   Axiom ex_middle : forall P : Prop, P \/ ~P.
 
 End Classic.
