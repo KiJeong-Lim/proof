@@ -1161,6 +1161,17 @@ Module Tarski's_Theorem_for_Arithmetic.
     | Expo : forall t1 : Term, forall t2 : Term, Term
     .
 
+    Fixpoint showTerm (t : Term) : E :=
+      match t with
+      | IVar i1 => mkIVar i1
+      | Zero => [A_Ze]
+      | Succ t1 => showTerm t1 ++ [A_Sc]
+      | Plus t1 t2 => [A_Fun; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      | Mult t1 t2 => [A_Fun; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      | Expo t1 t2 => [A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      end
+    .
+
     Lemma eq_Term_dec :
       forall t1 : Term,
       forall t2 : Term,
@@ -1182,28 +1193,63 @@ Module Tarski's_Theorem_for_Arithmetic.
     | isZero :
       isTerm [A_Ze]
     | isSucc :
-      forall t1 : E,
-      isTerm t1 ->
-      isTerm (t1 ++ [A_Sc])
+      forall e1 : E,
+      isTerm e1 ->
+      isTerm (e1 ++ [A_Sc])
     | isPlus :
-      forall t1 : E,
-      forall t2 : E,
-      isTerm t1 ->
-      isTerm t2 ->
-      isTerm ([A_Fun; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+      forall e1 : E,
+      forall e2 : E,
+      isTerm e1 ->
+      isTerm e2 ->
+      isTerm ([A_Fun; A_Dot; A_LP] ++ e1 ++ [A_RP; A_LP] ++ e2 ++ [A_RP])
     | isMult :
-      forall t1 : E,
-      forall t2 : E,
-      isTerm t1 ->
-      isTerm t2 ->
-      isTerm ([A_Fun; A_Dot; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+      forall e1 : E,
+      forall e2 : E,
+      isTerm e1 ->
+      isTerm e2 ->
+      isTerm ([A_Fun; A_Dot; A_Dot; A_LP] ++ e1 ++ [A_RP; A_LP] ++ e2 ++ [A_RP])
     | isExpo :
-      forall t1 : E,
-      forall t2 : E,
-      isTerm t1 ->
-      isTerm t2 ->
-      isTerm ([A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ t1 ++ [A_RP; A_LP] ++ t2 ++ [A_RP])
+      forall e1 : E,
+      forall e2 : E,
+      isTerm e1 ->
+      isTerm e2 ->
+      isTerm ([A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ e1 ++ [A_RP; A_LP] ++ e2 ++ [A_RP])
     .
+
+    Lemma readTerm :
+      forall e : E,
+      isTerm e ->
+      exists t : Term, showTerm t = e.
+    Proof.
+      intros e H.
+      induction H.
+      - exists (IVar i1).
+        reflexivity.
+      - exists Zero.
+        reflexivity.
+      - destruct IHisTerm as [t1].
+        exists (Succ t1).
+        rewrite <- H0.
+        reflexivity.
+      - destruct IHisTerm1 as [t1].
+        destruct IHisTerm2 as [t2].
+        exists (Plus t1 t2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+      - destruct IHisTerm1 as [t1].
+        destruct IHisTerm2 as [t2].
+        exists (Mult t1 t2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+      - destruct IHisTerm1 as [t1].
+        destruct IHisTerm2 as [t2].
+        exists (Expo t1 t2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+    Qed.
 
     Inductive Formula : Set :=
     | Eqn : forall t1 : Term, forall t2 : Term, Formula
@@ -1211,6 +1257,16 @@ Module Tarski's_Theorem_for_Arithmetic.
     | Neg : forall f1 : Formula, Formula
     | Imp : forall f1 : Formula, forall f2 : Formula, Formula
     | All : forall i1 : Var, forall f2 : Formula, Formula
+    .
+
+    Fixpoint showFormula (f : Formula) : E :=
+      match f with
+      | Eqn t1 t2 => showTerm t1 ++ [A_Eqn] ++ showTerm t2
+      | Leq t1 t2 => showTerm t1 ++ [A_Leq] ++ showTerm t2
+      | Neg f1 => [A_Neg] ++ showFormula f1
+      | Imp f1 f2 => [A_LP] ++ showFormula f1 ++ [A_Imp] ++ showFormula f2 ++ [A_RP]
+      | All i1 f2 => [A_All] ++ mkIVar i1 ++ showFormula f2
+      end
     .
 
     Lemma eq_Formula_dec :
@@ -1228,33 +1284,68 @@ Module Tarski's_Theorem_for_Arithmetic.
 
     Inductive isFormula : E -> Prop :=
     | isEqn :
-      forall t1 : E,
-      forall t2 : E,
-      isTerm t1 ->
-      isTerm t2 ->
-      isFormula (t1 ++ [A_Eqn] ++ t2)
+      forall e1 : E,
+      forall e2 : E,
+      isTerm e1 ->
+      isTerm e2 ->
+      isFormula (e1 ++ [A_Eqn] ++ e2)
     | isLeq :
-      forall t1 : E,
-      forall t2 : E,
-      isTerm t1 ->
-      isTerm t2 ->
-      isFormula (t1 ++ [A_Eqn] ++ t2)
+      forall e1 : E,
+      forall e2 : E,
+      isTerm e1 ->
+      isTerm e2 ->
+      isFormula (e1 ++ [A_Leq] ++ e2)
     | isNeg :
-      forall f1 : E,
-      isFormula f1 ->
-      isFormula ([A_Neg] ++ f1)
+      forall e1 : E,
+      isFormula e1 ->
+      isFormula ([A_Neg] ++ e1)
     | isImp :
-      forall f1 : E,
-      forall f2 : E,
-      isFormula f1 ->
-      isFormula f2 ->
-      isFormula ([A_LP] ++ f1 ++ [A_Imp] ++ f2 ++ [A_RP])
+      forall e1 : E,
+      forall e2 : E,
+      isFormula e1 ->
+      isFormula e2 ->
+      isFormula ([A_LP] ++ e1 ++ [A_Imp] ++ e2 ++ [A_RP])
     | isAll :
       forall i1 : Var,
-      forall f2 : E,
-      isFormula f2 ->
-      isFormula ([A_All] ++ mkIVar i1 ++ f2)
+      forall e2 : E,
+      isFormula e2 ->
+      isFormula ([A_All] ++ mkIVar i1 ++ e2)
     .
+
+    Lemma readFormula :
+      forall e : E,
+      isFormula e ->
+      exists f : Formula, showFormula f = e.
+    Proof.
+      intros e H.
+      induction H.
+      - destruct (readTerm e1 H) as [t1].
+        destruct (readTerm e2 H0) as [t2].
+        exists (Eqn t1 t2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+      - destruct (readTerm e1 H) as [t1].
+        destruct (readTerm e2 H0) as [t2].
+        exists (Leq t1 t2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+      - destruct IHisFormula as [f1].
+        exists (Neg f1).
+        rewrite <- H0.
+        reflexivity.
+      - destruct IHisFormula1 as [f1].
+        destruct IHisFormula2 as [f2].
+        exists (Imp f1 f2).
+        rewrite <- H1.
+        rewrite <- H2.
+        reflexivity.
+      - destruct IHisFormula as [f2].
+        exists (All i1 f2).
+        rewrite <- H0.
+        reflexivity.
+    Qed.
 
   End The_Language_L_E.
 
