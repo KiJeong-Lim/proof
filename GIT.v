@@ -1152,6 +1152,56 @@ Module Tarski's_Theorem_for_Arithmetic.
       end
     .
 
+    Lemma mkIVar_injective :
+      forall n1 : nat,
+      forall n2 : nat,
+      mkIVar n1 = mkIVar n2 ->
+      n1 = n2.
+    Proof.
+      intros n1.
+      induction n1.
+      - intros n2.
+        destruct n2.
+        tauto.
+        simpl.
+        intro.
+        assert (In A_Dot [A_Var]).
+          rewrite H.
+          apply in_or_app.
+          apply or_intror.
+          intuition.
+        inversion H0.
+        inversion H1.
+        inversion H1.
+      - intros n2.
+        destruct n2.
+        simpl.
+        intro.
+        assert (In A_Dot [A_Var]).
+          rewrite <- H.
+          apply in_or_app.
+          apply or_intror.
+          intuition.
+        inversion H0.
+        inversion H1.
+        inversion H1.
+        simpl.
+        intro.
+        cut (n1 = n2).
+          intuition.
+        apply IHn1.
+        assert (removelast (mkIVar n1 ++ [A_Dot]) = removelast (mkIVar n2 ++ [A_Dot])).
+          rewrite H.
+          reflexivity.
+        assert (removelast (mkIVar n1 ++ [A_Dot]) = mkIVar n1).
+          apply removelast_last.
+        assert (removelast (mkIVar n2 ++ [A_Dot]) = mkIVar n2).
+          apply removelast_last.
+        rewrite <- H1.
+        rewrite <- H2.
+        apply H0.
+    Qed.
+
     Inductive Term : Set :=
     | IVar : forall i1 : Var, Term
     | Zero : Term
