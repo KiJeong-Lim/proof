@@ -1138,24 +1138,24 @@ Module Tarski's_Theorem_for_Arithmetic.
       list_eq_dec eq_Alphabet_dec
     .
 
-    Fixpoint mkNumeral (n : nat) : E :=
+    Fixpoint mkNumRep (n : nat) : E :=
       match n with
       | 0 => [A_Ze]
-      | S n' => mkNumeral n' ++ [A_Sc]
+      | S n' => mkNumRep n' ++ [A_Sc]
       end
     .
 
-    Fixpoint mkIVar (n : nat) : E :=
+    Fixpoint mkIVarRep (n : nat) : E :=
       match n with
       | 0 => [A_Var]
-      | S n' => mkIVar n' ++ [A_Dot]
+      | S n' => mkIVarRep n' ++ [A_Dot]
       end
     .
 
-    Lemma mkIVar_injective :
+    Lemma mkIVarRep_injective :
       forall n1 : nat,
       forall n2 : nat,
-      mkIVar n1 = mkIVar n2 ->
+      mkIVarRep n1 = mkIVarRep n2 ->
       n1 = n2.
     Proof.
       intros n1.
@@ -1190,12 +1190,12 @@ Module Tarski's_Theorem_for_Arithmetic.
         cut (n1 = n2).
           intuition.
         apply IHn1.
-        assert (removelast (mkIVar n1 ++ [A_Dot]) = removelast (mkIVar n2 ++ [A_Dot])).
+        assert (removelast (mkIVarRep n1 ++ [A_Dot]) = removelast (mkIVarRep n2 ++ [A_Dot])).
           rewrite H.
           reflexivity.
-        assert (removelast (mkIVar n1 ++ [A_Dot]) = mkIVar n1).
+        assert (removelast (mkIVarRep n1 ++ [A_Dot]) = mkIVarRep n1).
           apply removelast_last.
-        assert (removelast (mkIVar n2 ++ [A_Dot]) = mkIVar n2).
+        assert (removelast (mkIVarRep n2 ++ [A_Dot]) = mkIVarRep n2).
           apply removelast_last.
         rewrite <- H1.
         rewrite <- H2.
@@ -1213,7 +1213,7 @@ Module Tarski's_Theorem_for_Arithmetic.
 
     Fixpoint showTerm (t : Term) : E :=
       match t with
-      | IVar i1 => mkIVar i1
+      | IVar i1 => mkIVarRep i1
       | Zero => [A_Ze]
       | Succ t1 => showTerm t1 ++ [A_Sc]
       | Plus t1 t2 => [A_Fun; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
@@ -1239,7 +1239,7 @@ Module Tarski's_Theorem_for_Arithmetic.
     Inductive isTerm : E -> Prop :=
     | isIVar :
       forall i1 : nat,
-      isTerm (mkIVar i1)
+      isTerm (mkIVarRep i1)
     | isZero :
       isTerm [A_Ze]
     | isSucc :
@@ -1315,7 +1315,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       | Leq t1 t2 => showTerm t1 ++ [A_Leq] ++ showTerm t2
       | Neg f1 => [A_Neg] ++ showFormula f1
       | Imp f1 f2 => [A_LP] ++ showFormula f1 ++ [A_Imp] ++ showFormula f2 ++ [A_RP]
-      | All i1 f2 => [A_All] ++ mkIVar i1 ++ showFormula f2
+      | All i1 f2 => [A_All] ++ mkIVarRep i1 ++ showFormula f2
       end
     .
 
@@ -1359,7 +1359,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       forall i1 : Var,
       forall e2 : E,
       isFormula e2 ->
-      isFormula ([A_All] ++ mkIVar i1 ++ e2)
+      isFormula ([A_All] ++ mkIVarRep i1 ++ e2)
     .
 
     Lemma readFormula :
@@ -1460,8 +1460,8 @@ Module Tarski's_Theorem_for_Arithmetic.
       | IVar i1 => v i1
       | Zero => 0
       | Succ t1 => S (evalTerm v t1)
-      | Plus t1 t2 => evalTerm v t1 + evalTerm v t2
-      | Mult t1 t2 => evalTerm v t1 * evalTerm v t2
+      | Plus t1 t2 => (evalTerm v t1) + (evalTerm v t2)
+      | Mult t1 t2 => (evalTerm v t1) * (evalTerm v t2)
       | Expo t1 t2 => (evalTerm v t1)^(evalTerm v t2)
       end
     .
@@ -1507,6 +1507,16 @@ Module Tarski's_Theorem_for_Arithmetic.
   End The_Notion_of_Truth_in_L_E.
 
   Section Arithmetic_and_arithmetic_Sets_and_Relations.
+
+    Inductive HoledFormula : nat -> Set :=
+    | HoledFormulaZ :
+      Formula ->
+      HoledFormula 0
+    | HoledFormulaS :
+      forall n : nat,
+      (Term -> HoledFormula n) ->
+      HoledFormula (S n)
+    .
 
   End Arithmetic_and_arithmetic_Sets_and_Relations.
 
