@@ -1451,7 +1451,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       | Leq t1 t2 => Leq (applySubst_Term theta t1) (applySubst_Term theta t2)
       | Neg f1 => Neg (applySubst_Formula theta f1)
       | Imp f1 f2 => Imp (applySubst_Formula theta f1) (applySubst_Formula theta f2)
-      | All i1 f2 => All i1 (applySubst_Formula (filter (fun pair : (Var * Term) => if Nat.eq_dec (fst pair) i1 then true else false) theta) f2)
+      | All i1 f2 => All i1 (applySubst_Formula (filter (fun pair : (Var * Term) => if Nat.eq_dec (fst pair) i1 then false else true) theta) f2)
       end
     .
 
