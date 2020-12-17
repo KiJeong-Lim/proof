@@ -1506,18 +1506,4 @@ Module Tarski's_Theorem_for_Arithmetic.
 
   End The_Notion_of_Truth_in_L_E.
 
-  Section Arithmetic_and_arithmetic_Sets_and_Relations.
-
-    Inductive HoledFormula : nat -> Set :=
-    | HoledFormulaZ :
-      Formula ->
-      HoledFormula 0
-    | HoledFormulaS :
-      forall n : nat,
-      (Term -> HoledFormula n) ->
-      HoledFormula (S n)
-    .
-
-  End Arithmetic_and_arithmetic_Sets_and_Relations.
-
 End Tarski's_Theorem_for_Arithmetic.
