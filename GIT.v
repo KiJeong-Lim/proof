@@ -1420,21 +1420,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       end
     .
 
-    Fixpoint applySubst_Term (theta : list (Var * Term)) (t : Term) : Term :=
-      match t with
-      | IVar i1 =>
-        match lookup Nat.eq_dec i1 theta with
-        | None => IVar i1
-        | Some t' => t'
-        end
-      | Zero => Zero
-      | Succ t1 => Succ (applySubst_Term theta t1)
-      | Plus t1 t2 => Plus (applySubst_Term theta t1) (applySubst_Term theta t2)
-      | Mult t1 t2 => Mult (applySubst_Term theta t1) (applySubst_Term theta t2)
-      | Expo t1 t2 => Expo (applySubst_Term theta t1) (applySubst_Term theta t2)
-      end
-    .
-
     Fixpoint getFVs_Formula (f : Formula) : Ensemble Var :=
       match f with
       | Eqn t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
@@ -1442,16 +1427,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       | Neg f1 => getFVs_Formula f1
       | Imp f1 f2 => union (getFVs_Formula f1) (getFVs_Formula f2)
       | All i1 f2 => delete i1 (getFVs_Formula f2)
-      end
-    .
-
-    Fixpoint applySubst_Formula (theta : list (Var * Term)) (f : Formula) : Formula :=
-      match f with 
-      | Eqn t1 t2 => Eqn (applySubst_Term theta t1) (applySubst_Term theta t2)
-      | Leq t1 t2 => Leq (applySubst_Term theta t1) (applySubst_Term theta t2)
-      | Neg f1 => Neg (applySubst_Formula theta f1)
-      | Imp f1 f2 => Imp (applySubst_Formula theta f1) (applySubst_Formula theta f2)
-      | All i1 f2 => All i1 (applySubst_Formula (filter (fun pair : (Var * Term) => if Nat.eq_dec (fst pair) i1 then false else true) theta) f2)
       end
     .
 
@@ -1478,7 +1453,6 @@ Module Tarski's_Theorem_for_Arithmetic.
     
     Class HasMeaning (Expr : Set) : Type :=
       { getFVs : Expr -> Ensemble Var
-      ; applySubst : list (Var * Term) -> Expr -> Expr
       ; EvalResult : Type
       ; runEval : Assignment -> Expr -> EvalResult
       }
@@ -1505,5 +1479,41 @@ Module Tarski's_Theorem_for_Arithmetic.
     .
 
   End The_Notion_of_Truth_in_L_E.
+
+  Section Arithmetic_and_arithmetic_Sets_and_Realations.
+
+    Inductive relation_of_arity : nat -> Type :=
+    | RelationZ : Prop -> relation_of_arity 0
+    | RelationS : forall ar : nat, (nat -> relation_of_arity ar) -> relation_of_arity (S ar)
+    .
+
+    Fixpoint interprete_relation_of_arity (ar : nat) (rel : relation_of_arity ar) (f : Formula) (v : Assignment) : Prop :=
+      match rel with
+      | RelationZ prop => evalFormula v f <-> prop
+      | RelationS ar' rel' => forall n : Value, interprete_relation_of_arity ar' (rel' n) f (fun i : Var => if Nat.eq_dec i ar' then n else v i)
+      end
+    .
+
+    Definition express_relation_of_arity (f : Formula) (ar : nat) (rel : relation_of_arity ar) : Prop :=
+      (forall i : Var, i < ar -> member i (getFVs_Formula f)) /\ (forall v : Assignment, interprete_relation_of_arity ar rel f v)
+    .
+
+    Inductive function_of_arity : nat -> Type :=
+    | FunctionZ : nat -> function_of_arity 0
+    | FunctionS : forall ar : nat, (nat -> function_of_arity ar) -> function_of_arity (S ar)
+    .
+
+    Fixpoint interprete_function_of_arity (ar : nat) (fcn : function_of_arity ar) (f : Formula) (v : Assignment) : Prop :=
+      match fcn with
+      | FunctionZ fcn' => forall n : Value, evalFormula (fun i : Var => if Nat.eq_dec i ar then n else v i) f <-> n = fcn'
+      | FunctionS ar' fcn' => forall n : Value, interprete_function_of_arity ar' (fcn' n) f (fun i : Var => if Nat.eq_dec i ar then n else v i)
+      end
+    .
+
+    Definition express_function_of_arity (f : Formula) (ar : nat) (fcn : function_of_arity ar) : Prop :=
+      (forall i : Var, i <= ar -> member i (getFVs_Formula f)) /\ (forall v : Assignment, interprete_function_of_arity ar fcn f v)
+    .
+
+  End Arithmetic_and_arithmetic_Sets_and_Realations.
 
 End Tarski's_Theorem_for_Arithmetic.
