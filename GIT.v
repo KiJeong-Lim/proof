@@ -1089,10 +1089,6 @@ Module Tarski's_Theorem_for_Arithmetic.
 
   Section The_Language_L_E.
 
-    Definition Var : Set :=
-      nat
-    .
-
     Inductive Alphabet : Set :=
     | A_Ze : Alphabet
     | A_Sc : Alphabet
@@ -1136,6 +1132,10 @@ Module Tarski's_Theorem_for_Arithmetic.
 
     Definition eq_E_dec : forall e1 : E, forall e2 : E, {e1 = e2} + {e1 <> e2} :=
       list_eq_dec eq_Alphabet_dec
+    .
+
+    Definition Var : Set :=
+      nat
     .
 
     Fixpoint mkNumRep (n : nat) : E :=
@@ -1398,122 +1398,5 @@ Module Tarski's_Theorem_for_Arithmetic.
     Qed.
 
   End The_Language_L_E.
-
-  Section The_Notion_of_Truth_in_L_E.
-
-    Definition Value : Type :=
-      nat
-    .
-
-    Definition Assignment : Type :=
-      Var -> Value
-    .
-
-    Fixpoint getFVs_Term (t : Term) : Ensemble Var :=
-      match t with
-      | IVar i1 => singleton i1
-      | Zero => empty
-      | Succ t1 => getFVs_Term t1
-      | Plus t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
-      | Mult t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
-      | Expo t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
-      end
-    .
-
-    Fixpoint getFVs_Formula (f : Formula) : Ensemble Var :=
-      match f with
-      | Eqn t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
-      | Leq t1 t2 => union (getFVs_Term t1) (getFVs_Term t2)
-      | Neg f1 => getFVs_Formula f1
-      | Imp f1 f2 => union (getFVs_Formula f1) (getFVs_Formula f2)
-      | All i1 f2 => delete i1 (getFVs_Formula f2)
-      end
-    .
-
-    Fixpoint evalTerm (v : Assignment) (t : Term) : Value :=
-      match t with
-      | IVar i1 => v i1
-      | Zero => 0
-      | Succ t1 => S (evalTerm v t1)
-      | Plus t1 t2 => (evalTerm v t1) + (evalTerm v t2)
-      | Mult t1 t2 => (evalTerm v t1) * (evalTerm v t2)
-      | Expo t1 t2 => (evalTerm v t1)^(evalTerm v t2)
-      end
-    .
-
-    Fixpoint evalFormula (v : Assignment) (f : Formula) : Prop :=
-      match f with
-      | Eqn t1 t2 => evalTerm v t1 = evalTerm v t2
-      | Leq t1 t2 => evalTerm v t1 <= evalTerm v t2
-      | Neg f1 => ~ evalFormula v f1
-      | Imp f1 f2 => evalFormula v f1 -> evalFormula v f2
-      | All i1 f2 => forall n : Value, evalFormula (fun i : Var => if Nat.eq_dec i i1 then n else v i) f2
-      end
-    .
-    
-    Class HasMeaning (Expr : Set) : Type :=
-      { getFVs : Expr -> Ensemble Var
-      ; EvalResult : Type
-      ; runEval : Assignment -> Expr -> EvalResult
-      }
-    .
-
-    Definition isClosed {Expr : Set} {ExprHasMeaning : HasMeaning Expr} (e : Expr) : Prop :=
-      isSubsetOf (getFVs e) empty
-    .
-
-    Instance term_has_meaning : HasMeaning Term :=
-      { getFVs := getFVs_Term
-      ; applySubst := applySubst_Term
-      ; EvalResult := Value
-      ; runEval := evalTerm
-      }
-    .
-
-    Instance formula_has_meaning : HasMeaning Formula :=
-      { getFVs := getFVs_Formula
-      ; applySubst := applySubst_Formula
-      ; EvalResult := Prop
-      ; runEval := evalFormula
-      }
-    .
-
-  End The_Notion_of_Truth_in_L_E.
-
-  Section Arithmetic_and_arithmetic_Sets_and_Realations.
-
-    Inductive relation_of_arity : nat -> Type :=
-    | RelationZ : Prop -> relation_of_arity 0
-    | RelationS : forall ar : nat, (nat -> relation_of_arity ar) -> relation_of_arity (S ar)
-    .
-
-    Fixpoint interprete_relation_of_arity (ar : nat) (rel : relation_of_arity ar) (f : Formula) (v : Assignment) : Prop :=
-      match rel with
-      | RelationZ prop => evalFormula v f <-> prop
-      | RelationS ar' rel' => forall n : Value, interprete_relation_of_arity ar' (rel' n) f (fun i : Var => if Nat.eq_dec i ar' then n else v i)
-      end
-    .
-
-    Definition express_relation_of_arity (f : Formula) (ar : nat) (rel : relation_of_arity ar) : Prop :=
-      (forall i : Var, i < ar -> member i (getFVs_Formula f)) /\ (forall v : Assignment, interprete_relation_of_arity ar rel f v)
-    .
-
-    Inductive function_of_arity : nat -> Type :=
-    | FunctionZ : nat -> function_of_arity 0
-    | FunctionS : forall ar : nat, (nat -> function_of_arity ar) -> function_of_arity (S ar)
-    .
-
-    Fixpoint interprete_function_of_arity (ar : nat) (fcn : function_of_arity ar) (f : Formula) (v : Assignment) : Prop :=
-      match fcn with
-      | FunctionZ fcn' => forall n : Value, evalFormula (fun i : Var => if Nat.eq_dec i ar then n else v i) f <-> n = fcn'
-      | FunctionS ar' fcn' => forall n : Value, interprete_function_of_arity ar' (fcn' n) f (fun i : Var => if Nat.eq_dec i ar then n else v i)
-      end
-    .
-
-    Definition express_function_of_arity (f : Formula) (ar : nat) (fcn : function_of_arity ar) : Prop :=
-      (forall i : Var, i <= ar -> member i (getFVs_Formula f)) /\ (forall v : Assignment, interprete_function_of_arity ar fcn f v)
-    .
-
-  End Arithmetic_and_arithmetic_Sets_and_Realations.
 
 End Tarski's_Theorem_for_Arithmetic.
