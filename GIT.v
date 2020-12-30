@@ -1,10 +1,10 @@
 (* Goedel's Incompleteness Theorems - Ranymond M. Smullyan *)
 
-Require Export Bool.
-Require Export PeanoNat.
-Require Export Peano_dec.
-Require Export List.
-Require Export Lia.
+From Coq Require Export Bool.
+From Coq Require Export PeanoNat.
+From Coq Require Export Peano_dec.
+From Coq Require Export List.
+From Coq Require Export Lia.
 
 Module Preliminaries.
 
@@ -1203,22 +1203,22 @@ Module Tarski's_Theorem_for_Arithmetic.
     Qed.
 
     Inductive Term : Set :=
-    | IVar : forall i1 : Var, Term
-    | Zero : Term
-    | Succ : forall t1 : Term, Term
-    | Plus : forall t1 : Term, forall t2 : Term, Term
-    | Mult : forall t1 : Term, forall t2 : Term, Term
-    | Expo : forall t1 : Term, forall t2 : Term, Term
+    | T_IVar : forall i1 : Var, Term
+    | T_Zero : Term
+    | T_Succ : forall t1 : Term, Term
+    | T_Plus : forall t1 : Term, forall t2 : Term, Term
+    | T_Mult : forall t1 : Term, forall t2 : Term, Term
+    | T_Expo : forall t1 : Term, forall t2 : Term, Term
     .
 
     Fixpoint showTerm (t : Term) : E :=
       match t with
-      | IVar i1 => mkIVarRep i1
-      | Zero => [A_Ze]
-      | Succ t1 => showTerm t1 ++ [A_Sc]
-      | Plus t1 t2 => [A_Fun; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
-      | Mult t1 t2 => [A_Fun; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
-      | Expo t1 t2 => [A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      | T_IVar i1 => mkIVarRep i1
+      | T_Zero => [A_Ze]
+      | T_Succ t1 => showTerm t1 ++ [A_Sc]
+      | T_Plus t1 t2 => [A_Fun; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      | T_Mult t1 t2 => [A_Fun; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
+      | T_Expo t1 t2 => [A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
       end
     .
 
@@ -1273,49 +1273,49 @@ Module Tarski's_Theorem_for_Arithmetic.
     Proof.
       intros e H.
       induction H.
-      - exists (IVar i1).
+      - exists (T_IVar i1).
         reflexivity.
-      - exists Zero.
+      - exists T_Zero.
         reflexivity.
       - destruct IHisTerm as [t1].
-        exists (Succ t1).
+        exists (T_Succ t1).
         rewrite <- H0.
         reflexivity.
       - destruct IHisTerm1 as [t1].
         destruct IHisTerm2 as [t2].
-        exists (Plus t1 t2).
+        exists (T_Plus t1 t2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
       - destruct IHisTerm1 as [t1].
         destruct IHisTerm2 as [t2].
-        exists (Mult t1 t2).
+        exists (T_Mult t1 t2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
       - destruct IHisTerm1 as [t1].
         destruct IHisTerm2 as [t2].
-        exists (Expo t1 t2).
+        exists (T_Expo t1 t2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
     Qed.
 
     Inductive Formula : Set :=
-    | Eqn : forall t1 : Term, forall t2 : Term, Formula
-    | Leq : forall t1 : Term, forall t2 : Term, Formula
-    | Neg : forall f1 : Formula, Formula
-    | Imp : forall f1 : Formula, forall f2 : Formula, Formula
-    | All : forall i1 : Var, forall f2 : Formula, Formula
+    | F_Eqn : forall t1 : Term, forall t2 : Term, Formula
+    | F_Leq : forall t1 : Term, forall t2 : Term, Formula
+    | F_Neg : forall f1 : Formula, Formula
+    | F_Imp : forall f1 : Formula, forall f2 : Formula, Formula
+    | F_All : forall i1 : Var, forall f2 : Formula, Formula
     .
 
     Fixpoint showFormula (f : Formula) : E :=
       match f with
-      | Eqn t1 t2 => showTerm t1 ++ [A_Eqn] ++ showTerm t2
-      | Leq t1 t2 => showTerm t1 ++ [A_Leq] ++ showTerm t2
-      | Neg f1 => [A_Neg] ++ showFormula f1
-      | Imp f1 f2 => [A_LP] ++ showFormula f1 ++ [A_Imp] ++ showFormula f2 ++ [A_RP]
-      | All i1 f2 => [A_All] ++ mkIVarRep i1 ++ showFormula f2
+      | F_Eqn t1 t2 => showTerm t1 ++ [A_Eqn] ++ showTerm t2
+      | F_Leq t1 t2 => showTerm t1 ++ [A_Leq] ++ showTerm t2
+      | F_Neg f1 => [A_Neg] ++ showFormula f1
+      | F_Imp f1 f2 => [A_LP] ++ showFormula f1 ++ [A_Imp] ++ showFormula f2 ++ [A_RP]
+      | F_All i1 f2 => [A_All] ++ mkIVarRep i1 ++ showFormula f2
       end
     .
 
@@ -1371,32 +1371,273 @@ Module Tarski's_Theorem_for_Arithmetic.
       induction H.
       - destruct (readTerm e1 H) as [t1].
         destruct (readTerm e2 H0) as [t2].
-        exists (Eqn t1 t2).
+        exists (F_Eqn t1 t2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
       - destruct (readTerm e1 H) as [t1].
         destruct (readTerm e2 H0) as [t2].
-        exists (Leq t1 t2).
+        exists (F_Leq t1 t2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
       - destruct IHisFormula as [f1].
-        exists (Neg f1).
+        exists (F_Neg f1).
         rewrite <- H0.
         reflexivity.
       - destruct IHisFormula1 as [f1].
         destruct IHisFormula2 as [f2].
-        exists (Imp f1 f2).
+        exists (F_Imp f1 f2).
         rewrite <- H1.
         rewrite <- H2.
         reflexivity.
       - destruct IHisFormula as [f2].
-        exists (All i1 f2).
+        exists (F_All i1 f2).
         rewrite <- H0.
         reflexivity.
     Qed.
 
+    Fixpoint getFVs_T (t : Term) : Ensemble Var :=
+      match t with
+      | T_IVar i1 => singleton i1
+      | T_Zero => empty
+      | T_Succ t1 => getFVs_T t1
+      | T_Plus t1 t2 => union (getFVs_T t1) (getFVs_T t2)
+      | T_Mult t1 t2 => union (getFVs_T t1) (getFVs_T t2)
+      | T_Expo t1 t2 => union (getFVs_T t1) (getFVs_T t2)
+      end
+    .
+
+    Fixpoint getFVs_F (f : Formula) : Ensemble Var :=
+      match f with
+      | F_Eqn t1 t2 => union (getFVs_T t1) (getFVs_T t2)
+      | F_Leq t1 t2 => union (getFVs_T t1) (getFVs_T t2)
+      | F_Neg f1 => getFVs_F f1
+      | F_Imp f1 f2 => union (getFVs_F f1) (getFVs_F f2)
+      | F_All i1 f2 => delete i1 (getFVs_F f2)
+      end
+    .
+
+    Fixpoint occurs_T (i : Var) (t : Term) : bool :=
+      match t with
+      | T_IVar i1 => if Nat.eq_dec i i1 then true else false
+      | T_Zero => false
+      | T_Succ t1 => occurs_T i t1
+      | T_Plus t1 t2 => orb (occurs_T i t1) (occurs_T i t2)
+      | T_Mult t1 t2 => orb (occurs_T i t1) (occurs_T i t2)
+      | T_Expo t1 t2 => orb (occurs_T i t1) (occurs_T i t2)
+      end
+    .
+
+    Fixpoint occurs_F (i : Var) (f : Formula) : bool :=
+      match f with
+      | F_Eqn t1 t2 => orb (occurs_T i t1) (occurs_T i t2)
+      | F_Leq t1 t2 => orb (occurs_T i t1) (occurs_T i t2)
+      | F_Neg f1 => occurs_F i f1
+      | F_Imp f1 f2 => orb (occurs_F i f1) (occurs_F i f2)
+      | F_All i1 f2 => if Nat.eq_dec i i1 then true else occurs_F i f2
+      end
+    .
+
+    Lemma getFreshVar_T :
+      forall t : Term,
+      { n : nat | forall i : Var, occurs_T i t = true -> i < n }.
+    Proof.
+      intros t; induction t.
+      - exists (S i1).
+        intros i H.
+        inversion H.
+        destruct (Nat.eq_dec i i1).
+        lia.
+        inversion H1.
+      - exists 0.
+        intros i H.
+        inversion H.
+      - destruct IHt as [n1].
+        exists n1.
+        intros i H.
+        inversion H.
+        apply l.
+        apply H1.
+      - destruct IHt1 as [n1].
+        destruct IHt2 as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+      - destruct IHt1 as [n1].
+        destruct IHt2 as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+      - destruct IHt1 as [n1].
+        destruct IHt2 as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+    Qed.
+
+    Lemma getFreshVar_F :
+      forall f : Formula,
+      { n : nat | forall i : Var, occurs_F i f = true -> i < n }.
+    Proof.
+      intros f; induction f.
+      - destruct (getFreshVar_T t1) as [n1].
+        destruct (getFreshVar_T t2) as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+      - destruct (getFreshVar_T t1) as [n1].
+        destruct (getFreshVar_T t2) as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+      - destruct IHf as [n1].
+        exists n1.
+        intros i H.
+        inversion H.
+        apply l.
+        apply H1.
+      - destruct IHf1 as [n1].
+        destruct IHf2 as [n2].
+        exists (max n1 n2).
+        intros i H.
+        inversion H.
+        destruct (orb_true_elim _ _ H1).
+        assert (i < n1).
+          apply (l i e).
+        lia.
+        assert (i < n2).
+          apply (l0 i e).
+        lia.
+      - destruct IHf as [n2].
+        exists (max (S i1) n2).
+        intros i H.
+        inversion H.
+        destruct (Nat.eq_dec i i1).
+        lia.
+        assert (i < n2).
+        apply l.
+        apply H1.
+        lia.
+    Qed.
+
+    Fixpoint subst_one_T (theta : Var * Term) (t : Term) : Term :=
+      match t with
+      | T_IVar i1 => if Nat.eq_dec (fst theta) i1 then snd theta else T_IVar i1
+      | T_Zero => T_Zero
+      | T_Succ t1 => T_Succ (subst_one_T theta t1)
+      | T_Plus t1 t2 => T_Plus (subst_one_T theta t1) (subst_one_T theta t2)
+      | T_Mult t1 t2 => T_Mult (subst_one_T theta t1) (subst_one_T theta t2)
+      | T_Expo t1 t2 => T_Expo (subst_one_T theta t1) (subst_one_T theta t2)
+      end
+    .
+
+    Fixpoint subst_one_F (theta : Var * Term) (f : Formula) : Formula :=
+      match f with
+      | F_Eqn t1 t2 => F_Eqn (subst_one_T theta t1) (subst_one_T theta t2)
+      | F_Leq t1 t2 => F_Leq (subst_one_T theta t1) (subst_one_T theta t2)
+      | F_Neg f1 => F_Neg (subst_one_F theta f1)
+      | F_Imp f1 f2 => F_Imp (subst_one_F theta f1) (subst_one_F theta f2)
+      | F_All i1 f2 => if occurs_F (fst thea) f2 then subst_one_F (i, proj1_sig ) (subst_one_F (i, T_IVar (proj1_sig (getFreshVar_F f2))) f2) else F_All i1 (subst_one_F theta f2)
+      end
+    .
+
+    Definition F_Or (f1 : Formula) (f2 : Formula) : Formula :=
+      F_Imp (F_Neg f1) f2
+    .
+
+    Definition F_And (f1 : Formula) (f2 : Formula) : Formula :=
+      F_Neg (F_Imp f1 (F_Neg f2))
+    .
+
+    Definition F_Iff (f1 : Formula) (f2 : Formula) :=
+      F_And (F_Imp f1 f2) (F_Imp f2 f1)
+    .
+
+    Definition F_Exist (i1 : Var) (f2 : Formula) : Formula :=
+      F_Neg (F_All i1 (F_Neg f2))
+    .
+
+    Definition F_Neq (t1 : Term) (t2 : Term) : Formula :=
+      F_Neg (F_Eqn t1 t2)
+    .
+
+    Definition F_Lt (t1 : Term) (t2 : Term) : Formula :=
+      F_And (F_Leq t1 t2) (F_Neq t1 t2)
+    .
+
   End The_Language_L_E.
+
+  Section The_Notion_of_Truth_in_L_E.
+
+    Definition Evaluatable (f : Formula) : Prop :=
+      isSubsetOf (getFVs_F f) empty
+    .
+
+    Definition Value : Set :=
+      nat
+    .
+
+    Definition Assignment : Set :=
+      Var -> Value
+    .
+
+    Fixpoint eval_T (v : Assignment) (t : Term) : Value :=
+      match t with
+      | T_IVar i1 => v i1
+      | T_Zero => 0
+      | T_Succ t1 => S (eval_T v t1)
+      | T_Plus t1 t2 => (eval_T v t1) + (eval_T v t2)
+      | T_Mult t1 t2 => (eval_T v t1) * (eval_T v t2)
+      | T_Expo t1 t2 => (eval_T v t1)^(eval_T v t2)
+      end
+    .
+
+    Fixpoint eval_F (v : Assignment) (f : Formula) : Prop :=
+      match f with
+      | F_Eqn t1 t2 => eval_T v t1 = eval_T v t2
+      | F_Leq t1 t2 => eval_T v t1 <= eval_T v t2
+      | F_Neg f1 => ~ eval_F v f1
+      | F_Imp f1 f2 => eval_F v f1 -> eval_F v f2
+      | F_All i1 f2 => forall n : Value, eval_F (fun i : Var => if Nat.eq_dec i i1 then n else v i) f2
+      end
+    .
+
+  End The_Notion_of_Truth_in_L_E.
 
 End Tarski's_Theorem_for_Arithmetic.
