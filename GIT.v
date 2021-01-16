@@ -1135,67 +1135,6 @@ Module Tarski's_Theorem_for_Arithmetic.
       list_eq_dec eq_Alphabet_dec
     .
 
-    Fixpoint iter {A : Type} (n : nat) (init : A) (loop : A -> A) : A :=
-      match n with
-      | 0 => init
-      | S n' => loop (iter n' init loop)
-      end
-    .
-
-    Inductive Term : Set :=
-    | ZeroT : Term
-    | SuccT : Term -> Term
-    | PlusT : Term -> Term -> Term
-    | MultT : Term -> Term -> Term
-    | ExpoT : Term -> Term -> Term
-    .
-
-    Fixpoint evalTerm (t : Term) : nat :=
-      match t with
-      | ZeroT => 0
-      | SuccT t1 => S (evalTerm t1)
-      | PlusT t1 t2 => (evalTerm t1) + (evalTerm t2)
-      | MultT t1 t2 => (evalTerm t1) * (evalTerm t2)
-      | ExpoT t1 t2 => (evalTerm t1)^(evalTerm t2)
-      end
-    .
-
-    Fixpoint showTerm (t : Term) : E :=
-      match t with
-      | ZeroT => [A_Ze]
-      | SuccT t1 => showTerm t1 ++ [A_Sc]
-      | PlusT t1 t2 => [A_Fun; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
-      | MultT t1 t2 => [A_Fun; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
-      | ExpoT t1 t2 => [A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ showTerm t1 ++ [A_RP; A_LP] ++ showTerm t2 ++ [A_RP]
-      end
-    .
-
-    Inductive Formula : Set :=
-    | EqnF : Term -> Term -> Formula
-    | LeqF : Term -> Term -> Formula
-    | NotF : Formula -> Formula
-    | ImpF : Formula -> Formula -> Formula
-    | AllF : (Term -> Formula) -> Formula
-    .
-
-    Fixpoint evalFormula (f : Formula) : Prop :=
-      match f with
-      | EqnF t1 t2 => evalTerm t1 = evalTerm t2
-      | LeqF t1 t2 => evalTerm t1 = evalTerm t2
-      | NotF f1 => ~ evalFormula f1
-      | ImpF f1 f2 => evalFormula f1 -> evalFormula f2
-      | AllF f1' => forall n : nat, evalFormula (f1' (iter n ZeroT SuccT))
-      end
-    .
-
-    Fixpoint showFormula (f : Formula) : E :=
-      match f with
-      | EqnF t1 t2 => showTerm t1 ++ [A_Eqn] ++ showTerm t2
-      | LeqF t1 t2 => showTerm t1 ++ [A_Leq] ++ showTerm t2
-      | NotF f1 => [A_Neg] ++ showFormula f1
-      | ImpF f1 f2 => [A_LP] ++ showFormula f1 [A_Imp] ++ showFormula f2 ++ [A_RP]
-      | AllF f1' =>
-
   End The_Notion_of_Truth_in_L_E.
 
 End Tarski's_Theorem_for_Arithmetic.
