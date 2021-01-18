@@ -1433,12 +1433,12 @@ Module Tarski's_Theorem_for_Arithmetic.
       forall H1 : 0 < 2,
       forall H2 : 1 < 2,
       forall x0 : nat,
-      evalFormula 0 (ImpF 1 (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2))) (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2)))) x0 = ((forall x1 : nat, x0 <= x1) -> (forall x1 : nat, x0 <= x1)).
+      evalFormula 1 (ImpF 1 (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2))) (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2)))) x0 = ((forall x1 : nat, x0 <= x1) -> (forall x1 : nat, x0 <= x1)).
     Proof.
       intros.
       reflexivity.
     Qed.
 
-  End The_Notion_of_Truth_in_L_E.
+  End The_Language_L_E.
 
 End Tarski's_Theorem_for_Arithmetic.
