@@ -1135,6 +1135,289 @@ Module Tarski's_Theorem_for_Arithmetic.
       list_eq_dec eq_Alphabet_dec
     .
 
+    Definition IVarNum : Set :=
+      nat
+    .
+
+    Definition Arity : Set :=
+      nat
+    .
+
+    Fixpoint funOfArity (k : Arity) : Type :=
+      match k with
+      | 0 => nat
+      | S k' => nat -> funOfArity k'
+      end
+    .
+
+    Fixpoint relOfArity (k : Arity) : Type :=
+      match k with
+      | 0 => Prop
+      | S k' => nat -> relOfArity k'
+      end
+    .
+
+    Lemma it_is_false_that_n_lt_0 (A : Type) :
+      forall n : nat,
+      n < 0 -> A.
+    Proof.
+      intros.
+      lia.
+    Qed.
+
+    Lemma S_i_lt_S_k_implies_i_lt_k :
+      forall i : nat,
+      forall k : nat,
+      S i < S k ->
+      i < k.
+    Proof.
+      intros i k H.
+      lia.
+    Qed.
+
+    Fixpoint projectionZ (k : nat) : funOfArity (S k) :=
+      match k with
+      | 0 => fun x : nat => x
+      | S k' => fun x : nat => fun y : nat => projectionZ k' x
+      end
+    .
+
+    Example projectionZ_ex1 :
+      forall x0 : nat,
+      forall x1 : nat,
+      forall x2 : nat,
+      projectionZ 2 x0 x1 x2 = x0.
+    Proof.
+      intros x0 x1 x2.
+      reflexivity.
+    Qed.
+
+    Fixpoint projection (k : nat) : forall i : nat, i < k -> funOfArity k :=
+      fun i : nat =>
+      match i as x return x < k -> funOfArity k with
+      | 0 =>
+        match k as y return 0 < y -> funOfArity y with
+        | 0 => fun i_le_k : 0 < 0 => it_is_false_that_n_lt_0 (funOfArity 0) 0 i_le_k
+        | S k' => fun i_le_k : 0 < S k' => projectionZ k'
+        end
+      | S i' =>
+        match k as y return S i' < y -> funOfArity y with
+        | 0 => fun i_le_k : S i' < 0 => it_is_false_that_n_lt_0 (funOfArity 0) (S i') i_le_k
+        | S k' => fun i_le_k : S i' < S k' => fun z : nat => projection k' i' (S_i_lt_S_k_implies_i_lt_k i' k' i_le_k)
+        end
+      end
+    .
+
+    Example it_is_true_that_1_lt_4 :
+      1 < 4.
+    Proof.
+      lia.
+    Qed.
+
+    Example projection_ex1 :
+      forall x0 : nat,
+      forall x1 : nat,
+      forall x2 : nat,
+      forall x3 : nat,
+      projection 4 1 it_is_true_that_1_lt_4 x0 x1 x2 x3 = x1.
+    Proof.
+      intros x1 x2.
+      reflexivity.
+    Qed.
+
+    Inductive Term (k : IVarNum) : Set :=
+    | IVarT :
+      forall i : IVarNum,
+      i < k ->
+      Term k
+    | ZeroT :
+      Term k
+    | SuccT :
+      Term k ->
+      Term k
+    | PlusT :
+      Term k ->
+      Term k ->
+      Term k
+    | MultT :
+      Term k ->
+      Term k ->
+      Term k
+    | ExpoT :
+      Term k ->
+      Term k ->
+      Term k
+    .
+
+    Fixpoint liftZero (k : Arity) : funOfArity k :=
+      match k as x return funOfArity x with
+      | 0 => 0
+      | S k' => fun x : nat => liftZero k'
+      end
+    .
+
+    Fixpoint liftSucc (k : Arity) : funOfArity k -> funOfArity k :=
+      match k as x return funOfArity x -> funOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        S (v1)
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftSucc k' (v1 x)
+      end
+    .
+
+    Fixpoint liftPlus (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
+      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        fun v2 : funOfArity 0 =>
+        v1 + v2
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun v2 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftPlus k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint liftMult (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
+      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        fun v2 : funOfArity 0 =>
+        v1 * v2
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun v2 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftMult k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint liftExpo (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
+      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        fun v2 : funOfArity 0 =>
+        v1^v2
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun v2 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftExpo k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint evalTerm (k : Arity) (t : Term k) : funOfArity k :=
+      match t with
+      | IVarT _ i ilek => projection k i ilek
+      | ZeroT _ => liftZero k
+      | SuccT _ t1 => liftSucc k (evalTerm k t1)
+      | PlusT _ t1 t2 => liftPlus k (evalTerm k t1) (evalTerm k t2)
+      | MultT _ t1 t2 => liftMult k (evalTerm k t1) (evalTerm k t2)
+      | ExpoT _ t1 t2 => liftExpo k (evalTerm k t1) (evalTerm k t2)
+      end
+    .
+
+    Inductive Formula (k : IVarNum) : Set :=
+    | EqnF :
+      Term k ->
+      Term k ->
+      Formula k
+    | LeqF :
+      Term k ->
+      Term k ->
+      Formula k
+    | NegF :
+      Formula k ->
+      Formula k
+    | ImpF :
+      Formula k ->
+      Formula k ->
+      Formula k
+    | AllF :
+      Formula (S k) ->
+      Formula k
+    .
+
+    Fixpoint liftEqn (k : Arity) : funOfArity k -> funOfArity k -> relOfArity k :=
+      match k as x return funOfArity x -> funOfArity x -> relOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        fun v2 : funOfArity 0 =>
+        v1 = v2
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun v2 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftEqn k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint liftLeq (k : Arity) : funOfArity k -> funOfArity k -> relOfArity k :=
+      match k as x return funOfArity x -> funOfArity x -> relOfArity x with
+      | 0 =>
+        fun v1 : funOfArity 0 =>
+        fun v2 : funOfArity 0 =>
+        v1 <= v2
+      | S k' =>
+        fun v1 : nat -> funOfArity k' =>
+        fun v2 : nat -> funOfArity k' =>
+        fun x : nat =>
+        liftLeq k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint liftNeg (k : Arity) : relOfArity k -> relOfArity k :=
+      match k as x return relOfArity x -> relOfArity x with
+      | 0 =>
+        fun v1 : relOfArity 0 =>
+        ~ v1
+      | S k' =>
+        fun v1 : nat -> relOfArity k' =>
+        fun x : nat =>
+        liftNeg k' (v1 x)
+      end
+    .
+
+    Fixpoint liftImp (k : Arity) : relOfArity k -> relOfArity k -> relOfArity k :=
+      match k as x return relOfArity x -> relOfArity x -> relOfArity x with
+      | 0 =>
+        fun v1 : relOfArity 0 =>
+        fun v2 : relOfArity 0 =>
+        v1 -> v2
+      | S k' =>
+        fun v1 : nat -> relOfArity k' =>
+        fun v2 : nat -> relOfArity k' =>
+        fun x : nat =>
+        liftImp k' (v1 x) (v2 x)
+      end
+    .
+
+    Fixpoint liftAll (k : Arity) : relOfArity (S k) -> relOfArity k :=
+      match k as x return relOfArity (S x) -> relOfArity x with
+      | 0 =>
+        fun v1 : relOfArity 1 =>
+        forall n : nat, v1 n
+      | S k' =>
+        fun v1 : nat -> relOfArity (S k') =>
+        fun x : nat =>
+        liftAll k' (v1 x)
+      end
+    .
+
+    Fixpoint evalFormula (k : Arity) (f : Formula k) : relOfArity k :=
+      match f with
+      | EqnF _ t1 t2 => liftEqn k (evalTerm k t1) (evalTerm k t2)
+      | LeqF _ t1 t2 => liftLeq k (evalTerm k t1) (evalTerm k t2)
+      | NegF _ f1 => liftNeg k (evalFormula k f1)
+      | ImpF _ f1 f2 => liftImp k (evalFormula k f1) (evalFormula k f2)
+      | AllF _ f1' => liftAll k (evalFormula (S k) f1')
+      end
+    . 
+
   End The_Notion_of_Truth_in_L_E.
 
 End Tarski's_Theorem_for_Arithmetic.
