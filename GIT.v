@@ -1433,7 +1433,7 @@ Module Tarski's_Theorem_for_Arithmetic.
       forall H1 : 0 < 2,
       forall H2 : 1 < 2,
       forall x0 : nat,
-      evalFormula 1 (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2))) x0 = (forall x1 : nat, x0 <= x1).
+      evalFormula 0 (ImpF 1 (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2))) (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2)))) x0 = ((forall x1 : nat, x0 <= x1) -> (forall x1 : nat, x0 <= x1)).
     Proof.
       intros.
       reflexivity.
