@@ -1321,6 +1321,17 @@ Module Tarski's_Theorem_for_Arithmetic.
       end
     .
 
+    Example evalTerm_ex1 :
+      forall H1 : 0 < 2,
+      forall H2 : 1 < 2,
+      forall x0 : nat,
+      forall x1 : nat,
+      evalTerm 2 (ExpoT 2 (IVarT 2 0 H1) (IVarT 2 1 H2)) x0 x1 = x0^x1.
+    Proof.
+      intros.
+      reflexivity.
+    Qed.
+
     Inductive Formula (k : IVarNum) : Set :=
     | EqnF :
       Term k ->
@@ -1417,6 +1428,16 @@ Module Tarski's_Theorem_for_Arithmetic.
       | AllF _ f1' => liftAll k (evalFormula (S k) f1')
       end
     . 
+
+    Example evalFormula_ex1 :
+      forall H1 : 0 < 2,
+      forall H2 : 1 < 2,
+      forall x0 : nat,
+      evalFormula 1 (AllF 1 (LeqF 2 (IVarT 2 0 H1) (IVarT 2 1 H2))) x0 = (forall x1 : nat, x0 <= x1).
+    Proof.
+      intros.
+      reflexivity.
+    Qed.
 
   End The_Notion_of_Truth_in_L_E.
 
