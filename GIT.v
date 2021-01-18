@@ -1378,11 +1378,13 @@ Module Tarski's_Theorem_for_Arithmetic.
     . 
 
     Example evalFormula_ex1 :
-      forall H0 : 0 < 3,
-      forall H1 : 1 < 3,
-      forall H2 : 2 < 3,
+      forall H0 : 0 < 4,
+      forall H1 : 1 < 4,
+      forall H2 : 2 < 4,
+      forall H3 : 3 < 4,
       forall x0 : nat,
-      evalFormula 1 (AllF 1 (ImpF 2 (AllF 2 (LeqF 3 (IVarT 3 0 H0) (IVarT 3 2 H2))) (AllF 2 (LeqF 3 (IVarT 3 0 H0) (IVarT 3 1 H1))))) x0 = (forall x1 : nat, (forall x2 : nat, x0 <= x2) -> (forall x2 : nat, x0 <= x1)).
+      forall x1 : nat,
+      evalFormula 2 (AllF 2 (ImpF 3 (AllF 3 (LeqF 4 (IVarT 4 0 H0) (IVarT 4 3 H3))) (AllF 3 (LeqF 4 (IVarT 4 0 H0) (IVarT 4 2 H2))))) x0 x1 = (forall x2 : nat, (forall x3 : nat, x0 <= x3) -> (forall x3 : nat, x0 <= x2)).
     Proof.
       intros.
       reflexivity.
