@@ -406,4 +406,52 @@ Module STLC.
     apply H1.
   Qed.
 
+  Lemma lemma_2_of_2_6 :
+    forall tm : Tm,
+    FreshIn (funcCHI [] tm) tm.
+  Proof.
+    cut (
+      forall tm0 : Tm,
+      forall iv0 : IVar,
+      FreeIn iv0 tm0 ->
+      iv0 < funcCHI [] tm0
+    ).
+      intros.
+      unfold FreshIn.
+      assert (FreeIn (funcCHI [] tm) tm -> funcCHI [] tm < funcCHI [] tm).
+        apply H.
+      unfold FreeIn in H0.
+      destruct (isFreeIn (funcCHI [] tm) tm).
+      assert (funcCHI [] tm < funcCHI [] tm). 
+        tauto.
+      lia.
+      reflexivity.
+    intros tm.
+    unfold funcCHI.
+    assert (
+      forall iv0 : IVar,
+      iv0 > proj1_sig (getFreshVariableBound [] tm) ->
+      forall iv : IVar,
+      FreeIn iv tm ->
+      FreshIn iv0 (substVar [] iv)
+    ).
+      apply (proj2_sig (getFreshVariableBound [] tm)).
+    intros.
+    cut (~ iv0 >= S (proj1_sig (getFreshVariableBound [] tm))).
+      lia.
+    intro.
+    assert (FreshIn iv0 (substVar [] iv0)).
+    simpl.
+    apply H.
+    apply H1.
+    apply H0.
+    simpl in H2.
+    unfold FreshIn in H2.
+    simpl in H2.
+    destruct (Nat.eq_dec iv0 iv0).
+    inversion H2.
+    contradiction n.
+    reflexivity.
+  Qed.
+
 End STLC.
