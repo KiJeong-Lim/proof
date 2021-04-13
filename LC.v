@@ -292,7 +292,8 @@ Module STLC.
     assert ( claim2 :
       forall tm : Tm,
       forall iv : IVar,
-      (forall iv0 : IVar, isFreeIn iv0 tm = true -> iv0 < iv) -> FreshIn iv tm
+      (forall iv0 : IVar, isFreeIn iv0 tm = true -> iv0 < iv) ->
+      FreshIn iv tm
     ).
       intros.
       unfold FreshIn.
@@ -337,6 +338,21 @@ Module STLC.
       apply f.
       lia.
       apply H0.
+  Qed.
+
+  Proposition funcCHI (sigma : Subst) (tm : Tm) :
+    { iv0 : IVar
+    | forall iv : IVar,
+      isFreeIn iv tm = true ->
+      FreshIn iv0 (substVar sigma iv)
+    }.
+  Proof.
+    destruct (getFreshVariableBound sigma tm) as [bound].
+    exists (S bound).
+    intros.
+    apply f.
+    lia.
+    tauto.
   Qed.
 
 End STLC.
