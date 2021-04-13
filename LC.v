@@ -212,6 +212,10 @@ Module STLC.
     end
   .
 
+  Definition FreeIn (iv0 : IVar) (tm : Tm) : Prop :=
+    isFreeIn iv0 tm = true
+  .
+
   Definition FreshIn (iv0 : IVar) (tm : Tm) : Prop :=
     isFreeIn iv0 tm = false
   .
@@ -237,7 +241,7 @@ Module STLC.
     | forall iv0 : IVar,
       iv0 > bound ->
       forall iv : IVar,
-      isFreeIn iv tm = true ->
+      FreeIn iv tm ->
       FreshIn iv0 (substVar sigma iv)
     }.
   Proof.
@@ -340,19 +344,66 @@ Module STLC.
       apply H0.
   Qed.
 
-  Proposition funcCHI (sigma : Subst) (tm : Tm) :
-    { iv0 : IVar
-    | forall iv : IVar,
-      isFreeIn iv tm = true ->
-      FreshIn iv0 (substVar sigma iv)
-    }.
+  Definition funcCHI (sigma : Subst) (tm : Tm) : IVar :=
+    S (proj1_sig (getFreshVariableBound sigma tm))
+  .
+
+  Lemma funcCHI_gives_fresh_var :
+    forall sigma : Subst,
+    forall tm : Tm,
+    forall iv : IVar,
+    FreeIn iv tm ->
+    FreshIn (funcCHI sigma tm) (substVar sigma iv).
   Proof.
-    destruct (getFreshVariableBound sigma tm) as [bound].
-    exists (S bound).
     intros.
-    apply f.
+    unfold funcCHI.
+    destruct (getFreshVariableBound sigma tm) as [bound H0].
+    apply H0.
+    simpl.
     lia.
-    tauto.
+    apply H.
+  Qed.
+
+  Fixpoint substTerm (sigma : Subst) (tm : Tm) : Tm :=
+    match tm with
+    | Var iv => substVar sigma iv
+    | App tm1 tm2 => App (substTerm sigma tm1) (substTerm sigma tm2)
+    | Abs iv tm1 =>
+      let iv' : IVar := funcCHI sigma tm in
+      Abs iv' (substTerm ((iv, Var iv') :: sigma) tm1)
+    end
+  .
+
+  Lemma lemma_1_of_2_6 :
+    forall tm : Tm,
+    forall sigma : Subst,
+    forall iv0 : IVar,
+    FreeIn iv0 tm ->
+    FreshIn (funcCHI sigma tm) (substVar sigma iv0).
+  Proof.
+    cut (
+      forall tm : Tm,
+      forall sigma : Subst,
+      forall iv0 : IVar,
+      FreeIn iv0 tm ->
+      FreshIn (S (proj1_sig (getFreshVariableBound sigma tm))) (substVar sigma iv0)
+    ).
+      intros.
+      apply H.
+      apply H0.
+    intros.
+    inversion H.
+    assert (
+      forall iv0 : IVar,
+      iv0 > proj1_sig (getFreshVariableBound sigma tm) ->
+      forall iv1 : IVar,
+      FreeIn iv1 tm ->
+      FreshIn iv0 (substVar sigma iv1)
+    ).
+      apply (proj2_sig (getFreshVariableBound sigma tm)).
+    apply H0.
+    lia.
+    apply H1.
   Qed.
 
 End STLC.
