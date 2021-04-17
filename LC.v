@@ -894,7 +894,7 @@ Module STLC.
     apply H.
   Qed.
 
-  Lemma chi_gives_FreshInSubst_min :
+  Lemma chi_bounds_FreshInSubst :
     forall sub : Subst,
     forall tm : Tm,
     forall iv : IVar,
@@ -979,7 +979,7 @@ Module STLC.
     FreshIn iv0 (runSubst_Var sub iv).
   Proof.
     intros sub tm iv0 H.
-    assert (XXX := chi_gives_FreshInSubst_min sub tm iv0 H).
+    assert (XXX := chi_bounds_FreshInSubst sub tm iv0 H).
     unfold FreshInSubst in XXX.
     assert (forall iv : IVar, In iv (getFVs tm) -> (if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) = true).
       apply forallb_true_iff.
@@ -1054,5 +1054,18 @@ Module STLC.
       Abs iv' (runSubst_Term ((iv', Var iv) :: sub) tm1)
     end
   .
+
+  Lemma identity_subst :
+    forall tm : Tm,
+    runSubst_Term [] tm = tm.
+
+  Lemma simultaneous_subst :
+    forall sub : Subst,
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    forall iv3 : IVar,
+    runSubst_Term ((iv3, runSubst_Term sub tm2) :: sub) tm1 = runSubst_Term sub (runSubst_Term [(iv3, tm2)] tm1).
+
+  Qed.
 
 End STLC.
