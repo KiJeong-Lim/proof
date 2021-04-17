@@ -317,6 +317,74 @@ Module Helper.
           lia.
   Qed.
 
+  Lemma fold_right_max_0_property3 :
+    forall ns1 : list N,
+    forall ns2 : list N,
+    fold_right max 0 (ns1 ++ ns2) = max (fold_right max 0 ns1) (fold_right max 0 ns2).
+  Proof.
+    intros ns1.
+    induction ns1.
+    - intros ns2.
+      simpl.
+      reflexivity.
+    - intros ns2.
+      simpl.
+      assert (H := IHns1 ns2).
+      rewrite H.
+      lia.
+  Qed.
+
+  Lemma fold_right_max_0_property4 :
+    forall ns : list N,
+    forall n : N,
+    In n ns ->
+    fold_right max 0 ns >= n.
+  Proof.
+    intros ns.
+    induction ns.
+    - simpl.
+      tauto.
+    - simpl.
+      intros.
+      destruct H.
+      * subst.
+        lia.
+      * assert (fold_right max 0 ns >= n).
+          apply IHns.
+        apply H.
+        lia.
+  Qed.
+
+  Lemma fold_right_max_0_property5 :
+    forall ns1 : list N,
+    forall ns2 : list N,
+    (forall n : N, In n ns1 -> In n ns2) ->
+    fold_right max 0 ns1 <= fold_right max 0 ns2.
+  Proof.
+    intros ns1.
+    induction ns1.
+    - simpl.
+      intros.
+      lia.
+    - simpl.
+      intros.
+      assert (a <= fold_right max 0 ns1 \/ a > fold_right max 0 ns1).
+        lia.
+      destruct H0.
+      * cut (fold_right max 0 ns1 <= fold_right max 0 ns2).
+          lia.
+        apply IHns1.
+        intros.
+        apply H.
+        right.
+        apply H1.
+      * cut (a <= fold_right max 0 ns2).
+          lia.
+        apply fold_right_max_0_property4.
+        apply H.
+        tauto.
+  Qed.
+
   Lemma forallb_true_iff {A : Type} {Phi : A -> Bool} :
     forall xs : list A,
     forallb Phi xs = true <-> (forall x : A, In x xs -> Phi x = true).
@@ -900,5 +968,91 @@ Module STLC.
     contradiction H3.
     reflexivity.
   Qed.
+
+  Lemma chi_property2 :
+    forall sub : Subst,
+    forall tm : Tm,
+    forall iv0 : IVar,
+    iv0 >= chi sub tm ->
+    forall iv : IVar,
+    FreeIn iv tm ->
+    FreshIn iv0 (runSubst_Var sub iv).
+  Proof.
+    intros sub tm iv0 H.
+    assert (XXX := chi_gives_FreshInSubst_min sub tm iv0 H).
+    unfold FreshInSubst in XXX.
+    assert (forall iv : IVar, In iv (getFVs tm) -> (if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) = true).
+      apply forallb_true_iff.
+      apply XXX.
+    intros.
+    assert ((if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) = true).
+      apply H0.
+      apply getFVs_returns_free_vars.
+      apply H1.
+    destruct (FreshIn_dec iv0 (runSubst_Var sub iv)).
+    apply f.
+    inversion H2.
+  Qed.
+
+  Lemma chi_empty_fresh :
+    forall tm : Tm,
+    FreshIn (chi [] tm) tm.
+  Proof.
+    cut (
+      forall tm0 : Tm,
+      forall iv0 : IVar,
+      FreeIn iv0 tm0 ->
+      chi [] tm0 > iv0
+    ).
+      intros.
+      unfold FreshIn.
+      assert (FreeIn (chi [] tm) tm -> chi [] tm > chi [] tm).
+        apply H.
+      unfold FreeIn in H0.
+      destruct (isFreeIn (chi [] tm) tm).
+      assert (chi [] tm > chi [] tm).
+        apply H0.
+        tauto.
+        lia.
+      reflexivity.
+    intros tm.
+    assert (
+      forall iv0 : IVar,
+      iv0 >= chi [] tm ->
+      forall iv : IVar,
+      FreeIn iv tm ->
+      FreshIn iv0 (runSubst_Var [] iv)
+    ).
+      intros.
+      apply (chi_property2 [] tm).
+      apply H.
+      apply H0.
+    intros.
+    cut (~ iv0 >= chi [] tm).
+      lia.
+    intro.
+    assert (FreshIn iv0 (runSubst_Var [] iv0)).
+    simpl.
+    apply H.
+    apply H1.
+    apply H0.
+    simpl in H2.
+    unfold FreshIn in H2.
+    simpl in H2.
+    destruct (Nat.eq_dec iv0 iv0).
+    inversion H2.
+    contradiction n.
+    reflexivity.
+  Qed.
+
+  Fixpoint runSubst_Term (sub : Subst) (tm : Tm) : Tm :=
+    match tm with
+    | Var iv => runSubst_Var sub iv
+    | App tm1 tm2 => App (runSubst_Term sub tm1) (runSubst_Term sub tm2)
+    | Abs iv tm1 =>
+      let iv' : IVar := chi sub tm in
+      Abs iv' (runSubst_Term ((iv', Var iv) :: sub) tm1)
+    end
+  .
 
 End STLC.
