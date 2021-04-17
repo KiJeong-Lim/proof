@@ -1066,6 +1066,4 @@ Module STLC.
     forall iv3 : IVar,
     runSubst_Term ((iv3, runSubst_Term sub tm2) :: sub) tm1 = runSubst_Term sub (runSubst_Term [(iv3, tm2)] tm1).
 
-  Qed.
-
 End STLC.
