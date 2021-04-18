@@ -785,6 +785,54 @@ Module STLC.
     forallb (fun iv : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) (getFVs tm) = true
   .
 
+  Lemma FreshInSubst_dec :
+    forall iv0 : IVar,
+    forall sub : Subst,
+    forall tm : Tm,
+    {FreshInSubst iv0 sub tm} + {~ FreshInSubst iv0 sub tm}.
+  Proof.
+    intros.
+    unfold FreshInSubst.
+    destruct (forallb (fun iv : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) (getFVs tm)).
+    - left.
+      reflexivity.
+    - right.
+      intro.
+      inversion H.
+  Qed.
+
+  Lemma FreshInSubst_cons :
+    forall sub : Subst,
+    forall iv : IVar,
+    forall tm : Tm,
+    FreshInSubst iv sub tm ->
+    forall iv0 : IVar,
+    forall tm0 : Tm,
+    FreshIn iv tm0 ->
+    FreshInSubst iv ((iv0, tm0) :: sub) tm.
+  Proof.
+    intros.
+    unfold FreshInSubst.
+    simpl.
+    apply forallb_true_iff.
+    intros.
+    destruct (Nat.eq_dec iv0 x).
+    * subst.
+      destruct (FreshIn_dec iv tm0).
+      + reflexivity.
+      + contradiction n.
+    * unfold FreshInSubst in H.
+      assert (
+        forall iv' : IVar,
+        In iv' (getFVs tm) ->
+        (if FreshIn_dec iv (runSubst_Var sub iv') then true else false) = true
+      ).
+        apply forallb_true_iff.
+        apply H.
+      apply H2.
+      apply H1.
+  Qed.
+
   Definition getFreeVarBound (tm : Tm) : N :=
     fold_right max 0 (getFVs tm)
   .
@@ -808,37 +856,36 @@ Module STLC.
       }
       { apply H.
       }
-      { intro.
-        assert (~ FreeIn iv tm).
-          intro.
-          assert (getFreeVarBound tm >= iv).
-            apply H.
-            apply H1.
-          lia.
-        apply FreshIn_iff.
+    intro.
+    assert (~ FreeIn iv tm).
+      intro.
+      assert (getFreeVarBound tm >= iv).
+        apply H.
         apply H1.
-      }
+      lia.
+    apply FreshIn_iff.
+    apply H1.
   Qed.
 
-  Definition chi (sub : Subst) (tm : Tm) : IVar :=
+  Definition chi' (sub : Subst) (tm : Tm) : IVar :=
     S (fold_right max 0 (map (fun iv0 : IVar => getFreeVarBound (runSubst_Var sub iv0)) (getFVs tm)))
   .
 
-  Lemma chi_property1 :
+  Lemma chi'_property1 :
     forall sub : Subst,
     forall tm : Tm,
     forall iv : IVar,
     FreeIn iv tm ->
-    FreshIn (chi sub tm) (runSubst_Var sub iv).
+    FreshIn (chi' sub tm) (runSubst_Var sub iv).
   Proof.
     intros sub tm.
     assert (
       forall iv : IVar,
       FreeIn iv tm ->
-      getFreeVarBound (runSubst_Var sub iv) < chi sub tm 
+      getFreeVarBound (runSubst_Var sub iv) < chi' sub tm 
     ).
     { intros.
-      unfold chi.
+      unfold chi'.
       cut (
         fold_right max 0 (map (fun iv0 : IVar => getFreeVarBound (runSubst_Var sub iv0)) (getFVs tm)) >= getFreeVarBound (runSubst_Var sub iv)
       ).
@@ -864,24 +911,24 @@ Module STLC.
     apply H0.
   Qed.
 
-  Lemma chi_gives_FreshInSubst :
+  Lemma chi'_gives_FreshInSubst :
     forall sub : Subst,
     forall tm : Tm,
-    FreshInSubst (chi sub tm) sub tm.
+    FreshInSubst (chi' sub tm) sub tm.
   Proof.
     intros sub tm.
     unfold FreshInSubst.
     cut (
       forall iv : IVar,
       In iv (getFVs tm) ->
-      FreshIn (chi sub tm) (runSubst_Var sub iv)
+      FreshIn (chi' sub tm) (runSubst_Var sub iv)
     ).
       intros.
       apply forallb_true_iff.
       intros iv H0.
-      assert (In iv (getFVs tm) -> FreshIn (chi sub tm) (runSubst_Var sub iv)).
+      assert (In iv (getFVs tm) -> FreshIn (chi' sub tm) (runSubst_Var sub iv)).
         apply H.
-      destruct (FreshIn_dec (chi sub tm) (runSubst_Var sub iv)).
+      destruct (FreshIn_dec (chi' sub tm) (runSubst_Var sub iv)).
       { reflexivity.
       }
       { contradiction n.
@@ -889,16 +936,16 @@ Module STLC.
         apply H0.
       }
     intros.
-    apply chi_property1.
+    apply chi'_property1.
     apply getFVs_returns_free_vars.
     apply H.
   Qed.
 
-  Lemma chi_bounds_FreshInSubst :
+  Lemma chi'_bounds_FreshInSubst :
     forall sub : Subst,
     forall tm : Tm,
     forall iv : IVar,
-    iv >= chi sub tm ->
+    iv >= chi' sub tm ->
     FreshInSubst iv sub tm.
   Proof.
     assert (
@@ -933,9 +980,9 @@ Module STLC.
         apply H.
         apply H1.
       assert (
-        chi sub tm >= fold_right max 0 (map (fun iv0 : IVar => S (getFreeVarBound (runSubst_Var sub iv0))) (getFVs tm))
+        chi' sub tm >= fold_right max 0 (map (fun iv0 : IVar => S (getFreeVarBound (runSubst_Var sub iv0))) (getFVs tm))
       ).
-      { unfold chi.
+      { unfold chi'.
         induction (getFVs tm).
         - simpl.
           lia.
@@ -969,17 +1016,17 @@ Module STLC.
     reflexivity.
   Qed.
 
-  Lemma chi_property2 :
+  Lemma chi'_property2 :
     forall sub : Subst,
     forall tm : Tm,
     forall iv0 : IVar,
-    iv0 >= chi sub tm ->
+    iv0 >= chi' sub tm ->
     forall iv : IVar,
     FreeIn iv tm ->
     FreshIn iv0 (runSubst_Var sub iv).
   Proof.
     intros sub tm iv0 H.
-    assert (XXX := chi_bounds_FreshInSubst sub tm iv0 H).
+    assert (XXX := chi'_bounds_FreshInSubst sub tm iv0 H).
     unfold FreshInSubst in XXX.
     assert (forall iv : IVar, In iv (getFVs tm) -> (if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) = true).
       apply forallb_true_iff.
@@ -994,23 +1041,23 @@ Module STLC.
     inversion H2.
   Qed.
 
-  Lemma chi_empty_fresh :
+  Lemma chi'_empty_fresh :
     forall tm : Tm,
-    FreshIn (chi [] tm) tm.
+    FreshIn (chi' [] tm) tm.
   Proof.
     cut (
       forall tm0 : Tm,
       forall iv0 : IVar,
       FreeIn iv0 tm0 ->
-      chi [] tm0 > iv0
+      chi' [] tm0 > iv0
     ).
       intros.
       unfold FreshIn.
-      assert (FreeIn (chi [] tm) tm -> chi [] tm > chi [] tm).
+      assert (FreeIn (chi' [] tm) tm -> chi' [] tm > chi' [] tm).
         apply H.
       unfold FreeIn in H0.
-      destruct (isFreeIn (chi [] tm) tm).
-      assert (chi [] tm > chi [] tm).
+      destruct (isFreeIn (chi' [] tm) tm).
+      assert (chi' [] tm > chi' [] tm).
         apply H0.
         tauto.
         lia.
@@ -1018,17 +1065,17 @@ Module STLC.
     intros tm.
     assert (
       forall iv0 : IVar,
-      iv0 >= chi [] tm ->
+      iv0 >= chi' [] tm ->
       forall iv : IVar,
       FreeIn iv tm ->
       FreshIn iv0 (runSubst_Var [] iv)
     ).
       intros.
-      apply (chi_property2 [] tm).
+      apply (chi'_property2 [] tm).
       apply H.
       apply H0.
     intros.
-    cut (~ iv0 >= chi [] tm).
+    cut (~ iv0 >= chi' [] tm).
       lia.
     intro.
     assert (FreshIn iv0 (runSubst_Var [] iv0)).
@@ -1045,25 +1092,148 @@ Module STLC.
     reflexivity.
   Qed.
 
+  Definition chi (iv : IVar) (sub : Subst) (tm : Tm) : IVar :=
+    if FreshInSubst_dec iv sub tm then iv else first_nat (fun iv0 : IVar => forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) (getFVs tm)) (chi' sub tm)
+  .
+
+  Lemma chi_property1 :
+    forall tm : Tm,
+    forall iv : IVar,
+    FreshIn iv tm ->
+    chi iv [] tm = iv.
+  Proof.
+    intros tm.
+    induction tm.
+    - intros.
+      unfold chi.
+      destruct (FreshInSubst_dec iv0 [] (Var iv)).
+      * reflexivity.
+      * contradiction n.
+        unfold FreshInSubst.
+        apply forallb_true_iff.
+        intros iv' H0.
+        simpl.
+        destruct (FreshIn_dec iv0 (Var iv')).
+        + reflexivity.
+        + assert (iv' = iv).
+            apply FreeIn_Var.
+            apply getFVs_returns_free_vars.
+            apply H0.
+          subst.
+          contradiction n0.
+    - intros.
+      unfold chi.
+      destruct (FreshInSubst_dec iv [] (App tm1 tm2)).
+      * reflexivity.
+      * contradiction n.
+        unfold FreshInSubst.
+        apply forallb_true_iff.
+        intros iv' H0.
+        simpl.
+        assert (iv <> iv').
+          intro.
+          subst.
+          contradiction (proj1 (FreshIn_iff iv' (App tm1 tm2))).
+          apply getFVs_returns_free_vars.
+          apply H0.
+        destruct (FreshIn_dec iv (Var iv')).
+        + reflexivity.
+        + contradiction n0.
+          apply FreshIn_Var.
+          apply H1.
+    - intros.
+      unfold chi.
+      destruct (FreshInSubst_dec iv0 [] (Abs iv tm)).
+      * reflexivity.
+      * contradiction n.
+        unfold FreshInSubst.
+        apply forallb_true_iff.
+        intros iv' H0.
+        simpl.
+        destruct (FreshIn_dec iv0 (Var iv')).
+        + reflexivity.
+        + contradiction n0.
+          apply FreshIn_Var.
+          intro.
+          subst.
+          contradiction (proj1 (FreshIn_iff iv' ((Abs iv tm)))).
+          apply getFVs_returns_free_vars.
+          apply H0.
+  Qed.
+
+  Lemma chi_property2 :
+    forall tm : Tm,
+    forall sub : Subst,
+    forall iv : IVar,
+    FreshInSubst iv sub tm <-> chi iv sub tm = iv.
+  Proof.
+    intros.
+    unfold chi.
+    constructor.
+    - intro.
+      destruct (FreshInSubst_dec iv sub tm).
+      * reflexivity.
+      * contradiction n.
+    - intro.
+      assert (
+        let p : N -> Bool := fun iv0 : IVar => forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) (getFVs tm) in
+        p (first_nat p (chi' sub tm)) = true /\ (forall i : nat, p i = true -> i >= first_nat p (chi' sub tm))
+      ).
+      { apply well_ordering_principle.
+        apply chi'_gives_FreshInSubst.
+      }
+      destruct H0.
+      destruct (FreshInSubst_dec iv sub tm).
+      * apply f.
+      * rewrite H in H0.
+        apply H0.
+  Qed.
+
   Fixpoint runSubst_Term (sub : Subst) (tm : Tm) : Tm :=
     match tm with
     | Var iv => runSubst_Var sub iv
     | App tm1 tm2 => App (runSubst_Term sub tm1) (runSubst_Term sub tm2)
     | Abs iv tm1 =>
-      let iv' : IVar := chi sub tm in
-      Abs iv' (runSubst_Term ((iv', Var iv) :: sub) tm1)
+      let iv' : IVar := chi iv sub tm in
+      if Nat.eq_dec iv' iv
+      then Abs iv' (runSubst_Term sub tm1)
+      else Abs iv' (runSubst_Term ((iv', Var iv) :: sub) tm1)
     end
   .
 
-  Lemma identity_subst :
+  Lemma identity_runSubst_Term :
     forall tm : Tm,
     runSubst_Term [] tm = tm.
-
-  Lemma simultaneous_subst :
-    forall sub : Subst,
-    forall tm1 : Tm,
-    forall tm2 : Tm,
-    forall iv3 : IVar,
-    runSubst_Term ((iv3, runSubst_Term sub tm2) :: sub) tm1 = runSubst_Term sub (runSubst_Term [(iv3, tm2)] tm1).
+  Proof.
+    intros tm.
+    induction tm.
+    - unfold runSubst_Term.
+      reflexivity.
+    - simpl.
+      rewrite IHtm1.
+      rewrite IHtm2.
+      reflexivity.
+    - simpl.
+      assert (chi iv [] (Abs iv tm) = iv).
+        apply chi_property1.
+        apply FreshIn_iff.
+        unfold FreeIn.
+        simpl.
+        destruct (Nat.eq_dec iv iv).
+        assert (isFreeIn iv tm && false = false).
+          apply andb_false_iff.
+          tauto.
+        rewrite H.
+        intro.
+        inversion H0.
+        contradiction n.
+        reflexivity.
+      rewrite H.
+      destruct (Nat.eq_dec iv iv).
+      rewrite IHtm.
+      reflexivity.
+      contradiction n.
+      reflexivity.
+  Qed.
 
 End STLC.
