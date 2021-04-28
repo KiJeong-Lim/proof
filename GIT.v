@@ -3,13 +3,13 @@
 From Coq Require Export Bool.
 From Coq Require Export PeanoNat.
 From Coq Require Export Peano_dec.
-From Coq Require Export List.
 From Coq Require Export Lia.
 From Coq Require Export Compare_dec.
+From Coq Require Export VectorDef.
 
 Module Preliminaries.
 
-  Import ListNotations.
+  Import VectorNotations.
 
   Section NaturalNumber.
 
@@ -491,17 +491,6 @@ Module Preliminaries.
 
   End Ensembles.
 
-  Section Lists.
-    
-    Fixpoint lookup {A : Type} {B : Type} (eq_A_dec : forall x1 : A, forall x2 : A, {x1 = x2} + {x1 <> x2}) (x : A) (ps : list (A * B)) : option B :=
-      match ps with
-      | [] => None
-      | (x1, y1) :: ps2 => if eq_A_dec x x1 then Some y1 else lookup eq_A_dec x ps2
-      end
-    .
-
-  End Lists.
-
   Section ET_CETERA.
 
     Lemma it_is_false_that_n_lt_0 (A : Type) :
@@ -530,13 +519,32 @@ Module Preliminaries.
       eq_ind x1 (fun x3 : A => Phi x3) Minor x2 Major
     .
 
+    Fixpoint ackermann (p : nat) : nat -> nat :=
+      match p with
+      | 0 =>
+        fun n : nat => n + 1
+      | S p' =>
+        let f : nat -> nat := ackermann p' in
+        nat_rect (fun _ : nat => nat) (f 1) (fun n' : nat => fun prev : nat => f prev)
+      end
+    .
+
+    Example test_ackermann : ackermann 3 4 = 125 := eq_refl.
+
+    Fixpoint memoization {A : Type} (f : forall l : nat, Vector.t A l -> A) (n : nat) : t A n :=
+      match n with
+      | 0 => []
+      | S n' =>
+        let xs : t A n' := memoization f n' in
+        f n' xs :: xs
+      end
+    .
+
   End ET_CETERA.
 
 End Preliminaries.
 
 Module The_General_Idea_Behind_Goedel's_Proof.
-
-  Import ListNotations.
 
   Import Preliminaries.
   
@@ -1112,7 +1120,7 @@ End The_General_Idea_Behind_Goedel's_Proof.
 
 Module Tarski's_Theorem_for_Arithmetic.
 
-  Import ListNotations.
+  Import VectorNotations.
 
   Import Preliminaries.
 
@@ -1157,106 +1165,67 @@ Module Tarski's_Theorem_for_Arithmetic.
       - intros a2; destruct a2. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. right; intro; inversion H. left; tauto.
     Qed.
 
-    Definition E : Type :=
-      list Alphabet
-    .
-
-    Definition eq_E_dec : forall e1 : E, forall e2 : E, {e1 = e2} + {e1 <> e2} :=
-      list_eq_dec eq_Alphabet_dec
-    .
-
     Definition IVar : Set :=
       nat
     .
 
-    Definition Arity : Set :=
-      nat
+    Inductive Term : Set :=
+    | IVarT : IVar -> Term
+    | ZeroT : Term
+    | SuccT : Term -> Term
+    | PlusT : Term -> Term -> Term
+    | MultT : Term -> Term -> Term
+    | ExpoT : Term -> Term -> Term
     .
 
-    Inductive Term (k : Arity) : Set :=
-    | IVarT :
-      forall i : IVar,
-      i < k ->
-      Term k
-    | ZeroT :
-      Term k
-    | SuccT :
-      Term k ->
-      Term k
-    | PlusT :
-      Term k ->
-      Term k ->
-      Term k
-    | MultT :
-      Term k ->
-      Term k ->
-      Term k
-    | ExpoT :
-      Term k ->
-      Term k ->
-      Term k
+    Inductive Formula : Set :=
+    | EqnF : Term -> Term -> Formula
+    | LeqF : Term -> Term -> Formula
+    | NegF : Formula -> Formula
+    | ImpF : Formula -> Formula -> Formula
+    | AllF : IVar -> Formula -> Formula
     .
 
-    Inductive Formula (k : Arity) : Set :=
-    | EqnF :
-      Term k ->
-      Term k ->
-      Formula k
-    | LeqF :
-      Term k ->
-      Term k ->
-      Formula k
-    | NegF :
-      Formula k ->
-      Formula k
-    | ImpF :
-      Formula k ->
-      Formula k ->
-      Formula k
-    | AllF :
-      Formula (S k) ->
-      Formula k
-    .
-
-    Fixpoint makeNumeral (n : nat) : forall k : Arity, Term k :=
-      match n with
-      | 0 => fun k : nat => ZeroT k
-      | S n' => fun k : nat => SuccT k (makeNumeral n' k)
-      end
-    .
-
-    Fixpoint makeNumeralRep (n : nat) : E :=
-      match n with
-      | 0 => [A_Ze]
-      | S n' => makeNumeralRep n' ++ [A_Sc]
-      end
-    .
-
-    Fixpoint makeIVarRep (i : IVar) : E :=
-      match i with
-      | 0 => [A_Var]
-      | S i' => makeIVarRep i' ++ [A_Dot]
-      end
-    .
-
-    Fixpoint makeTermRep (k : Arity) (t : Term k) : E :=
+    Fixpoint encodeTerm (t : Term) : nat :=
       match t with
-      | IVarT _ i iltk => makeIVarRep i
-      | ZeroT _ => [A_Ze]
-      | SuccT _ t1 => makeTermRep k t1 ++ [A_Sc]
-      | PlusT _ t1 t2 => [A_Fun; A_Dot; A_LP] ++ makeTermRep k t1 ++ [A_RP; A_LP] ++ makeTermRep k t2 ++ [A_RP]
-      | MultT _ t1 t2 => [A_Fun; A_Dot; A_Dot; A_LP] ++ makeTermRep k t1 ++ [A_RP; A_LP] ++ makeTermRep k t2 ++ [A_RP]
-      | ExpoT _ t1 t2 => [A_Fun; A_Dot; A_Dot; A_Dot; A_LP] ++ makeTermRep k t1 ++ [A_RP; A_LP] ++ makeTermRep k t2 ++ [A_RP]
+      | IVarT i => 5 * i + 1
+      | ZeroT => 0
+      | SuccT t1 => 5 * encodeTerm t1 + 2
+      | PlusT t1 t2 =>
+        let x : nat := encodeTerm t1 in
+        let y : nat := encodeTerm t2 in
+        5 * (sum_from_0_to (x + y) + y) + 3
+      | MultT t1 t2 =>
+        let x : nat := encodeTerm t1 in
+        let y : nat := encodeTerm t2 in
+        5 * (sum_from_0_to (x + y) + y) + 4
+      | ExpoT t1 t2 =>
+        let x : nat := encodeTerm t1 in
+        let y : nat := encodeTerm t2 in
+        5 * (sum_from_0_to (x + y) + y) + 5
       end
     .
 
-    Fixpoint makeFormulaRep (k : Arity) (f : Formula k) : E :=
+    Fixpoint encodeFormula (f : Formula) : nat :=
       match f with
-      | EqnF _ t1 t2 => [A_LP] ++ makeTermRep k t1 ++ [A_Eqn] ++ makeTermRep k t2 ++ [A_RP]
-      | LeqF _ t1 t2 => [A_LP] ++ makeTermRep k t1 ++ [A_Leq] ++ makeTermRep k t2 ++ [A_RP]
-      | NegF _ f1 => [A_LP; A_Neg] ++ makeFormulaRep k f1 ++ [A_RP]
-      | ImpF _ f1 f2 => [A_LP] ++ makeFormulaRep k f1 ++ [A_Imp] ++ makeFormulaRep k f2 ++ [A_RP]
-      | AllF _ f1' => [A_LP; A_All] ++ makeIVarRep k ++ makeFormulaRep (S k) f1' ++ [A_RP]
+      | EqnF t1 t2 =>
+        let x : nat := encodeTerm t1 in
+        let y : nat := encodeTerm t2 in
+        5 * (sum_from_0_to (x + y) + y)
+      | LeqF t1 t2 =>
+        let x : nat := encodeTerm t1 in
+        let y : nat := encodeTerm t2 in
+        5 * (sum_from_0_to (x + y) + y) + 1
+      | NegF f1 =>
+        5 * encodeFormula f1 + 2
+      | ImpF f1 f2 =>
+        let x : nat := encodeFormula f1 in
+        let y : nat := encodeFormula f2 in
+        5 * (sum_from_0_to (x + y) + y) + 3
+      | AllF i f1 =>
+        let x : nat := i in
+        let y : nat := encodeFormula f1 in
+        5 * (sum_from_0_to (x + y) + y) + 4
       end
     .
 
@@ -1264,285 +1233,9 @@ Module Tarski's_Theorem_for_Arithmetic.
 
   Section The_Notion_of_Truth_in_L_E.
 
-    Definition Value : Set :=
-      nat
-    .
-
-    Fixpoint funOfArity (k : Arity) : Type :=
-      match k with
-      | 0 => Value
-      | S k' => Value -> funOfArity k'
-      end
-    .
-
-    Fixpoint relOfArity (k : Arity) : Type :=
-      match k with
-      | 0 => Prop
-      | S k' => Value -> relOfArity k'
-      end
-    .
-
-    Fixpoint projectionZ (k : Arity) : funOfArity (S k) :=
-      match k as x return funOfArity (S x) with
-      | 0 => fun x : Value => x
-      | S k' => fun x : Value => fun y : Value => projectionZ k' x
-      end
-    .
-
-    Example projectionZ_ex1 :
-      forall x0 : nat,
-      forall x1 : nat,
-      forall x2 : nat,
-      projectionZ 2 x0 x1 x2 = x0.
-    Proof.
-      intros x0 x1 x2.
-      reflexivity.
-    Qed.
-
-    Fixpoint projection (k : Arity) (i : IVar) : i < k -> funOfArity k :=
-      match i as x return x < k -> funOfArity k with
-      | 0 =>
-        match k as y return 0 < y -> funOfArity y with
-        | 0 => fun i_lt_k : 0 < 0 => it_is_false_that_n_lt_0 (funOfArity 0) 0 i_lt_k
-        | S k' => fun i_lt_k : 0 < S k' => projectionZ k'
-        end
-      | S i' =>
-        match k as y return S i' < y -> funOfArity y with
-        | 0 => fun i_lt_k : S i' < 0 => it_is_false_that_n_lt_0 (funOfArity 0) (S i') i_lt_k
-        | S k' => fun i_lt_k : S i' < S k' => fun z : nat => projection k' i' (S_i_lt_S_k_implies_i_lt_k i' k' i_lt_k)
-        end
-      end
-    .
-
-    Example projection_ex1 :
-      forall H1 : 1 < 4,
-      forall x0 : nat,
-      forall x1 : nat,
-      forall x2 : nat,
-      forall x3 : nat,
-      projection 4 1 H1 x0 x1 x2 x3 = x1.
-    Proof.
-      intros x1 x2.
-      reflexivity.
-    Qed.
-
-    Fixpoint liftZero (k : Arity) : funOfArity k :=
-      match k as x return funOfArity x with
-      | 0 => 0
-      | S k' => fun x : Value => liftZero k'
-      end
-    .
-
-    Fixpoint liftSucc (k : Arity) : funOfArity k -> funOfArity k :=
-      match k as x return funOfArity x -> funOfArity x with
-      | 0 => fun v1 : Value => S (v1)
-      | S k' => fun v1 : Value -> funOfArity k' => fun x : Value => liftSucc k' (v1 x)
-      end
-    .
-
-    Fixpoint liftPlus (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
-      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
-      | 0 => fun v1 : Value => fun v2 : Value => v1 + v2
-      | S k' => fun v1 : Value -> funOfArity k' => fun v2 : Value -> funOfArity k' => fun x : Value => liftPlus k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint liftMult (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
-      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
-      | 0 => fun v1 : nat => fun v2 : Value => v1 * v2
-      | S k' => fun v1 : Value -> funOfArity k' => fun v2 : Value -> funOfArity k' => fun x : Value => liftMult k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint liftExpo (k : Arity) : funOfArity k -> funOfArity k -> funOfArity k :=
-      match k as x return funOfArity x -> funOfArity x -> funOfArity x with
-      | 0 => fun v1 : Value => fun v2 : Value => v1^v2
-      | S k' => fun v1 : Value -> funOfArity k' => fun v2 : Value -> funOfArity k' => fun x : Value => liftExpo k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint evalTerm (k : Arity) (t : Term k) : funOfArity k :=
-      match t with
-      | IVarT _ i iltk => projection k i iltk
-      | ZeroT _ => liftZero k
-      | SuccT _ t1 => liftSucc k (evalTerm k t1)
-      | PlusT _ t1 t2 => liftPlus k (evalTerm k t1) (evalTerm k t2)
-      | MultT _ t1 t2 => liftMult k (evalTerm k t1) (evalTerm k t2)
-      | ExpoT _ t1 t2 => liftExpo k (evalTerm k t1) (evalTerm k t2)
-      end
-    .
-
-    Example evalTerm_ex1 :
-      forall H0 : 0 < 2,
-      forall H1 : 1 < 2,
-      forall x0 : nat,
-      forall x1 : nat,
-      evalTerm 2 (ExpoT 2 (IVarT 2 0 H0) (IVarT 2 1 H1)) x0 x1 = x0^x1.
-    Proof.
-      intros.
-      reflexivity.
-    Qed.
-
-    Fixpoint liftEqn (k : Arity) : funOfArity k -> funOfArity k -> relOfArity k :=
-      match k as x return funOfArity x -> funOfArity x -> relOfArity x with
-      | 0 => fun v1 : Value => fun v2 : Value => v1 = v2
-      | S k' => fun v1 : Value -> funOfArity k' => fun v2 : Value -> funOfArity k' => fun x : Value => liftEqn k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint liftLeq (k : Arity) : funOfArity k -> funOfArity k -> relOfArity k :=
-      match k as x return funOfArity x -> funOfArity x -> relOfArity x with
-      | 0 => fun v1 : Value => fun v2 : Value => v1 <= v2
-      | S k' => fun v1 : Value -> funOfArity k' => fun v2 : Value -> funOfArity k' => fun x : Value => liftLeq k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint liftNeg (k : Arity) : relOfArity k -> relOfArity k :=
-      match k as x return relOfArity x -> relOfArity x with
-      | 0 => fun v1 : Prop => ~ v1
-      | S k' => fun v1 : Value -> relOfArity k' => fun x : Value => liftNeg k' (v1 x)
-      end
-    .
-
-    Fixpoint liftImp (k : Arity) : relOfArity k -> relOfArity k -> relOfArity k :=
-      match k as x return relOfArity x -> relOfArity x -> relOfArity x with
-      | 0 => fun v1 : Prop => fun v2 : Prop => v1 -> v2
-      | S k' => fun v1 : Value -> relOfArity k' => fun v2 : Value -> relOfArity k' => fun x : Value => liftImp k' (v1 x) (v2 x)
-      end
-    .
-
-    Fixpoint liftAll (k : Arity) : relOfArity (S k) -> relOfArity k :=
-      match k as x return relOfArity (S x) -> relOfArity x with
-      | 0 => fun v1 : Value -> Prop => forall n : Value, v1 n
-      | S k' => fun v1 : Value -> Value -> relOfArity k' => fun x : Value => liftAll k' (v1 x)
-      end
-    .
-
-    Fixpoint evalFormula (k : Arity) (f : Formula k) : relOfArity k :=
-      match f with
-      | EqnF _ t1 t2 => liftEqn k (evalTerm k t1) (evalTerm k t2)
-      | LeqF _ t1 t2 => liftLeq k (evalTerm k t1) (evalTerm k t2)
-      | NegF _ f1 => liftNeg k (evalFormula k f1)
-      | ImpF _ f1 f2 => liftImp k (evalFormula k f1) (evalFormula k f2)
-      | AllF _ f1' => liftAll k (evalFormula (S k) f1')
-      end
-    . 
-
-    Example evalFormula_ex1 :
-      forall H0 : 0 < 4,
-      forall H1 : 1 < 4,
-      forall H2 : 2 < 4,
-      forall H3 : 3 < 4,
-      forall x0 : nat,
-      forall x1 : nat,
-      evalFormula 2 (AllF 2 (ImpF 3 (AllF 3 (LeqF 4 (IVarT 4 0 H0) (IVarT 4 3 H3))) (AllF 3 (LeqF 4 (IVarT 4 0 H0) (IVarT 4 2 H2))))) x0 x1 = (forall x2 : nat, (forall x3 : nat, x0 <= x3) -> (forall x3 : nat, x0 <= x2)).
-    Proof.
-      intros.
-      reflexivity.
-    Qed.
-
   End The_Notion_of_Truth_in_L_E.
 
   Section Arithmetic_and_arithmetic_Sets_and_Relations.
-
-    Fixpoint compareRelOfArity (k : Arity) : relOfArity k -> relOfArity k -> Prop :=
-      match k as x return relOfArity x -> relOfArity x -> Prop with
-      | 0 => fun P1 : Prop => fun P2 : Prop => P1 <-> P2
-      | S k' => fun P1 : nat -> relOfArity k' => fun P2 : nat -> relOfArity k' => forall n : nat, compareRelOfArity k' (P1 n) (P2 n)
-      end
-    .
-
-    Definition expressRel (k : Arity) : Formula k -> relOfArity k -> Prop :=
-      fun f : Formula k => fun relation : relOfArity k => compareRelOfArity k (evalFormula k f) relation
-    .
-
-    Fixpoint toRelFromFunOfArity (k : Arity) : funOfArity k -> relOfArity (S k) :=
-      match k as x return funOfArity x -> relOfArity (S x) with
-      | 0 => fun function : nat => fun ret : nat => function = ret
-      | S k' => fun function : nat -> funOfArity k' => fun arg : nat => toRelFromFunOfArity k' (function arg)
-      end
-    .
-
-    Definition expressFun (k : Arity) : Formula (S k) -> funOfArity k -> Prop :=
-      fun f : Formula (S k) => fun function : funOfArity k => compareRelOfArity (S k) (evalFormula (S k) f) (toRelFromFunOfArity k function)
-    .
-
-    Inductive freeExpoTerm : forall k : Arity, Term k -> Prop :=
-    | freeExpoIVar :
-      forall k : Arity,
-      forall i : IVar,
-      forall iltk : i < k,
-      freeExpoTerm k (IVarT k i iltk)
-    | freeExpoSucc :
-      forall k : Arity,
-      forall t1 : Term k,
-      freeExpoTerm k t1 ->
-      freeExpoTerm k (SuccT k t1)
-    | freeExpoPlus :
-      forall k : Arity,
-      forall t1 : Term k,
-      forall t2 : Term k,
-      freeExpoTerm k t1 ->
-      freeExpoTerm k t2 ->
-      freeExpoTerm k (PlusT k t1 t2)
-    | freeExpoMult :
-      forall k : Arity,
-      forall t1 : Term k,
-      forall t2 : Term k,
-      freeExpoTerm k t1 ->
-      freeExpoTerm k t2 ->
-      freeExpoTerm k (MultT k t1 t2)
-    .
-
-    Inductive freeExpoFormula : forall k : Arity, Formula k -> Prop :=
-    | freeExpoEqn :
-      forall k : Arity,
-      forall t1 : Term k,
-      forall t2 : Term k,
-      freeExpoTerm k t1 ->
-      freeExpoTerm k t2 ->
-      freeExpoFormula k (EqnF k t1 t2)
-    | freeExpoLeq :
-      forall k : Arity,
-      forall t1 : Term k,
-      forall t2 : Term k,
-      freeExpoTerm k t1 ->
-      freeExpoTerm k t2 ->
-      freeExpoFormula k (LeqF k t1 t2)
-    | freeExpoNeg :
-      forall k : Arity,
-      forall f1 : Formula k,
-      freeExpoFormula k f1 ->
-      freeExpoFormula k (NegF k f1)
-    | freeExpoImp :
-      forall k : Arity,
-      forall f1 : Formula k,
-      forall f2 : Formula k,
-      freeExpoFormula k f1 ->
-      freeExpoFormula k f2 ->
-      freeExpoFormula k (ImpF k f1 f2)
-    | freeExpoAll :
-      forall k : Arity,
-      forall f1 : Formula (S k),
-      freeExpoFormula (S k) f1 ->
-      freeExpoFormula k (AllF k f1)
-    .
-
-    Definition rel_is_Arithmetic (k : Arity) : relOfArity k -> Prop :=
-      fun relation : relOfArity k => exists f : Formula k, expressRel k f relation
-    .
-
-    Definition fun_is_Arithmetic (k : Arity) : funOfArity k -> Prop :=
-      fun function : funOfArity k => exists f : Formula (S k), expressFun k f function
-    .
-
-    Definition rel_is_arithmetic (k : Arity) : relOfArity k -> Prop :=
-      fun relation : relOfArity k => exists f : Formula k, freeExpoFormula k f /\ expressRel k f relation
-    .
-
-    Definition fun_is_arithmetic (k : Arity) : funOfArity k -> Prop :=
-      fun function : funOfArity k => exists f : Formula (S k), freeExpoFormula (S k) f /\ expressFun k f function
-    .
 
   End Arithmetic_and_arithmetic_Sets_and_Relations.
 
