@@ -744,64 +744,6 @@ Module STLC.
     forall iv : IVar, runSubst_Var sub1 iv = runSubst_Var sub2 iv
   .
 
-  Inductive IsProperSubst : Subst -> Prop :=
-  | NilSubst :
-    IsProperSubst []
-  | ConsSubst :
-    forall iv : IVar,
-    forall tm : Tm,
-    forall sub : Subst,
-    Var iv <> tm ->
-    ~ In iv (map fst sub) ->
-    IsProperSubst sub ->
-    IsProperSubst ((iv, tm) :: sub)
-  .
-
-  Lemma IsProperSubst_property1 :
-    forall sub : Subst,
-    IsProperSubst sub ->
-    forall iv : IVar,
-    runSubst_Var sub iv = Var iv <-> ~ In iv (map fst sub).
-  Proof.
-    intros sub H.
-    induction H.
-    - intros.
-      unfold runSubst_Var.
-      simpl.
-      tauto.
-    - intros.
-      unfold runSubst_Var.
-      destruct (Nat.eq_dec iv iv0).
-      * subst.
-        constructor.
-        + intro.
-          contradiction H.
-          intuition.
-        + simpl.
-          intro.
-          contradiction H2.
-          left.
-          reflexivity.
-      * simpl.
-        constructor.
-        + intros.
-          intro.
-          destruct H3.
-          contradiction n.
-          apply (proj1 (IHIsProperSubst iv0) H2).
-          apply H3.
-        + intro.
-          assert (~ In iv0 (map fst sub)).
-            intro.
-            apply H2.
-            right.
-            apply H3.
-          assert (runSubst_Var sub iv0 = Var iv0).
-            apply IHIsProperSubst.
-            apply H3.
-          apply H4.
-  Qed.
-
   Definition FreshInSubst (iv0 : IVar) (sub : Subst) (tm : Tm) : Prop :=
     forallb (fun iv : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv) then true else false) (getFVs tm) = true
   .
@@ -1787,5 +1729,582 @@ Module STLC.
         rewrite H2.
         tauto.
   Qed.
+
+  Fixpoint weakenSubst (sub : Subst) (tm : Tm) : Subst :=
+    match sub with
+    | [] => []
+    | (iv1, tm1) :: sub' =>
+      if FreeIn_dec iv1 tm
+      then (iv1, tm1) :: weakenSubst sub' tm
+      else weakenSubst sub' tm
+    end
+  .
+
+  Lemma weakenSubst_property1 :
+    forall tm : Tm,
+    forall sub : Subst,
+    runSubst_Term (weakenSubst sub tm) tm = runSubst_Term sub tm.
+  Proof.
+    assert ( claim1 :
+      forall tm : Tm,
+      forall iv : IVar,
+      forall sub : Subst,
+      forall iv1 : IVar,
+      ~ FreeIn iv1 tm ->
+      forall tm1 : Tm,
+      FreshInSubst iv ((iv1, tm1) :: sub) tm <-> FreshInSubst iv sub tm
+    ).
+    { unfold FreshInSubst.
+      intros tm.
+      induction tm.
+      - intros.
+        simpl.
+        assert (iv1 <> iv).
+          intro.
+          contradiction H.
+          apply FreeIn_Var.
+          apply H0.
+        destruct (Nat.eq_dec iv1 iv).
+        * contradiction H0.
+        * reflexivity.
+      - intros.
+        constructor.
+        * intro.
+          apply forallb_true_iff.
+          intros iv' H1.
+          rewrite <- H0.
+          destruct (FreshIn_dec iv (runSubst_Var sub iv')).
+          { reflexivity.
+          }
+          { cut (forallb (fun iv0 : IVar => if FreshIn_dec iv (runSubst_Var ((iv1, tm0) :: sub) iv0) then true else false) (getFVs (App tm1 tm2)) <> true).
+            { intros.
+              destruct (forallb (fun iv0 : IVar => if FreshIn_dec iv (runSubst_Var ((iv1, tm0) :: sub) iv0) then true else false) (getFVs (App tm1 tm2))).
+              - contradiction H2.
+              - reflexivity.
+            }
+            intro.
+            assert (
+              forall iv0 : IVar,
+              In iv0 (getFVs (App tm1 tm2)) ->
+              (if FreshIn_dec iv (runSubst_Var ((iv1, tm0) :: sub) iv0) then true else false) = true
+            ).
+            { apply forallb_true_iff.
+              apply H2.
+            }
+            assert ((if FreshIn_dec iv (runSubst_Var ((iv1, tm0) :: sub) iv') then true else false) = true).
+            { apply H3.
+              apply H1.
+            }
+            destruct (FreshIn_dec iv (runSubst_Var ((iv1, tm0) :: sub) iv')).
+            - simpl in f.
+              destruct (Nat.eq_dec iv1 iv').
+              * subst.
+                contradiction H.
+                apply getFVs_returns_free_vars.
+                apply H1.
+              * contradiction n.
+            - inversion H4.
+          }
+        * intro.
+          apply forallb_true_iff.
+          intros iv' H1.
+          simpl.
+          destruct (Nat.eq_dec iv1 iv').
+          { destruct (FreshIn_dec iv tm0).
+            { reflexivity.
+            }
+            { subst.
+              contradiction H.
+              apply getFVs_returns_free_vars.
+              apply H1.
+            }
+          }
+          { destruct (FreshIn_dec iv (runSubst_Var sub iv')).
+            { reflexivity.
+            }
+            { cut (FreshIn iv (runSubst_Var sub iv')).
+                intros.
+                contradiction n0.
+              assert (
+                forall iv0 : IVar,
+                In iv0 (getFVs (App tm1 tm2)) ->
+                (if FreshIn_dec iv (runSubst_Var sub iv0) then true else false) = true
+              ).
+                apply forallb_true_iff.
+                apply H0.
+              assert ((if FreshIn_dec iv (runSubst_Var sub iv') then true else false) = true).
+                apply H2.
+                apply H1.
+              destruct (FreshIn_dec iv (runSubst_Var sub iv')).
+              - apply f.
+              - inversion H3.
+            }
+          }
+      - intros.
+        constructor.
+        * intro.
+          apply forallb_true_iff.
+          intros iv' H1.
+          destruct (FreshIn_dec iv0 (runSubst_Var sub iv')).
+          { reflexivity.
+          }
+          { cut (forallb (fun iv : IVar => if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv) then true else false) (getFVs (Abs iv tm)) <> true).
+            { destruct (forallb (fun iv2 : IVar => if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv2) then true else false) (getFVs (Abs iv tm))).
+              - tauto.
+              - intro.
+                contradiction H2.
+            }
+            intro.
+            assert (
+              forall iv2 : IVar,
+              In iv2 (getFVs (Abs iv tm)) ->
+              (if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv2) then true else false) = true
+            ).
+            { apply forallb_true_iff.
+              apply H2.
+            }
+            assert ((if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv') then true else false) = true).
+            { apply H3.
+              apply H1.
+            }
+            destruct (FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv')).
+            - simpl in f.
+              destruct (Nat.eq_dec iv1 iv').
+              * subst.
+                contradiction H.
+                apply getFVs_returns_free_vars.
+                apply H1.
+              * contradiction n.
+            - inversion H4.
+          }
+        * intro.
+          apply forallb_true_iff.
+          intros iv' H1.
+          simpl.
+          destruct (Nat.eq_dec iv1 iv').
+          { destruct (FreshIn_dec iv0 tm1).
+            { reflexivity.
+            }
+            { subst.
+              contradiction H.
+              apply getFVs_returns_free_vars.
+              apply H1.
+            }
+          }
+          { destruct (FreshIn_dec iv0 (runSubst_Var sub iv')).
+            { reflexivity.
+            }
+            { cut (FreshIn iv0 (runSubst_Var sub iv')).
+                intros.
+                contradiction n0.
+              assert (
+                forall iv2 : IVar,
+                In iv2 (getFVs (Abs iv tm)) ->
+                (if FreshIn_dec iv0 (runSubst_Var sub iv2) then true else false) = true
+              ).
+                apply forallb_true_iff.
+                apply H0.
+              assert ((if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) = true).
+                apply H2.
+                apply H1.
+              destruct (FreshIn_dec iv0 (runSubst_Var sub iv')).
+              - apply f.
+              - inversion H3.
+            }
+          }
+    }
+    assert ( claim2 :
+      forall tm : Tm,
+      forall sub : Subst,
+      forall iv1 : IVar,
+      ~ FreeIn iv1 tm ->
+      forall tm1 : Tm,
+      chi' ((iv1, tm1) :: sub) tm = chi' sub tm
+    ).
+    { intros.
+      unfold chi'.
+      cut (
+        forall ivs : list N,
+        (forall iv : IVar, In iv ivs -> In iv (getFVs tm)) ->
+        map (fun iv0 : IVar => getFreeVarBound (runSubst_Var ((iv1, tm1) :: sub) iv0)) ivs = map (fun iv0 : IVar => getFreeVarBound (runSubst_Var sub iv0)) ivs
+      ).
+        intros.
+        rewrite (H0 (getFVs tm) (fun iv : IVar => fun H : In iv (getFVs tm) => H)).
+        reflexivity.
+      intros ivs.
+      induction ivs.
+      - intros.
+        reflexivity.
+      - intros.
+        simpl map.
+        assert (map (fun iv0 : IVar => getFreeVarBound (if Nat.eq_dec iv1 iv0 then tm1 else runSubst_Var sub iv0)) ivs =  map (fun iv0 : IVar => getFreeVarBound (runSubst_Var sub iv0)) ivs).
+        { assert (map (fun iv0 : IVar => getFreeVarBound (runSubst_Var ((iv1, tm1) :: sub) iv0)) ivs = map (fun iv0 : IVar => getFreeVarBound (runSubst_Var sub iv0)) ivs).
+            apply IHivs.
+            intros.
+            apply H0.
+            simpl.
+            tauto.
+          simpl in H1.
+          rewrite H1.
+          reflexivity.
+        }
+        rewrite H1.
+        destruct (Nat.eq_dec iv1 a).
+        * subst.
+          contradiction H.
+          apply getFVs_returns_free_vars.
+          apply H0.
+          simpl.
+          tauto.
+        * reflexivity.
+    }
+    assert ( claim3 :
+      forall tm : Tm,
+      forall iv : IVar,
+      forall sub : Subst,
+      forall iv1 : IVar,
+      ~ FreeIn iv1 tm ->
+      forall tm1 : Tm,
+      chi iv ((iv1, tm1) :: sub) tm = chi iv sub tm
+    ).
+    { intros.
+      assert (FreshInSubst iv ((iv1, tm1) :: sub) tm <-> FreshInSubst iv sub tm).
+        apply claim1.
+        apply H.
+      unfold chi.
+      destruct (FreshInSubst_dec iv ((iv1, tm1) :: sub) tm).
+      - destruct (FreshInSubst_dec iv sub tm).
+        * reflexivity.
+        * tauto.
+      - destruct (FreshInSubst_dec iv sub tm).
+        * tauto.
+        * rewrite (claim2 tm sub iv1 H tm1).
+          assert (
+            forall iv0 : IVar,
+            forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv') then true else false) (getFVs tm) = forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) (getFVs tm)
+          ).
+          { cut (
+              forall ivs : list IVar,
+              ~ In iv1 ivs ->
+              forall iv0 : IVar,
+              forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv') then true else false) ivs = forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) ivs
+            ).
+              intros.
+              assert (~ In iv1 (getFVs tm)).
+                intro.
+                contradiction H.
+                apply getFVs_returns_free_vars.
+                apply H2.
+              rewrite (H1 (getFVs tm) H2).
+              reflexivity.
+            intros ivs.
+            induction ivs.
+            - simpl.
+              tauto.
+            - simpl.
+              intros.
+              assert (
+                forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var ((iv1, tm1) :: sub) iv') then true else false) ivs = forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var sub iv') then true else false) ivs
+              ).
+                apply IHivs.
+                tauto.
+              simpl in H2.
+              rewrite H2.
+              destruct (Nat.eq_dec iv1 a).
+              * contradiction H1.
+                rewrite e.
+                tauto.
+              * reflexivity.
+          }
+          rewrite (first_nat_ext _ _ H1).
+          reflexivity.
+    }
+    intros tm.
+    induction tm.
+    - intros sub.
+      induction sub.
+      * reflexivity.
+      * destruct a as [iv1 tm1].
+        simpl.
+        destruct (Nat.eq_dec iv1 iv).
+        + subst.
+          assert (FreeIn iv (Var iv)).
+          { apply FreeIn_Var.
+            reflexivity.
+          }
+          destruct (FreeIn_dec iv (Var iv)).
+          { simpl.
+            destruct (Nat.eq_dec iv iv).
+            { reflexivity.
+            }
+            { contradiction n.
+              reflexivity.
+            }
+          }
+          { contradiction n.
+          }
+        + assert (~ FreeIn iv1 (Var iv)).
+          { intro.
+            contradiction n.
+            apply FreeIn_Var.
+            apply H.
+          }
+          destruct (FreeIn_dec iv1 (Var iv)).
+          { simpl.
+            destruct (Nat.eq_dec iv1 iv).
+            { contradiction n.
+            }
+            { contradiction H.
+            }
+          }
+          { simpl.
+            apply IHsub.
+          }
+    - intros.
+      assert (runSubst_Term (weakenSubst sub (App tm1 tm2)) tm1 = runSubst_Term sub tm1).
+        apply IHtm1.
+      
+  Qed.
+
+  Lemma equivSubst_property5 :
+    forall sub : Subst,
+    forall x : IVar,
+    forall N : Tm,
+    (forall iv : IVar, In iv (map fst sub) -> iv = x) ->
+    equivSubst ((x, N) :: sub) [(x, N)].
+  Proof.
+    unfold equivSubst.
+    intros sub.
+    induction sub.
+    - intros.
+      reflexivity.
+    - intros.
+      destruct a as [iv1 tm1].
+      assert (iv1 = x).
+        apply H.
+        simpl.
+        tauto.
+      subst.
+      simpl.
+      destruct (Nat.eq_dec x iv).
+      { reflexivity.
+      }
+      { assert (runSubst_Var ((x, N0) :: sub) iv = runSubst_Var [(x, N0)] iv).
+          apply IHsub.
+          intros.
+          apply H.
+          simpl.
+          tauto.
+        simpl in H0.
+        destruct (Nat.eq_dec x iv).
+        contradiction n.
+        apply H0.
+      }
+  Qed.
+
+  Inductive SubstTerm : Tm -> IVar -> Tm -> Tm -> Prop :=
+  | SubstTerm1 :
+    forall N : Tm,
+    forall x : IVar,
+    SubstTerm N x (Var x) N
+  | SubstTerm2 :
+    forall N : Tm,
+    forall x : IVar,
+    forall y : IVar,
+    x <> y ->
+    SubstTerm N x (Var y) (Var y)
+  | SubstTerm3 :
+    forall N : Tm,
+    forall x : IVar,
+    forall P : Tm,
+    forall Q : Tm,
+    forall NxP : Tm,
+    forall NxQ : Tm,
+    SubstTerm N x P NxP ->
+    SubstTerm N x Q NxQ ->
+    SubstTerm N x (App P Q) (App NxP NxQ)
+  | SubstTerm4 :
+    forall N : Tm,
+    forall x : IVar,
+    forall P : Tm,
+    SubstTerm N x (Abs x P) (Abs x P)
+  | SubstTerm5 :
+    forall N : Tm,
+    forall x : IVar,
+    forall y : IVar,
+    forall P : Tm,
+    x <> y ->
+    ~ FreeIn x P ->
+    SubstTerm N x (Abs y P) (Abs y P)
+  | SubstTerm6 :
+    forall N : Tm,
+    forall x : IVar,
+    forall y : IVar,
+    forall P : Tm,
+    forall NxP : Tm,
+    x <> y ->
+    FreeIn x P ->
+    ~ FreeIn y N ->
+    SubstTerm N x P NxP ->
+    SubstTerm N x (Abs y P) (Abs y NxP)
+  | SubstTerm7 :
+    forall N : Tm,
+    forall x : IVar,
+    forall y : IVar,
+    forall P : Tm,
+    forall zyP : Tm,
+    forall NxzyP : Tm,
+    x <> y ->
+    FreeIn x P ->
+    FreeIn y N ->
+    let z : IVar := first_nat (fun z0 : IVar => negb (orb (isFreeIn z0 N) (isFreeIn z0 P))) (S (max (getFreeVarBound N) (getFreeVarBound P))) in
+    SubstTerm (Var z) y P zyP ->
+    SubstTerm N x zyP NxzyP ->
+    SubstTerm N x (Abs y P) (Abs z NxzyP)
+  . (* Basic Simple Type Theory -- 1A7 Definition *)
+
+  Theorem runSubst_Term_mainproperty :
+    forall N : Tm,
+    forall x : IVar,
+    forall M : Tm,
+    forall NxM : Tm,
+    SubstTerm N x M NxM <-> runSubst_Term [(x, N)] M = NxM.
+  Proof.
+    assert (
+      forall NxM : Tm,
+      forall M : Tm,
+      forall N : Tm,
+      forall x : IVar,
+      SubstTerm N x M NxM -> runSubst_Term [(x, N)] M = NxM
+    ).
+    { intros.
+      induction H.
+      - simpl.
+        destruct (Nat.eq_dec x x).
+        * reflexivity.
+        * contradiction n.
+          reflexivity.
+      - simpl.
+        destruct (Nat.eq_dec x y).
+        * contradiction H.
+        * reflexivity.
+      - simpl.
+        rewrite IHSubstTerm1.
+        rewrite IHSubstTerm2.
+        reflexivity.
+      - simpl.
+        assert (chi x [(x, N0)] (Abs x P) = x).
+        { apply chi_property2.
+          apply forallb_true_iff.
+          intros.
+          assert (FreeIn x0 (Abs x P)).
+            apply getFVs_returns_free_vars.
+            apply H.
+          simpl.
+          assert (x <> x0 /\ FreeIn x0 P).
+          { unfold FreeIn in H0.
+            simpl in H0.
+            assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 x then false else true) = true).
+              apply andb_true_iff.
+              apply H0.
+            destruct H1.
+            constructor.
+            destruct (Nat.eq_dec x0 x).
+            inversion H2.
+            intro.
+            contradiction n.
+            rewrite H3.
+            reflexivity.
+            apply H1.
+          }
+          destruct H1.
+          destruct (Nat.eq_dec x x0).
+          - contradiction H1.
+          - destruct (FreshIn_dec x (Var x0)).
+            * reflexivity.
+            * contradiction n0.
+              apply FreshIn_Var.
+              apply n.
+        }
+        rewrite H.
+        assert (
+          runSubst_Term [(x, Var x); (x, N0)] P = runSubst_Term [(x, Var x)] P
+        ).
+        { apply equivSubst_property4.
+          apply equivSubst_property5.
+          intros.
+          inversion H0.
+          simpl in H1.
+          rewrite H1.
+          reflexivity.
+          inversion H1.
+        }
+        assert (runSubst_Term [(x, Var x)] P = P).
+        { apply runSubst_Term_property1.
+          intros.
+          inversion H1.
+          inversion H2.
+          reflexivity.
+          inversion H2.
+        }
+        rewrite H1 in H0.
+        rewrite H0.
+        reflexivity.
+      - simpl.
+        assert (chi y [(x, N0)] (Abs y P) = y).
+        { apply chi_property2.
+          apply forallb_true_iff.
+          intros.
+          simpl.
+          destruct (Nat.eq_dec x x0).
+          - subst.
+            assert (FreeIn x0 (Abs y P)).
+              apply getFVs_returns_free_vars.
+              apply H1.
+            contradiction H0.
+            assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 y then false else true) = true).
+              apply andb_true_iff.
+              apply H2.
+            destruct H3.
+            apply H3.
+          - destruct (FreshIn_dec y (Var x0)).
+            { reflexivity.
+            }
+            { assert (y = x0).
+                apply FreeIn_Var.
+                unfold FreshIn in n0.
+                unfold FreeIn.
+                destruct (isFreeIn y (Var x0)).
+                reflexivity.
+                contradiction n0.
+                reflexivity.
+              subst.
+              assert (FreeIn x0 (Abs x0 P)).
+                apply getFVs_returns_free_vars.
+                apply H1.
+              unfold FreeIn in H2.
+              simpl in H2.
+              assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 x0 then false else true) = true).
+                apply andb_true_iff.
+                apply H2.
+              destruct H3.
+              destruct (Nat.eq_dec x0 x0).
+              apply H4.
+              contradiction n1.
+              reflexivity.
+            }
+        }
+      rewrite H1.
+
+    }
+    assert (
+      forall M : Tm,
+      forall NxM : Tm,
+      forall N : Tm,
+      forall x : IVar,
+      runSubst_Term [(x, N)] M = NxM -> SubstTerm N x M NxM
+    ).
+  Qed.
+  
 
 End STLC.
