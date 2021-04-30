@@ -1944,8 +1944,8 @@ Module UntypedLC.
   Proof.
     cut (
       forall tm1 : Tm,
-      forall sub : Subst,
       forall tm2 : Tm,
+      forall sub : Subst,
       runSubst_Term sub tm1 = tm2 -> compareUpToAlphaWithSubst sub tm1 tm2 = true
     ).
       intros.
@@ -1980,5 +1980,9 @@ Module UntypedLC.
       apply IHtm1.
       reflexivity.
   Qed.
+
+  Definition IsAlphaEquiv (tm1 : Tm) (tm2 : Tm) : Prop :=
+    compareUpToAlphaWithSubst [] tm1 tm2 = true
+  .
 
 End UntypedLC.
