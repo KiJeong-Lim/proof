@@ -453,6 +453,58 @@ Module Helper.
           apply H0.
   Qed.
 
+  Lemma forallb_isn't_true_iff {A : Type} {Phi : A -> Bool} :
+    forall xs : list A,
+    forallb Phi xs <> true <-> (exists x : A, In x xs /\ Phi x = false).
+  Proof.
+    intros xs.
+    induction xs.
+    - simpl.
+      constructor.
+      * intros.
+        contradiction H.
+        reflexivity.
+      * intros.
+        destruct H as [x].
+        destruct H.
+        contradiction H.
+    - simpl.
+      assert (Phi a = true \/ Phi a = false).
+      { destruct (Phi a).
+        - tauto.
+        - tauto.
+      }
+      destruct H.
+      * rewrite H.
+        simpl.
+        constructor.
+        + intros.
+          destruct (proj1 IHxs H0) as [x].
+          exists x.
+          tauto.
+        + intros.
+          apply (proj2 IHxs).
+          destruct H0 as [x].
+          exists x.
+          destruct H0.
+          destruct H0.
+          { subst.
+            rewrite H in H1.
+            inversion H1.
+          }
+          { tauto.
+          }
+      * rewrite H.
+        simpl.
+        constructor.
+        + intros.
+          exists a.
+          tauto.
+        + intros.
+          intro.
+          inversion H1.
+  Qed.
+
   Lemma forallb_ext {A : Type} :
     forall fun1 : A -> bool,
     forall fun2 : A -> bool,
@@ -1867,411 +1919,6 @@ Module UntypedLC.
         contradiction n.
         apply H1.
       }
-  Qed.
-
-  Inductive SubstTerm : Tm -> IVar -> Tm -> Tm -> Prop :=
-  | SubstTerm1 :
-    forall N : Tm,
-    forall x : IVar,
-    SubstTerm N x (Var x) N
-  | SubstTerm2 :
-    forall N : Tm,
-    forall x : IVar,
-    forall y : IVar,
-    x <> y ->
-    SubstTerm N x (Var y) (Var y)
-  | SubstTerm3 :
-    forall N : Tm,
-    forall x : IVar,
-    forall P : Tm,
-    forall Q : Tm,
-    forall NxP : Tm,
-    forall NxQ : Tm,
-    SubstTerm N x P NxP ->
-    SubstTerm N x Q NxQ ->
-    SubstTerm N x (App P Q) (App NxP NxQ)
-  | SubstTerm4 :
-    forall N : Tm,
-    forall x : IVar,
-    forall P : Tm,
-    SubstTerm N x (Abs x P) (Abs x P)
-  | SubstTerm5 :
-    forall N : Tm,
-    forall x : IVar,
-    forall y : IVar,
-    forall P : Tm,
-    x <> y ->
-    ~ FreeIn x P ->
-    SubstTerm N x (Abs y P) (Abs y P)
-  | SubstTerm6 :
-    forall N : Tm,
-    forall x : IVar,
-    forall y : IVar,
-    forall P : Tm,
-    forall NxP : Tm,
-    x <> y ->
-    FreeIn x P ->
-    ~ FreeIn y N ->
-    SubstTerm N x P NxP ->
-    SubstTerm N x (Abs y P) (Abs y NxP)
-  | SubstTerm7 :
-    forall N : Tm,
-    forall x : IVar,
-    forall y : IVar,
-    forall P : Tm,
-    forall z : IVar,
-    forall zyP : Tm,
-    forall NxzyP : Tm,
-    x <> y ->
-    FreeIn x P ->
-    FreeIn y N ->
-    let has_freshness : IVar -> Prop := fun z0 : IVar => FreshIn z0 N /\ FreshIn z0 P in 
-    has_freshness z ->
-    (forall iv : IVar, has_freshness iv -> iv >= z) ->
-    SubstTerm (Var z) y P zyP ->
-    SubstTerm N x zyP NxzyP ->
-    SubstTerm N x (Abs y P) (Abs z NxzyP)
-  .
-
-  Theorem runSubst_Term_mainproperty :
-    forall N : Tm,
-    forall x : IVar,
-    forall M : Tm,
-    forall NxM : Tm,
-    SubstTerm N x M NxM <-> runSubst_Term [(x, N)] M = NxM.
-  Proof.
-    assert ( claim1 :
-      forall NxM : Tm,
-      forall M : Tm,
-      forall N : Tm,
-      forall x : IVar,
-      SubstTerm N x M NxM -> runSubst_Term [(x, N)] M = NxM
-    ).
-    { intros.
-      induction H.
-      - simpl.
-        destruct (Nat.eq_dec x x).
-        * reflexivity.
-        * contradiction n.
-          reflexivity.
-      - simpl.
-        destruct (Nat.eq_dec x y).
-        * contradiction H.
-        * reflexivity.
-      - simpl.
-        rewrite IHSubstTerm1.
-        rewrite IHSubstTerm2.
-        reflexivity.
-      - simpl.
-        assert (chi x [(x, N0)] (Abs x P) = x).
-        { apply chi_property2.
-          apply forallb_true_iff.
-          intros.
-          assert (FreeIn x0 (Abs x P)).
-            apply getFVs_returns_free_vars.
-            apply H.
-          simpl.
-          assert (x <> x0 /\ FreeIn x0 P).
-          { unfold FreeIn in H0.
-            simpl in H0.
-            assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 x then false else true) = true).
-              apply andb_true_iff.
-              apply H0.
-            destruct H1.
-            constructor.
-            destruct (Nat.eq_dec x0 x).
-            inversion H2.
-            intro.
-            contradiction n.
-            rewrite H3.
-            reflexivity.
-            apply H1.
-          }
-          destruct H1.
-          destruct (Nat.eq_dec x x0).
-          - contradiction H1.
-          - destruct (FreshIn_dec x (Var x0)).
-            * reflexivity.
-            * contradiction n0.
-              apply FreshIn_Var.
-              apply n.
-        }
-        rewrite H.
-        assert (
-          runSubst_Term [(x, Var x); (x, N0)] P = runSubst_Term [(x, Var x)] P
-        ).
-        { apply equivSubstOn_property4.
-          apply equivSubstOn_property5.
-          intros.
-          inversion H0.
-          simpl in H1.
-          rewrite H1.
-          reflexivity.
-          inversion H1.
-        }
-        assert (runSubst_Term [(x, Var x)] P = P).
-        { apply runSubst_Term_property1.
-          intros.
-          inversion H1.
-          inversion H2.
-          reflexivity.
-          inversion H2.
-        }
-        rewrite H1 in H0.
-        rewrite H0.
-        reflexivity.
-      - simpl.
-        assert (chi y [(x, N0)] (Abs y P) = y).
-        { apply chi_property2.
-          apply forallb_true_iff.
-          intros.
-          simpl.
-          destruct (Nat.eq_dec x x0).
-          - subst.
-            assert (FreeIn x0 (Abs y P)).
-              apply getFVs_returns_free_vars.
-              apply H1.
-            contradiction H0.
-            assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 y then false else true) = true).
-              apply andb_true_iff.
-              apply H2.
-            destruct H3.
-            apply H3.
-          - destruct (FreshIn_dec y (Var x0)).
-            { reflexivity.
-            }
-            { assert (y = x0).
-                apply FreeIn_Var.
-                unfold FreshIn in n0.
-                unfold FreeIn.
-                destruct (isFreeIn y (Var x0)).
-                reflexivity.
-                contradiction n0.
-                reflexivity.
-              subst.
-              assert (FreeIn x0 (Abs x0 P)).
-                apply getFVs_returns_free_vars.
-                apply H1.
-              unfold FreeIn in H2.
-              simpl in H2.
-              assert (isFreeIn x0 P = true /\ (if Nat.eq_dec x0 x0 then false else true) = true).
-                apply andb_true_iff.
-                apply H2.
-              destruct H3.
-              destruct (Nat.eq_dec x0 x0).
-              apply H4.
-              contradiction n1.
-              reflexivity.
-            }
-        }
-      rewrite H1.
-      assert (runSubst_Term [(y, Var y); (x, N0)] P = P).
-      { assert (runSubst_Term (weakenSubst P [(y, Var y); (x, N0)]) P = runSubst_Term [(y, Var y); (x, N0)] P).
-          apply weakenSubst_property2.
-        simpl in H2.
-        destruct (FreeIn_dec x P).
-        - contradiction H0.
-        - rewrite <- H2.
-          destruct (FreeIn_dec y P).
-          * apply runSubst_Term_property1.
-            intros.
-            inversion H3.
-            inversion H4.
-            reflexivity.
-            inversion H4.
-          * apply runSubst_Term_property1.
-            intros.
-            inversion H3.
-      }
-      rewrite H2.
-      reflexivity.
-    - simpl.
-      assert (chi y [(x, N0)] (Abs y P) = y).
-      { apply chi_property2.
-        unfold FreshInSubst.
-        apply forallb_true_iff.
-        intros.
-        destruct (FreshIn_dec y (runSubst_Var [(x, N0)] x0)).
-        - reflexivity.
-        - simpl in n.
-          destruct (Nat.eq_dec x x0).
-          * subst.
-            assert (FreshIn y N0).
-              apply FreshIn_iff.
-              apply H1.
-            contradiction n.
-          * unfold FreshIn in n.
-            simpl in n.
-            destruct (Nat.eq_dec y x0).
-            + subst.
-              contradiction (proj1 (FreshIn_iff x0 (Abs x0 P))).
-              unfold FreshIn.
-              simpl.
-              apply andb_false_iff.
-              destruct (Nat.eq_dec x0 x0).
-              tauto.
-              contradiction n1.
-              reflexivity.
-              apply getFVs_returns_free_vars.
-              apply H3.
-            + contradiction n.
-              reflexivity.
-      }
-      rewrite H3.
-      assert (runSubst_Term [(y, Var y); (x, N0)] P = NxP).
-      { rewrite <- IHSubstTerm.
-        apply equivSubstOn_property4.
-        unfold equivSubstOn.
-        intros.
-        simpl.
-        destruct (Nat.eq_dec x iv).
-        - subst.
-          destruct (Nat.eq_dec y iv).
-          * contradiction H.
-            rewrite e.
-            reflexivity.
-          * reflexivity.
-        - destruct (Nat.eq_dec y iv).
-          * rewrite e.
-            reflexivity.
-          * reflexivity.
-      }
-      rewrite H4.
-      reflexivity.
-    - simpl.
-      assert (chi y [(x, N0)] (Abs y P) = z).
-      { unfold chi.
-        destruct (FreshInSubst_dec y [(x, N0)] (Abs y P)).
-        - unfold FreshInSubst in f.
-          assert (
-            forall iv : IVar,
-            In iv (getFVs (Abs y P)) ->
-            (if FreshIn_dec y (runSubst_Var [(x, N0)] iv) then true else false) = true
-          ).
-            apply forallb_true_iff.
-            apply f.
-          assert ((if FreshIn_dec y (runSubst_Var [(x, N0)] x) then true else false) = true).
-            apply H6.
-            apply getFVs_returns_free_vars.
-            unfold FreeIn.
-            simpl.
-            apply andb_true_iff.
-            constructor.
-            apply H0.
-            destruct (Nat.eq_dec x y).
-            contradiction H.
-            reflexivity.
-          simpl in H7.
-          destruct (Nat.eq_dec x x).
-          * destruct (FreshIn_dec y N0).
-            + contradiction (proj1 (FreshIn_iff y N0)).
-            + inversion H7.
-          * contradiction n.
-            reflexivity.
-        - cut (
-            let iv0 : IVar := first_nat (fun iv0 : IVar => forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var [(x, N0)] iv') then true else false) (getFVs (Abs y P))) (chi' [(x, N0)] (Abs y P)) in iv0 = z
-          ).
-            intuition.
-          intros.
-          assert (forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var [(x, N0)] iv') then true else false) (getFVs (Abs y P)) = true /\ (forall z0 : IVar, (forallb (fun iv' : IVar => if FreshIn_dec z0 (runSubst_Var [(x, N0)] iv') then true else false) (getFVs (Abs y P)) = true) -> iv0 <= z0)).
-          { unfold iv0.
-            apply (well_ordering_principle (fun iv0 : IVar => forallb (fun iv' : IVar => if FreshIn_dec iv0 (runSubst_Var [(x, N0)] iv') then true else false) (getFVs (Abs y P)))).
-            apply forallb_true_iff.
-            intros.
-            simpl.
-            destruct (Nat.eq_dec x x0).
-            - destruct (FreshIn_dec (chi' [(x, N0)] (Abs y P)) N0).
-              * reflexivity.
-              * subst.
-                contradiction n0.
-                apply getFreeVarBound_property1.
-                unfold chi'.
-                cut (fold_right Init.Nat.max 0 (map (fun iv1 : IVar => getFreeVarBound (runSubst_Var [(x0, N0)] iv1)) (getFVs (Abs y P)))>= getFreeVarBound N0).
-                  lia.
-                apply fold_right_max_0_property4.
-                apply in_map_iff.
-                exists x0.
-                constructor.
-                simpl.
-                destruct (Nat.eq_dec x0 x0).
-                reflexivity.
-                contradiction n1.
-                reflexivity.
-                apply H6.
-            - destruct (FreshIn_dec (chi' [(x, N0)] (Abs y P)) (Var x0)).
-              * reflexivity.
-              * assert (chi' [(x, N0)] (Abs y P) = x0).
-                { apply FreeIn_Var.
-                  unfold FreeIn.
-                  unfold FreshIn in n1.
-                  destruct (isFreeIn (chi' [(x, N0)] (Abs y P)) (Var x0)).
-                  - reflexivity.
-                  - contradiction n1.
-                    reflexivity.
-                }
-                contradiction n1.
-                apply getFreeVarBound_property1.
-                unfold getFreeVarBound.
-                simpl.
-                unfold chi'.
-                cut (
-                  fold_right Init.Nat.max 0 (map (fun iv1 : IVar => getFreeVarBound (runSubst_Var [(x, N0)] iv1)) (getFVs (Abs y P))) >= x0
-                ).
-                  lia.
-                apply fold_right_max_0_property4.
-                apply in_map_iff.
-                exists x0.
-                constructor.
-                simpl.
-                destruct (Nat.eq_dec x x0).
-                contradiction n0.
-                unfold getFreeVarBound.
-                simpl.
-                lia.
-                apply H6.
-          }
-          destruct H6.
-          assert (
-            forall iv' : IVar,
-            In iv' (getFVs (Abs y P)) ->
-            (if FreshIn_dec iv0 (runSubst_Var [(x, N0)] iv') then true else false) = true
-          ).
-          { apply forallb_true_iff.
-            apply H6.
-          }
-          assert (FreshIn iv0 N0).
-          { cut ((if FreshIn_dec iv0 ((runSubst_Var [(x, N0)] x)) then true else false) = true).
-              simpl.
-              intros.
-              destruct (Nat.eq_dec x x).
-              destruct (FreshIn_dec iv0 N0).
-              apply f.
-              inversion H9.
-              contradiction n0.
-              reflexivity.
-            apply H8.
-            apply getFVs_returns_free_vars.
-            unfold FreeIn.
-            simpl.
-            apply andb_true_iff.
-            constructor.
-            apply H0.
-            destruct (Nat.eq_dec x y).
-            contradiction H.
-            reflexivity.
-          }
-          assert (iv0 <> y).
-          { intro.
-            assert (FreshInSubst iv0 [(x, N0)] (Abs y P)).
-              apply H6.
-              rewrite H10 in H11.
-              contradiction n.
-          }
-          assert (chi iv0 [(x, N0)] (Abs y P) = iv0).
-            apply chi_property2.
-            apply H6.
-      }
-    }
   Qed.
 
 End UntypedLC.
