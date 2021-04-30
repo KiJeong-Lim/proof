@@ -1921,4 +1921,91 @@ Module UntypedLC.
       }
   Qed.
 
+  Inductive AlphaSubst : Subst -> Tm -> Tm -> Prop :=
+  | AlphaSubstVar :
+    forall sub : Subst,
+    forall iv : IVar,
+    forall tm : Tm,
+    runSubst_Var sub iv = tm ->
+    AlphaSubst sub (Var iv) tm
+  | AlphaSubstApp :
+    forall sub : Subst,
+    forall tm1_1 : Tm,
+    forall tm1_2 : Tm,
+    forall tm2_1 : Tm,
+    forall tm2_2 : Tm,
+    AlphaSubst sub tm1_1 tm2_1 ->
+    AlphaSubst sub tm1_2 tm2_2 ->
+    AlphaSubst sub (App tm1_1 tm1_2) (App tm2_1 tm2_2)
+  | AlphaSubstAbs :
+    forall sub : Subst,
+    forall iv1 : IVar,
+    forall iv2 : IVar,
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    AlphaSubst ((iv1, Var iv2) :: sub) tm1 tm2 ->
+    AlphaSubst sub (Abs iv1 tm1) (Abs iv2 tm2)
+  .
+
+  Lemma AlphaSubst_property1 :
+    forall sub : Subst,
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    runSubst_Term sub tm1 = tm2 -> AlphaSubst sub tm1 tm2.
+  Proof.
+    cut (
+      forall tm1 : Tm,
+      forall sub : Subst,
+      forall tm2 : Tm,
+      runSubst_Term sub tm1 = tm2 -> AlphaSubst sub tm1 tm2
+    ).
+      intros.
+      apply H.
+      apply H0.
+    intros tm1.
+    induction tm1.
+    - intros.
+      simpl.
+      intros.
+      rewrite <- H.
+      constructor.
+      reflexivity.
+    - intros.
+      simpl.
+      intros.
+      rewrite <- H.
+      constructor.
+      apply IHtm1_1.
+      reflexivity.
+      apply IHtm1_2.
+      reflexivity.
+    - intros.
+      simpl.
+      intros.
+      rewrite <- H.
+      constructor.
+      apply IHtm1.
+      reflexivity.
+  Qed.
+
+  Definition AlphaEquiv (tm1 : Tm) (tm2 : Tm) : Prop :=
+    AlphaSubst [] tm1 tm2
+  .
+
+  Lemma AlphaEquiv_refl :
+    forall tm1 : Tm,
+    AlphaEquiv tm1 tm1.
+  Proof.
+    unfold AlphaEquiv.
+    intros.
+    assert (
+      runSubst_Term [] tm1 = tm1
+    ).
+      apply runSubst_Term_property1.
+      intros.
+      inversion H.
+    apply AlphaSubst_property1.
+    apply H.
+  Qed.
+
 End UntypedLC.
