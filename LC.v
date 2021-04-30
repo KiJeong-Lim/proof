@@ -1921,91 +1921,64 @@ Module UntypedLC.
       }
   Qed.
 
-  Inductive AlphaSubst : Subst -> Tm -> Tm -> Prop :=
-  | AlphaSubstVar :
-    forall sub : Subst,
-    forall iv : IVar,
-    forall tm : Tm,
-    runSubst_Var sub iv = tm ->
-    AlphaSubst sub (Var iv) tm
-  | AlphaSubstApp :
-    forall sub : Subst,
-    forall tm1_1 : Tm,
-    forall tm1_2 : Tm,
-    forall tm2_1 : Tm,
-    forall tm2_2 : Tm,
-    AlphaSubst sub tm1_1 tm2_1 ->
-    AlphaSubst sub tm1_2 tm2_2 ->
-    AlphaSubst sub (App tm1_1 tm1_2) (App tm2_1 tm2_2)
-  | AlphaSubstAbs :
-    forall sub : Subst,
-    forall iv1 : IVar,
-    forall iv2 : IVar,
-    forall tm1 : Tm,
-    forall tm2 : Tm,
-    AlphaSubst ((iv1, Var iv2) :: sub) tm1 tm2 ->
-    AlphaSubst sub (Abs iv1 tm1) (Abs iv2 tm2)
+  Fixpoint compareUpToAlphaWithSubst (sub : Subst) (tm1 : Tm) (tm2 : Tm) : Bool :=
+    match tm1 with
+    | Var iv1 => if Tm_eq_dec (runSubst_Var sub iv1) tm2 then true else false
+    | App tm1_1 tm1_2 =>
+      match tm2 with
+      | App tm2_1 tm2_2 => andb (compareUpToAlphaWithSubst sub tm1_1 tm2_1) (compareUpToAlphaWithSubst sub tm1_2 tm2_2)
+      | _ => false
+      end
+    | Abs iv1 tm1_1 =>
+      match tm2 with
+      | Abs iv2 tm2_1 => compareUpToAlphaWithSubst ((iv1, Var iv2) :: sub) tm1_1 tm2_1
+      | _ => false
+      end
+    end
   .
 
-  Lemma AlphaSubst_property1 :
+  Theorem runSubst_Term_property2 :
     forall sub : Subst,
     forall tm1 : Tm,
-    forall tm2 : Tm,
-    runSubst_Term sub tm1 = tm2 -> AlphaSubst sub tm1 tm2.
+    compareUpToAlphaWithSubst sub tm1 (runSubst_Term sub tm1) = true.
   Proof.
     cut (
       forall tm1 : Tm,
       forall sub : Subst,
       forall tm2 : Tm,
-      runSubst_Term sub tm1 = tm2 -> AlphaSubst sub tm1 tm2
+      runSubst_Term sub tm1 = tm2 -> compareUpToAlphaWithSubst sub tm1 tm2 = true
     ).
       intros.
       apply H.
-      apply H0.
+      reflexivity.
     intros tm1.
     induction tm1.
     - intros.
       simpl.
       intros.
       rewrite <- H.
-      constructor.
-      reflexivity.
+      simpl.
+      destruct (Tm_eq_dec (runSubst_Var sub iv) (runSubst_Var sub iv)).
+      * reflexivity.
+      * contradiction n.
+        reflexivity.
     - intros.
       simpl.
       intros.
+      simpl in H.
       rewrite <- H.
-      constructor.
-      apply IHtm1_1.
-      reflexivity.
+      rewrite IHtm1_1.
+      simpl.
       apply IHtm1_2.
       reflexivity.
+      reflexivity.
     - intros.
       simpl.
       intros.
+      simpl in H.
       rewrite <- H.
-      constructor.
       apply IHtm1.
       reflexivity.
-  Qed.
-
-  Definition AlphaEquiv (tm1 : Tm) (tm2 : Tm) : Prop :=
-    AlphaSubst [] tm1 tm2
-  .
-
-  Lemma AlphaEquiv_refl :
-    forall tm1 : Tm,
-    AlphaEquiv tm1 tm1.
-  Proof.
-    unfold AlphaEquiv.
-    intros.
-    assert (
-      runSubst_Term [] tm1 = tm1
-    ).
-      apply runSubst_Term_property1.
-      intros.
-      inversion H.
-    apply AlphaSubst_property1.
-    apply H.
   Qed.
 
 End UntypedLC.
