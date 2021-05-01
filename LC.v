@@ -1937,10 +1937,10 @@ Module UntypedLC.
     end
   .
 
-  Theorem runSubst_Term_property2 :
+  Theorem runSubst_Term_main_property :
     forall sub : Subst,
-    forall tm1 : Tm,
-    compareUpToAlphaWithSubst sub tm1 (runSubst_Term sub tm1) = true.
+    forall tm : Tm,
+    compareUpToAlphaWithSubst sub tm (runSubst_Term sub tm) = true.
   Proof.
     cut (
       forall tm1 : Tm,
@@ -1984,5 +1984,180 @@ Module UntypedLC.
   Definition IsAlphaEquiv (tm1 : Tm) (tm2 : Tm) : Prop :=
     compareUpToAlphaWithSubst [] tm1 tm2 = true
   .
+
+  Lemma IsAlphaEquiv_dec :
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    {IsAlphaEquiv tm1 tm2} + {~ IsAlphaEquiv tm1 tm2}.
+  Proof.
+    intros.
+    unfold IsAlphaEquiv.
+    destruct (compareUpToAlphaWithSubst [] tm1 tm2).
+    - intuition.
+    - intuition.
+  Qed.
+
+  Inductive DeBruijnInCtx : IVar -> list IVar -> N -> Prop :=
+  | DeBruijnInCtx1 :
+    forall iv : IVar,
+    forall ctx : list IVar,
+    forall iv' : IVar,
+    iv = iv' ->
+    DeBruijnInCtx iv (iv' :: ctx) 0
+  | DeBruijnInCtx2 :
+    forall iv : IVar,
+    forall ctx : list IVar,
+    forall iv' : IVar,
+    iv <> iv' ->
+    forall n : N,
+    DeBruijnInCtx iv ctx n ->
+    DeBruijnInCtx iv (iv' :: ctx) (S n)
+  .
+
+  Lemma DeBruijnInCtx_property1 :
+    forall ctx1 : list IVar,
+    forall ctx2 : list IVar,
+    forall iv : IVar,
+    forall n : N,
+    ~ In iv ctx1 ->
+    DeBruijnInCtx iv (ctx1 ++ [iv] ++ ctx2) n <-> length ctx1 = n.
+  Proof.
+    intros ctx1.
+    induction ctx1.
+    - simpl.
+      intros.
+      constructor.
+      * intros.
+        inversion H0.
+        + subst.
+          reflexivity.
+        + subst.
+          contradiction H4.
+          reflexivity.
+      * intros.
+        subst.
+        constructor.
+        reflexivity.
+    - simpl.
+      intros.
+      constructor.
+      * intros.
+        inversion H0.
+        subst.
+        contradiction H.
+        tauto.
+        subst.
+        cut (length ctx1 = n0).
+          lia.
+        apply (IHctx1 ctx2 iv).
+        tauto.
+        apply H6.
+      * intros.
+        subst.
+        constructor.
+        intro.
+        rewrite H0 in H.
+        contradiction H.
+        tauto.
+        apply IHctx1.
+        tauto.
+        reflexivity.
+  Qed.
+
+  Fixpoint getDeBruijnInCtx (iv : IVar) (ctx : list IVar) : option N :=
+    match ctx with
+    | [] => None
+    | iv' :: ctx' =>
+      if Nat.eq_dec iv iv'
+      then Some 0
+      else
+        match getDeBruijnInCtx iv ctx' with
+        | None => None
+        | Some n => Some (S n)
+        end
+    end
+  .
+
+  Lemma getDeBruijnInCtx_property1 :
+    forall ctx : list IVar,
+    forall iv : IVar,
+    forall n : N,
+    getDeBruijnInCtx iv ctx = Some n <-> DeBruijnInCtx iv ctx n.
+  Proof.
+    intros ctx.
+    induction ctx.
+    - intros.
+      simpl.
+      constructor.
+      * intros.
+        inversion H.
+      * intros.
+        inversion H.
+    - intros.
+      simpl.
+      destruct (Nat.eq_dec iv a).
+      * subst.
+        constructor.
+        + intros.
+          inversion H.
+          subst.
+          constructor.
+          reflexivity.
+        + intros.
+          inversion H.
+          subst.
+          reflexivity.
+          subst.
+          contradiction H3.
+          reflexivity.
+      * cut (let n' : option N := getDeBruijnInCtx iv ctx in n' = getDeBruijnInCtx iv ctx -> (match getDeBruijnInCtx iv ctx with | Some n1 => Some (S n1) | None => None end = Some n <-> DeBruijnInCtx iv (a :: ctx) n)).
+          intros.
+          apply H.
+          reflexivity.
+        intros.
+        destruct n'.
+        + rewrite <- H.
+          constructor.
+          { intros.
+            inversion H0.
+            subst.
+            constructor.
+            apply n0.
+            apply IHctx.
+            rewrite H.
+            reflexivity.
+          }
+          { intros.
+            inversion H0.
+            - subst.
+              contradiction n0.
+              reflexivity.
+            - subst.
+              assert (getDeBruijnInCtx iv ctx = Some n2).
+                apply IHctx.
+                apply H6.
+              rewrite H1 in H.
+              inversion H.
+              subst.
+              reflexivity.
+          }
+        + rewrite <- H.
+          constructor.
+          { intros.
+            inversion H0.
+          }
+          { intros.
+            inversion H0.
+            subst.
+            contradiction n0.
+            reflexivity.
+            subst.
+            assert (getDeBruijnInCtx iv ctx = Some n1).
+              apply IHctx.
+              apply H6.
+            rewrite H1 in H.
+            inversion H.
+          }
+  Qed.
 
 End UntypedLC.
