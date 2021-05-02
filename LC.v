@@ -2250,527 +2250,472 @@ Module UntypedLC.
           }
   Qed.
 
-  Inductive AlphaEquivDeBruijnCtx : list (IVar * IVar) -> Tm -> Tm -> Prop :=
-  | AlphaEquiv1 :
+  Inductive Subterm : Tm -> Tm -> Prop :=
+  | SubtermRefl :
+    forall tm : Tm,
+    forall tm' : Tm,
+    tm = tm' ->
+    Subterm tm tm'
+  | SubtermAppL :
+    forall tm0 : Tm,
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    Subterm tm0 tm1 ->
+    Subterm tm0 (App tm1 tm2)
+  | SubtermAppR :
+    forall tm0 : Tm,
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    Subterm tm0 tm2 ->
+    Subterm tm0 (App tm1 tm2)
+  | SubtermAbsR :
+    forall tm0 : Tm,
+    forall iv1 : IVar,
+    forall tm2 : Tm,
+    Subterm tm0 tm2 ->
+    Subterm tm0 (Abs iv1 tm2)
+  .
+
+  Fixpoint getRank (tm : Tm) : N :=
+    match tm with
+    | Var iv => 0
+    | App tm1 tm2 => S (max (getRank tm1) (getRank tm2))
+    | Abs iv1 tm2 => S (getRank tm2)
+    end
+  .
+
+  Lemma getRank_property1 :
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    Subterm tm1 tm2 ->
+    getRank tm1 <= getRank tm2.
+  Proof.
+    intros.
+    induction H.
+    - rewrite H.
+      lia.
+    - simpl.
+      lia.
+    - simpl.
+      lia.
+    - simpl.
+      lia.
+  Qed.
+
+  Lemma getRank_property2 :
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    getRank tm1 = getRank tm2 ->
+    Subterm tm1 tm2 <-> tm1 = tm2.
+  Proof.
+    assert (
+      forall tm1 : Tm,
+      forall tm2 : Tm,
+      getRank tm1 = getRank tm2 ->
+      forall tm1_is_a_subterm_of_tm2 : Subterm tm1 tm2,
+      exists tm1_is_tm2 : tm1 = tm2, tm1_is_a_subterm_of_tm2 = SubtermRefl tm1 tm2 tm1_is_tm2 
+    ).
+    { intros.
+      destruct tm1_is_a_subterm_of_tm2.
+      - exists e.
+        reflexivity.
+      - assert (getRank tm0 <= getRank tm1).
+          apply getRank_property1.
+          apply tm1_is_a_subterm_of_tm2.
+        simpl in H.
+        lia.
+      - assert (getRank tm0 <= getRank tm2).
+          apply getRank_property1.
+          apply tm1_is_a_subterm_of_tm2.
+        simpl in H.
+        lia.
+      - assert (getRank tm0 <= getRank tm2).
+          apply getRank_property1.
+          apply tm1_is_a_subterm_of_tm2.
+        simpl in H.
+        lia.
+    }
+    intros.
+    constructor.
+    - intros tm1_is_a_subterm_of_tm2.
+      assert (exists tm1_is_tm2 : tm1 = tm2, tm1_is_a_subterm_of_tm2 = SubtermRefl tm1 tm2 tm1_is_tm2).
+        apply H.
+        apply H0.
+      destruct H1 as [result].
+      apply result.
+    - intros.
+      rewrite H1.
+      apply SubtermRefl.
+      reflexivity.
+  Qed.
+
+  Lemma Subterm_refl :
+    forall tm1 : Tm,
+    Subterm tm1 tm1.
+  Proof.
+    intros.
+    apply SubtermRefl.
+    reflexivity.
+  Qed.
+
+  Lemma Subterm_asym :
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    Subterm tm1 tm2 ->
+    Subterm tm2 tm1 ->
+    tm1 = tm2.
+  Proof.
+    intros.
+    assert (getRank tm1 <= getRank tm2).
+      apply getRank_property1.
+      apply H.
+    assert (getRank tm2 <= getRank tm1).
+      apply getRank_property1.
+      apply H0.
+    apply getRank_property2.
+    lia.
+    tauto.
+  Qed.
+
+  Lemma Subterm_trans :
+    forall tm1 : Tm,
+    forall tm2 : Tm,
+    forall tm3 : Tm,
+    Subterm tm1 tm2 ->
+    Subterm tm2 tm3 ->
+    Subterm tm1 tm3.
+  Proof.
+    cut (
+      forall tm3 : Tm,
+      forall tm2 : Tm,
+      forall tm1 : Tm,
+      Subterm tm1 tm2 ->
+      Subterm tm2 tm3 ->
+      Subterm tm1 tm3
+    ).
+      intros.
+      apply (H tm3 tm2 tm1).
+      apply H0.
+      apply H1.
+    intros tm3.
+    induction tm3.
+    - intros tm2.
+      destruct tm2.
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+          subst.
+          apply H.
+        }
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+        }
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+        }
+    - intros tm2.
+      destruct tm2.
+      * intros.
+        inversion H.
+        { subst.
+          apply H0.
+        }
+      * intros.
+        inversion H.
+        { subst.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            rewrite <- H1.
+            apply H.
+          }
+          { subst.
+            apply SubtermAppL.
+            apply (IHtm3_1 (App tm2_1 tm2_2)).
+            apply H.
+            apply H4.
+          }
+          { subst.
+            apply SubtermAppR.
+            apply (IHtm3_2 (App tm2_1 tm2_2)).
+            apply H.
+            apply H4.
+          } 
+        }
+        { subst.
+          subst.
+          inversion H0.
+          { subst.
+            rewrite <- H1.
+            apply H.
+          }
+          { subst.
+            apply SubtermAppL.
+            apply (IHtm3_1 (App tm2_1 tm2_2)).
+            apply H.
+            apply H4.
+          }
+          { subst.
+            apply SubtermAppR.
+            apply (IHtm3_2 (App tm2_1 tm2_2)).
+            apply H.
+            apply H4.
+          } 
+        }
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            rewrite <- H1.
+            apply H.
+          }
+          { subst.
+            apply SubtermAppL.
+            apply (IHtm3_1 (Abs iv tm2)).
+            apply H.
+            apply H4.
+          }
+          { subst.
+            apply SubtermAppR.
+            apply (IHtm3_2 (Abs iv tm2)).
+            apply H.
+            apply H4.
+          } 
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            rewrite <- H1.
+            apply H.
+          }
+          { subst.
+            apply SubtermAppL.
+            apply (IHtm3_1 (Abs iv tm2)).
+            apply H.
+            apply H4.
+          }
+          { subst.
+            apply SubtermAppR.
+            apply (IHtm3_2 (Abs iv tm2)).
+            apply H.
+            apply H4.
+          } 
+        }
+    - intros tm2.
+      destruct tm2.
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+        }
+        { subst.
+          apply SubtermAbsR.
+          apply (IHtm3 (Var iv0)).
+          apply H.
+          apply H3.
+        }
+      * intros.
+        inversion H0.
+        { subst.
+          inversion H1.
+        }
+        { subst.
+          apply SubtermAbsR.
+          apply (IHtm3 (App tm2_1 tm2_2)).
+          apply H.
+          apply H3.
+        }
+      * intros.
+        inversion H0.
+        { subst.
+          rewrite <- H1.
+          apply H.
+        }
+        { subst.
+          apply SubtermAbsR.
+          apply (IHtm3 (Abs iv0 tm2)).
+          apply H.
+          apply H3.
+        }
+  Qed.
+
+  Theorem StrongInductionOnTm (Phi : Tm -> Prop) :
+    (forall tm : Tm, (forall tm' : Tm, Subterm tm' tm -> tm' <> tm -> Phi tm') -> Phi tm) ->
+    forall tm : Tm,
+    Phi tm.
+  Proof.
+    cut (
+      (forall tm : Tm, (forall tm' : Tm, Subterm tm' tm -> tm' <> tm -> Phi tm') -> Phi tm) ->
+      forall tm : Tm,
+      forall tm0 : Tm,
+      Subterm tm0 tm ->
+      Phi tm0
+    ).
+    { intros.
+      apply (H H0 tm tm).
+      apply Subterm_refl.
+    }
+    intros XXX.
+    intros tm.
+    induction tm.
+    - intros.
+      apply XXX.
+      intros.
+      inversion H0.
+      * subst.
+        contradiction H1.
+        reflexivity.
+      * subst.
+        inversion H.
+        subst.
+        inversion H3.
+      * subst.
+        inversion H.
+        subst.
+        inversion H3.
+      * subst.
+        inversion H.
+        subst.
+        inversion H3.
+    - intros.
+      apply XXX.
+      intros.
+      inversion H0.
+      * subst.
+        contradiction H1.
+        reflexivity.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+          subst.
+          apply IHtm1.
+          apply H2.
+        + subst.
+          apply IHtm1.
+          apply (Subterm_trans tm' (App tm4 tm5) tm1).
+          apply H0.
+          apply H5.
+        + subst.
+          apply IHtm2.
+          apply (Subterm_trans tm' (App tm4 tm5) tm2).
+          apply H0.
+          apply H5.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+          subst.
+          apply IHtm2.
+          apply H2.
+        + subst.
+          apply IHtm1.
+          apply (Subterm_trans tm' (App tm4 tm5) tm1).
+          apply H0.
+          apply H5.
+        + subst.
+          apply IHtm2.
+          apply (Subterm_trans tm' (App tm4 tm5) tm2).
+          apply H0.
+          apply H5.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+        + subst.
+          apply IHtm1.
+          apply (Subterm_trans tm' (Abs iv1 tm4) tm1).
+          apply H0.
+          apply H5.
+        + subst.
+          apply IHtm2.
+          apply (Subterm_trans tm' (Abs iv1 tm4) tm2).
+          apply H0.
+          apply H5.
+    - intros.
+      apply XXX.
+      intros.
+      inversion H0.
+      * subst.
+        contradiction H1.
+        reflexivity.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+        + subst.
+          apply IHtm.
+          apply (Subterm_trans tm' (App tm2 tm3) tm).
+          apply H0.
+          apply H5.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+        + subst.
+          subst.
+          apply IHtm.
+          apply (Subterm_trans tm' (App tm2 tm3) tm).
+          apply H0.
+          apply H5.
+      * subst.
+        inversion H.
+        + subst.
+          inversion H3.
+          subst.
+          apply IHtm.
+          apply H2.
+        + subst.
+          subst.
+          apply IHtm.
+          apply (Subterm_trans tm' (Abs iv1 tm2) tm).
+          apply H0.
+          apply H5.
+  Qed.
+
+  Inductive AlphaEquivWithDeBruijnCtx : list (IVar * IVar) -> Tm -> Tm -> Prop :=
+  | AlphaEquivBVar :
     forall dbctx : list (IVar * IVar),
     forall iv1 : IVar,
     forall iv2 : IVar,
     forall idx : N,
     getDeBruijnInCtx iv1 (map fst dbctx) = Some idx ->
     getDeBruijnInCtx iv2 (map snd dbctx) = Some idx ->
-    AlphaEquivDeBruijnCtx dbctx (Var iv1) (Var iv2)
-  | AlphaEquiv2 :
+    AlphaEquivWithDeBruijnCtx dbctx (Var iv1) (Var iv2)
+  | AlphaEquivFVar :
     forall dbctx : list (IVar * IVar),
     forall iv : IVar,
     ~ In iv (map fst dbctx) ->
     ~ In iv (map snd dbctx) ->
-    AlphaEquivDeBruijnCtx dbctx (Var iv) (Var iv)
-  | AlphaEquiv3 :
+    AlphaEquivWithDeBruijnCtx dbctx (Var iv) (Var iv)
+  | AlphaEquivIApp :
     forall dbctx : list (IVar * IVar),
     forall tm1_1 : Tm,
     forall tm1_2 : Tm,
     forall tm2_1 : Tm,
     forall tm2_2 : Tm,
-    AlphaEquivDeBruijnCtx dbctx tm1_1 tm2_1 ->
-    AlphaEquivDeBruijnCtx dbctx tm1_2 tm2_2 ->
-    AlphaEquivDeBruijnCtx dbctx (App tm1_1 tm1_2) (App tm2_1 tm2_2)
-  | AlphaEquiv4 :
+    AlphaEquivWithDeBruijnCtx dbctx tm1_1 tm2_1 ->
+    AlphaEquivWithDeBruijnCtx dbctx tm1_2 tm2_2 ->
+    AlphaEquivWithDeBruijnCtx dbctx (App tm1_1 tm1_2) (App tm2_1 tm2_2)
+  | AlphaEquivIAbs :
     forall dbctx : list (IVar * IVar),
     forall iv1 : IVar,
     forall iv2 : IVar,
     forall tm1 : Tm,
     forall tm2 : Tm,
-    AlphaEquivDeBruijnCtx ((iv1, iv2) :: dbctx) tm1 tm2 ->
-    AlphaEquivDeBruijnCtx dbctx (Abs iv1 tm1) (Abs iv2 tm2)
+    AlphaEquivWithDeBruijnCtx ((iv1, iv2) :: dbctx) tm1 tm2 ->
+    AlphaEquivWithDeBruijnCtx dbctx (Abs iv1 tm1) (Abs iv2 tm2)
   .
-
-  Lemma compareUpToAlphaWithSubst_main_property :
-    forall tm1 : Tm,
-    forall tm2 : Tm,
-    forall dbctx : list (IVar * IVar),
-    (forall iv : IVar, In iv (map fst dbctx) -> FreshIn iv tm1) ->
-    (forall iv : IVar, In iv (map snd dbctx) -> FreshIn iv tm2) ->
-    compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1 tm2 = true <-> AlphaEquivDeBruijnCtx dbctx tm1 tm2.
-  Proof.
-    assert ( claim0 :
-      forall dbctx' : list (IVar * IVar),
-      forall iv' : IVar,
-      ~ In iv' (map fst dbctx') ->
-      runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx') iv' = Var iv'
-    ).
-    { intros dbctx'.
-      induction dbctx'.
-      - intros.
-        simpl.
-        reflexivity.
-      - destruct a as [iv0 tm0].
-        intros.
-        simpl.
-        destruct (Nat.eq_dec iv0 iv').
-        * simpl in *.
-          tauto.
-        * apply IHdbctx'.
-          simpl in *.
-          tauto.
-    }
-    assert ( claim1 :
-      forall dbctx : list (IVar * IVar),
-      forall iv1 : IVar,
-      forall iv2 : IVar,
-      forall n1 : N,
-      forall n2 : N,
-      (forall iv : IVar, In iv (map fst dbctx) -> FreshIn iv (Var iv1)) ->
-      (forall iv : IVar, In iv (map snd dbctx) -> FreshIn iv (Var iv2)) ->
-      getDeBruijnInCtx iv1 (map fst dbctx) = Some n1 ->
-      getDeBruijnInCtx iv2 (map snd dbctx) = Some n2 ->
-      runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) iv1 = Var iv2 ->
-      n1 = n2
-    ).
-    { intros dbctx.
-      induction dbctx.
-      - intros.
-        inversion H1.
-      - destruct a as [iv3 iv4].
-        intros.
-        simpl map in H1, H2.
-        inversion H1.
-        inversion H2.
-        destruct (Nat.eq_dec iv1 iv3).
-        * destruct (Nat.eq_dec iv2 iv4).
-          + inversion H5.
-            inversion H6.
-            reflexivity.
-          + simpl in H3.
-            destruct (Nat.eq_dec iv3 iv1).
-            { inversion H3.
-              contradiction n.
-              rewrite H7.
-              reflexivity. 
-            }
-            { contradiction n0.
-              rewrite e.
-              reflexivity.
-            }
-        * destruct (Nat.eq_dec iv2 iv4).
-          + simpl in H3.
-            destruct (Nat.eq_dec iv3 iv1).
-            { contradiction n.
-              rewrite e0.
-              reflexivity.
-            }
-            { assert (iv4 <> iv2).
-                apply FreshIn_Var.
-                apply H0.
-                simpl.
-                tauto.
-              contradiction H4.
-              rewrite e.
-              reflexivity.
-            }
-          + cut (
-              let n1' : option N := getDeBruijnInCtx iv1 (map fst dbctx) in
-              let n2' : option N := getDeBruijnInCtx iv2 (map snd dbctx) in
-              getDeBruijnInCtx iv1 (map fst dbctx) = n1' ->
-              getDeBruijnInCtx iv2 (map snd dbctx) = n2' -> 
-              n1 = n2
-            ).
-              intros.
-              apply H4.
-              reflexivity.
-              reflexivity.
-            intros.
-            fold n1' in H5.
-            fold n2' in H6.
-            destruct n1'.
-            { destruct n2'.
-              { inversion H5.
-                inversion H6.
-                subst.
-                cut (n3 = n4).
-                  lia.
-                apply (IHdbctx iv1 iv2).
-                intros.
-                apply H.
-                simpl.
-                tauto.
-                intros.
-                apply H0.
-                simpl.
-                tauto.
-                tauto.
-                tauto.
-                simpl in H3.
-                destruct (Nat.eq_dec iv3 iv1).
-                - contradiction n.
-                  rewrite e.
-                  reflexivity.
-                - apply H3.
-              }
-              { inversion H6.
-              }
-            }
-            { destruct n2'.
-              { inversion H5.
-              }
-              { inversion H5.
-              }
-            }
-    }
-    assert ( claim2 :
-      forall dbctx : list (IVar * IVar),
-      forall iv1 : IVar,
-      forall iv2 : IVar,
-      (forall iv : IVar, In iv (map fst dbctx) -> FreshIn iv (Var iv1)) ->
-      (forall iv : IVar, In iv (map snd dbctx) -> FreshIn iv (Var iv2)) ->
-      AlphaEquivDeBruijnCtx dbctx (Var iv1) (Var iv2) ->
-      compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) (Var iv1) (Var iv2) = true
-    ).
-    { intros dbctx.
-      induction dbctx.
-      - intros.
-        inversion H1.
-        * subst.
-          inversion H5.
-        * subst.
-          simpl.
-          destruct (Tm_eq_dec (Var iv2) (Var iv2)).
-          + reflexivity.
-          + contradiction n.
-            reflexivity.
-      - destruct a as [iv3 iv4].
-        intros.
-        inversion H1.
-        * subst.
-          simpl.
-          destruct (Nat.eq_dec iv3 iv1).
-          + assert (iv3 <> iv1).
-              apply FreshIn_Var.
-              apply H.
-              simpl.
-              tauto.
-            contradiction H2.
-          + assert (AlphaEquivDeBruijnCtx dbctx (Var iv1) (Var iv2)).
-            { inversion H5.
-              destruct (Nat.eq_dec iv1 iv3).
-              - contradiction n.
-                rewrite e.
-                reflexivity.
-              - inversion H6.
-                cut (
-                  let n1' : option N := getDeBruijnInCtx iv1 (map fst dbctx) in
-                  let n2' : option N := getDeBruijnInCtx iv2 (map snd dbctx) in
-                  n1' = getDeBruijnInCtx iv1 (map fst dbctx) ->
-                  n2' = getDeBruijnInCtx iv2 (map snd dbctx) ->
-                  AlphaEquivDeBruijnCtx dbctx (Var iv1) (Var iv2)
-                ).
-                  intros.
-                  apply H2.
-                  reflexivity.
-                  reflexivity.
-                intros.
-                fold n1' in H3.
-                fold n2' in H4.
-                destruct (Nat.eq_dec iv2 iv4).
-                * destruct n1'.
-                  + inversion H4.
-                    subst.
-                    inversion H3.
-                  + inversion H3.
-                * destruct n1'.
-                  + inversion H3.
-                    subst.
-                    destruct n2'.
-                    { inversion H4.
-                      subst.
-                      apply (AlphaEquiv1 dbctx iv1 iv2 n2).
-                      rewrite H2.
-                      reflexivity.
-                      rewrite H7.
-                      reflexivity.
-                    }
-                    { inversion H4.
-                    }
-                  + inversion H3.
-            }
-            apply IHdbctx.
-            intros.
-            apply H.
-            simpl.
-            tauto.
-            intros.
-            apply H0.
-            simpl.
-            tauto.
-            apply H2.
-        * subst.
-          simpl.
-          destruct (Nat.eq_dec iv3 iv2).
-          + subst.
-            contradiction H5.
-            simpl.
-            tauto.
-          + assert ((runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) iv2) = (Var iv2)).
-            { cut (
-                forall dbctx' : list (IVar * IVar),
-                forall iv' : IVar,
-                ~ In iv' (map fst dbctx') ->
-                runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx') iv' = Var iv'
-              ).
-                intros.
-                apply (H2 dbctx iv2).
-                simpl in *.
-                tauto.
-              apply claim0.
-            }
-            rewrite H2.
-            destruct (Tm_eq_dec (Var iv2) (Var iv2)).
-            { reflexivity.
-            }
-            { contradiction n0.
-              reflexivity.
-            }
-    }
-    assert ( claim4 :
-      forall dbctx' : list (IVar * IVar),
-      forall iv' : IVar,
-      forall tm' : Tm,
-      compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx') (Var iv') tm' = true ->
-      exists iv0 : IVar, tm' = Var iv0
-    ).
-    { intros dbctx'.
-      induction dbctx'.
-      - simpl.
-        intros.
-        destruct (Tm_eq_dec (Var iv') tm').
-        * rewrite <- e.
-          exists iv'.
-          reflexivity.
-        * inversion H.
-      - destruct a as [iv1 iv2].
-        simpl.
-        intros.
-        destruct (Nat.eq_dec iv1 iv').
-        * subst.
-          destruct (Tm_eq_dec (Var iv2) tm').
-          + rewrite <- e.
-            exists iv2.
-            reflexivity.
-          + inversion H.
-        * apply (IHdbctx' iv' tm').
-          apply H.
-    }
-    intros tm1.
-    induction tm1.
-    - intros tm2.
-      destruct tm2.
-      * intros.
-        destruct (In_dec Nat.eq_dec iv (map fst dbctx)).
-        { destruct (In_dec Nat.eq_dec iv0 (map snd dbctx)).
-          { constructor.
-            { intros.
-              assert (exists n1 : N, getDeBruijnInCtx iv (map fst dbctx) = Some n1).
-              { cut (let n' : option N := getDeBruijnInCtx iv (map fst dbctx) in n' = getDeBruijnInCtx iv (map fst dbctx) -> exists n1 : N, n' = Some n1).
-                  intros.
-                  simpl in H2.
-                  apply H2.
-                  reflexivity.
-                intros.
-                destruct n'.
-                - exists n.
-                  reflexivity.
-                - contradiction (proj1 (getDeBruijnInCtx_property2 (map fst dbctx) iv)).
-                  rewrite H2.
-                  reflexivity.
-              }
-              assert (exists n2 : N, getDeBruijnInCtx iv0 (map snd dbctx) = Some n2).
-              { cut (let n' : option N := getDeBruijnInCtx iv0 (map snd dbctx) in n' = getDeBruijnInCtx iv0 (map snd dbctx) -> exists n2 : N, n' = Some n2).
-                  intros.
-                  simpl in H3.
-                  apply H3.
-                  reflexivity.
-                intros.
-                destruct n'.
-                - exists n.
-                  reflexivity.
-                - contradiction (proj1 (getDeBruijnInCtx_property2 (map snd dbctx) iv0)).
-                  rewrite H3.
-                  reflexivity.
-              }
-              destruct H2 as [n1].
-              destruct H3 as [n2].
-              assert (n1 = n2).
-              { unfold compareUpToAlphaWithSubst in H1.
-                destruct (Tm_eq_dec (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) iv) (Var iv0)).
-                - apply (claim1 dbctx iv iv0).
-                  tauto.
-                  tauto.
-                  tauto.
-                  tauto.
-                  tauto.
-                - inversion H1.
-              }
-              subst.
-              apply (AlphaEquiv1 dbctx iv iv0 n2).
-              apply H2.
-              apply H3.
-            }
-            { intros.
-              apply claim2.
-              apply H.
-              apply H0.
-              apply H1.
-            }
-          }
-          { assert (iv <> iv).
-              apply FreshIn_Var.
-              apply H.
-              apply i.
-            contradiction H1.
-            reflexivity.
-          }
-        }
-        { destruct (In_dec Nat.eq_dec iv0 (map snd dbctx)).
-          { assert (iv0 <> iv0).
-              apply FreshIn_Var.
-              apply H0.
-              apply i.
-            contradiction H1.
-            reflexivity.
-          }
-          { assert (getDeBruijnInCtx iv (map fst dbctx) = None).
-              apply getDeBruijnInCtx_property2.
-              apply n.
-            assert (getDeBruijnInCtx iv0 (map snd dbctx) = None).
-              apply getDeBruijnInCtx_property2.
-              apply n0.
-            constructor.
-            - intros.
-              assert (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) iv = Var iv).
-                apply claim0.
-                apply n.
-              unfold compareUpToAlphaWithSubst in H3.
-              rewrite H4 in H3.
-              destruct (Tm_eq_dec (Var iv) (Var iv0)).
-              * inversion e.
-                subst.
-                constructor.
-                tauto.
-                tauto.
-              * inversion H3.
-            - intros.
-              inversion H3.
-              * subst.
-                rewrite H7 in H1.
-                inversion H1.
-              * subst.
-                unfold compareUpToAlphaWithSubst.
-                assert ((runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) iv0) = (Var iv0)).
-                  apply claim0.
-                  apply H7.
-                rewrite H4.
-                destruct (Tm_eq_dec (Var iv0) (Var iv0)).
-                + reflexivity.
-                + contradiction n1. 
-                  reflexivity.
-          }
-        }
-      * constructor.
-        + intros.
-          assert (exists iv' : IVar, App tm2_1 tm2_2 = Var iv').
-            apply (claim4 dbctx iv).
-            apply H1.
-          destruct H2 as [iv'].
-          inversion H2.
-        + intros.
-          inversion H1.
-      * constructor.
-        + intros.
-          assert (exists iv' : IVar, Abs iv0 tm2 = Var iv').
-            apply (claim4 dbctx iv).
-            apply H1.
-          destruct H2 as [iv'].
-          inversion H2.
-        + intros.
-          inversion H1.
-    - intros tm2.
-      destruct tm2.
-      * intros.
-        constructor.
-        + intros.
-          inversion H1.
-        + intros.
-          inversion H1.
-      * intros.
-        assert (compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_1 tm2_1 = true <-> AlphaEquivDeBruijnCtx dbctx tm1_1 tm2_1).
-        { apply IHtm1_1.
-          intros.
-          apply (orb_false_iff (isFreeIn iv tm1_1) (isFreeIn iv tm1_2)).
-          apply H.
-          apply H1.
-          intros.
-          apply (orb_false_iff (isFreeIn iv tm2_1) (isFreeIn iv tm2_2)).
-          apply H0.
-          apply H1.
-        }
-        assert (compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_2 tm2_2 = true <-> AlphaEquivDeBruijnCtx dbctx tm1_2 tm2_2).
-        { apply IHtm1_2.
-          intros.
-          apply (orb_false_iff (isFreeIn iv tm1_1) (isFreeIn iv tm1_2)).
-          apply H.
-          apply H2.
-          intros.
-          apply (orb_false_iff (isFreeIn iv tm2_1) (isFreeIn iv tm2_2)).
-          apply H0.
-          apply H2.
-        }
-        constructor.
-        + intros.
-          assert (compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_1 tm2_1 = true /\ compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_2 tm2_2 = true).
-            apply andb_true_iff.
-            apply H3.
-          destruct H4.
-          constructor.
-          apply H1.
-          apply H4.
-          apply H2.
-          apply H5.
-        + intros.
-          inversion H3.
-          subst.
-          assert (compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_1 tm2_1 = true /\ compareUpToAlphaWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) tm1_2 tm2_2 = true).
-            constructor.
-            apply H1.
-            apply H8.
-            apply H2.
-            apply H10.
-          apply andb_true_iff.
-          apply H4.
-      * intros.
-        constructor.
-        + intros.
-          inversion H1.
-        + intros.
-          inversion H1.
-    - intros tm2.
-      destruct tm2.
-      * intros.
-        constructor.
-        + intros.
-          inversion H1.
-        + intros.
-          inversion H1.
-      * intros.
-        constructor.
-        + intros.
-          inversion H1.
-        + intros.
-          inversion H1.
-      * intros.
-        constructor.
-        + intros.
-          constructor.
-          apply IHtm1.
-          
-  Qed.
 
 End UntypedLC.
