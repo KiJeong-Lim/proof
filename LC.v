@@ -2698,6 +2698,44 @@ Module UntypedLC.
           apply H5.
   Qed.
 
+  Lemma Subterm_property1 :
+    forall tm : Tm,
+    forall iv : IVar,
+    FreeIn iv tm ->
+    Subterm (Var iv) tm.
+  Proof.
+    intros tm.
+    induction tm.
+    - intros.
+      assert (iv0 = iv).
+        apply FreeIn_Var.
+        apply H.
+      subst.
+      apply Subterm_refl.
+    - intros.
+      assert (FreeIn iv tm1 \/ FreeIn iv tm2).
+        apply orb_true_iff.
+        apply H.
+      destruct H0.
+      * apply SubtermAppL.
+        apply IHtm1.
+        apply H0.
+      * apply SubtermAppR.
+        apply IHtm2.
+        apply H0.
+    - intros.
+      assert (FreeIn iv0 tm).
+        unfold FreeIn in H.
+        simpl in H.
+        assert (isFreeIn iv0 tm = true /\ (if Nat.eq_dec iv0 iv then false else true) = true).
+          apply andb_true_iff.
+          apply H.
+        apply H0.
+      apply SubtermAbsR.
+      apply IHtm.
+      apply H0.
+  Qed.
+
   Fixpoint CtxConditionScheme (Phi : IVar -> list IVar -> Tm -> Prop) (ctx : list IVar) (tm : Tm) (tm0 : Tm) : Prop :=
     match tm with
     | Var iv1 => Phi iv1 ctx tm0
@@ -2707,7 +2745,7 @@ Module UntypedLC.
   .
 
   Lemma CtxConditionScheme_main_property (Phi : IVar -> list IVar -> Tm -> Prop) :
-    (forall iv : IVar, forall ctx : list IVar, forall tm : Tm, In iv ctx <-> Phi iv ctx tm) ->
+    (forall iv : IVar, forall ctx : list IVar, forall tm : Tm, Subterm (Var iv) tm -> (In iv ctx <-> Phi iv ctx tm)) ->
     forall tm : Tm,
     forall tm0 : Tm,
     Subterm tm tm0 ->
@@ -2807,6 +2845,10 @@ Module UntypedLC.
         destruct H2.
         contradiction H2.
         apply XXX.
+        apply (Subterm_trans (Var iv0) (Abs iv tm)).
+        apply Subterm_property1.
+        apply H1.
+        apply H.
         cut (In iv0 (iv :: ctx)).
         { simpl.
           intros.
@@ -2817,6 +2859,10 @@ Module UntypedLC.
           - apply H4.
         }
         apply (XXX iv0 (iv :: ctx) tm0).
+        apply (Subterm_trans (Var iv0) (Abs iv tm)).
+        apply Subterm_property1.
+        apply H1.
+        apply H.
         apply (proj1 (IHtm tm0 H3 (iv :: ctx)) H0 iv0).
         apply H2.
       * intros.
@@ -2832,12 +2878,26 @@ Module UntypedLC.
         destruct (Nat.eq_dec iv0 iv).
         + subst.
           apply XXX.
+          apply (Subterm_trans (Var iv) (Abs iv tm)).
+          apply SubtermAbsR.
+          apply Subterm_property1.
+          apply H2.
+          apply H.
           simpl.
           tauto.
         + apply XXX.
+          apply (Subterm_trans (Var iv0) (Abs iv tm)).
+          apply SubtermAbsR.
+          apply Subterm_property1.
+          apply H2.
+          apply H.
           simpl.
           right.
           apply (XXX iv0 ctx tm0).
+          apply (Subterm_trans (Var iv0) tm).
+          apply Subterm_property1.
+          apply H2.
+          apply H1.
           apply H0.
           unfold FreeIn.
           simpl.
