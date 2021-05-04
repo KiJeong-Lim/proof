@@ -789,15 +789,323 @@ Module UntypedLambdaCalculus.
           inversion H.
   Qed.
 
-  Fixpoint legio (Phi : IVar -> list IVar -> Prop) (ctx : list IVar) (N : Term) : Prop :=
+  Fixpoint legio (Phi : IVar -> list IVar -> Prop) (Gamma : list IVar) (N : Term) : Prop :=
     match N with
-    | Var x => Phi x ctx
-    | App P1 P2 => legio Phi ctx P1 /\ legio Phi ctx P2
-    | Lam y Q => legio Phi (y :: ctx) Q
+    | Var x => Phi x Gamma
+    | App P1 P2 => legio Phi Gamma P1 /\ legio Phi Gamma P2
+    | Lam y Q => legio Phi (y :: Gamma) Q
     end
   .
+
+  Lemma isFreeIn_property2 :
+    let Phi : IVar -> list IVar -> Prop := fun x : IVar => fun Gamma : list IVar => In x Gamma in
+    forall M : Term,
+    forall Gamma : list IVar,
+    legio Phi Gamma M <-> (forall x : IVar, isFreeIn x M = true -> Phi x Gamma).
+  Proof.
+    intros Phi M.
+    induction M.
+    - simpl.
+      intros.
+      unfold Phi.
+      constructor.
+      * intros.
+        destruct (IVar_eq_dec x x0).
+        + subst.
+          tauto.
+        + intros.
+          inversion H0.
+      * intros.
+        apply H.
+        destruct (IVar_eq_dec x x).
+        + reflexivity.
+        + contradiction n.
+          reflexivity.
+    - simpl.
+      intros.
+      unfold Phi.
+      constructor.
+      * intros.
+        rewrite orb_true_iff in H0.
+        destruct H0.
+        + apply IHM1. 
+          apply H.
+          apply H0.
+        + apply IHM2.
+          apply H.
+          apply H0.
+      * intros. 
+        constructor.
+        + apply IHM1.
+          intros.
+          apply H.
+          apply orb_true_iff.
+          tauto.
+        + apply IHM2.
+          intros.
+          apply H.
+          apply orb_true_iff.
+          tauto.
+    - simpl.
+      intros.
+      unfold Phi.
+      constructor.
+      * intros.
+        rewrite andb_true_iff in H0.
+        destruct H0.
+        destruct (IVar_eq_dec y x).
+        + inversion H0.
+        + cut (In x (y :: Gamma)).
+            simpl.
+            tauto.
+          apply IHM.
+          apply H.
+          apply H1.
+      * intros.
+        apply IHM.
+        intros.
+        simpl.
+        assert ((if IVar_eq_dec y x then false else true) && isFreeIn x M = true -> In x Gamma).
+          apply H.
+        destruct (IVar_eq_dec y x).
+        + tauto.
+        + assert (In x Gamma).
+            simpl in H1.
+            apply H1.
+            apply H0.
+          tauto.
+  Qed.
+
+  Lemma isFreeIn_property3 :
+    let Phi : IVar -> list IVar -> Prop := fun x : IVar => fun Gamma : list IVar => In x Gamma in
+    forall M : Term,
+    legio Phi [] M <-> (forall x : IVar, isFreeIn x M = false).
+  Proof.
+    intros.
+    assert (legio Phi [] M <-> (forall x : IVar, isFreeIn x M = true -> Phi x [])).
+      apply isFreeIn_property2.
+    cut ((forall x : IVar, isFreeIn x M = true -> Phi x []) <-> (forall x : IVar, isFreeIn x M = false)).
+      tauto.
+    constructor.
+    - intros.
+      assert (isFreeIn x M = true -> Phi x []).
+        apply H0.
+      destruct (isFreeIn x M).
+      * contradiction H1.
+        reflexivity.
+      * reflexivity.
+    - intros.
+      assert (isFreeIn x M = false).
+        apply H0.
+      rewrite H1 in H2.
+      inversion H2.
+  Qed.
+
+  Inductive WellFormedCtx : list IVar -> Term -> Term -> Prop :=
+  | WellFormedCtxRefl :
+    forall M : Term,
+    WellFormedCtx [] M M
+  | WellFormedCtxApp1 :
+    forall M : Term,
+    forall P1 : Term,
+    forall P2 : Term,
+    forall Gamma : list IVar,
+    WellFormedCtx Gamma M P1 ->
+    WellFormedCtx Gamma M (App P1 P2)
+  | WellFormedCtxApp2 :
+    forall M : Term,
+    forall P1 : Term,
+    forall P2 : Term,
+    forall Gamma : list IVar,
+    WellFormedCtx Gamma M P2 ->
+    WellFormedCtx Gamma M (App P1 P2)
+  | WellFormedCtxAbs0 :
+    forall M : Term,
+    forall y : IVar,
+    forall Q : Term,
+    forall Gamma : list IVar,
+    WellFormedCtx (y :: Gamma) M Q ->
+    WellFormedCtx Gamma M (Lam y Q)
+  .
+
+  Lemma WellFormedCtx_refl :
+    forall M : Term,
+    WellFormedCtx [] M M.
+  Proof.
+    apply WellFormedCtxRefl.
+  Qed.
+
+  Lemma WellFormedCtx_trans :
+    forall L : Term,
+    forall N : Term,
+    forall M : Term,
+    forall Gamma1 : list IVar,
+    forall Gamma2 : list IVar,
+    WellFormedCtx Gamma2 M N ->
+    WellFormedCtx Gamma1 N L ->
+    WellFormedCtx (Gamma1 ++ Gamma2) M L.
+  Proof.
+    intros L.
+    induction L.
+    - intros N.
+      induction N.
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+        }
+        { subst.
+          inversion H0.
+        }
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+        }
+    - intros N.
+      induction N.
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+      * intros.
+        inversion H.
+        { subst.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            apply H.
+          }
+          { subst.
+            apply WellFormedCtxApp1.
+            apply (IHL1 (App N1 N2)).
+            apply H.
+            apply H5.
+          }
+          { subst.
+            apply WellFormedCtxApp2.
+            apply (IHL2 (App N1 N2)).
+            apply H.
+            apply H5.
+          }
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            apply H.
+          }
+          { subst.
+            apply WellFormedCtxApp1.
+            apply (IHL1 (App N1 N2)).
+            apply H.
+            apply H5.
+          }
+          { subst.
+            apply WellFormedCtxApp2.
+            apply (IHL2 (App N1 N2)).
+            apply H.
+            apply H5.
+          }
+        }
+      * intros.
+        inversion H.
+        { subst.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            apply WellFormedCtxApp1.
+            apply (IHL1 (Lam y N)).
+            apply H.
+            apply H5.
+          }
+          { subst.
+            apply WellFormedCtxApp2.
+            apply (IHL2 (Lam y N)).
+            apply H.
+            apply H5.
+          }
+        }
+    - intros N.
+      induction N.
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+      * intros.
+        inversion H.
+        { subst.
+          simpl.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            apply WellFormedCtxAbs0.
+            apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
+            apply H.
+            apply H5.
+          }
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            apply WellFormedCtxAbs0.
+            apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
+            apply H.
+            apply H5.
+          }
+        }
+      * intros.
+        inversion H.
+        { subst.
+          rewrite app_nil_r.
+          apply H0.
+        }
+        { subst.
+          inversion H0.
+          { subst.
+            simpl.
+            apply H.
+          }
+          { subst.
+            apply WellFormedCtxAbs0.
+            apply (IHL (Lam y0 N) M (y :: Gamma1) Gamma2).
+            apply H.
+            apply H5.
+          }
+        }
+  Qed.
 
   End Syntax.
 
 End UntypedLambdaCalculus.
-
