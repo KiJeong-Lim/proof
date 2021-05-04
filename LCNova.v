@@ -688,6 +688,115 @@ Module UntypedLambdaCalculus.
           apply H5.
   Qed.
 
+  Fixpoint isFreeIn (z : IVar) (M : Term) : bool :=
+    match M with
+    | Var x => if IVar_eq_dec x z then true else false
+    | App P1 P2 => isFreeIn z P1 || isFreeIn z P2
+    | Lam y Q => (if IVar_eq_dec y z then false else true) && isFreeIn z Q
+    end
+  .
+
+  Lemma isFreeIn_Var :
+    forall z : IVar,
+    forall x : IVar,
+    isFreeIn z (Var x) = true <-> x = z.
+  Proof.
+    intros.
+    simpl.
+    destruct (IVar_eq_dec x z).
+    - tauto.
+    - constructor.
+      * intros.
+        inversion H.
+      * intros.
+        contradiction n.
+  Qed.
+
+  Lemma isFreeIn_App :
+    forall z : IVar,
+    forall P1 : Term,
+    forall P2 : Term,
+    isFreeIn z (App P1 P2) = true <-> isFreeIn z P1 = true \/ isFreeIn z P2 = true.
+  Proof.
+    intros.
+    simpl.
+    rewrite orb_true_iff.
+    reflexivity.
+  Qed.
+
+  Lemma isFreeIn_Lam :
+    forall z : IVar,
+    forall y : IVar,
+    forall Q : Term,
+    isFreeIn z (Lam y Q) = true <-> y <> z /\ isFreeIn z Q = true.
+  Proof.
+    intros.
+    simpl.
+    rewrite andb_true_iff.
+    destruct (IVar_eq_dec y z).
+    - constructor.
+      * intros.
+        destruct H.
+        inversion H.
+      * intros.
+        destruct H.
+        contradiction H.
+    - tauto.
+  Qed.
+
+  Lemma isFreeIn_property1 :
+    forall M : Term,
+    forall z : IVar,
+    isFreeIn z M = true ->
+    IsSubtermOf (Var z) M.
+  Proof.
+    intros M.
+    induction M.
+    - simpl.
+      intros.
+      destruct (IVar_eq_dec x z).
+      * subst.
+        apply IsSubtermOfRefl.
+      * inversion H.
+    - simpl.
+      intros.
+      assert (isFreeIn z M1 = true -> IsSubtermOf (Var z) M1).
+        apply IHM1.
+      assert (isFreeIn z M2 = true -> IsSubtermOf (Var z) M2).
+        apply IHM2.
+      destruct (isFreeIn z M1).
+      * apply IsSubtermOfApp1.
+        apply H0.
+        reflexivity.
+      * destruct (isFreeIn z M2).
+        + apply IsSubtermOfApp2.
+          apply H1.
+          reflexivity.
+        + simpl in H.
+          inversion H.
+    - simpl.
+      intros.
+      assert (isFreeIn z M = true -> IsSubtermOf (Var z) M).
+        apply IHM.
+      destruct (isFreeIn z M).
+      * apply IsSubtermOfLam0.
+        apply H0.
+        reflexivity.
+      * destruct (IVar_eq_dec y z).
+        + simpl in H.
+          inversion H.
+        + simpl in H.
+          inversion H.
+  Qed.
+
+  Fixpoint legio (Phi : IVar -> list IVar -> Prop) (ctx : list IVar) (N : Term) : Prop :=
+    match N with
+    | Var x => Phi x ctx
+    | App P1 P2 => legio Phi ctx P1 /\ legio Phi ctx P2
+    | Lam y Q => legio Phi (y :: ctx) Q
+    end
+  .
+
   End Syntax.
 
 End UntypedLambdaCalculus.
