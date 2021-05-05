@@ -919,7 +919,7 @@ Module UntypedLambdaCalculus.
     forall Gamma : list IVar,
     WellFormedCtx Gamma M P2 ->
     WellFormedCtx Gamma M (App P1 P2)
-  | WellFormedCtxAbs0 :
+  | WellFormedCtxLam0 :
     forall M : Term,
     forall y : IVar,
     forall Q : Term,
@@ -936,15 +936,29 @@ Module UntypedLambdaCalculus.
   Qed.
 
   Lemma WellFormedCtx_trans :
-    forall L : Term,
-    forall N : Term,
     forall M : Term,
+    forall N : Term,
+    forall L : Term,
     forall Gamma1 : list IVar,
     forall Gamma2 : list IVar,
-    WellFormedCtx Gamma2 M N ->
-    WellFormedCtx Gamma1 N L ->
-    WellFormedCtx (Gamma1 ++ Gamma2) M L.
+    WellFormedCtx Gamma1 M N ->
+    WellFormedCtx Gamma2 N L ->
+    WellFormedCtx (Gamma2 ++ Gamma1) M L.
   Proof.
+    cut (
+      forall L : Term,
+      forall N : Term,
+      forall M : Term,
+      forall Gamma1 : list IVar,
+      forall Gamma2 : list IVar,
+      WellFormedCtx Gamma2 M N ->
+      WellFormedCtx Gamma1 N L ->
+      WellFormedCtx (Gamma1 ++ Gamma2) M L
+    ).
+      intros.
+      apply (H L N M Gamma2 Gamma1).
+      apply H0.
+      apply H1.
     intros L.
     induction L.
     - intros N.
@@ -1070,7 +1084,7 @@ Module UntypedLambdaCalculus.
         { subst.
           inversion H0.
           { subst.
-            apply WellFormedCtxAbs0.
+            apply WellFormedCtxLam0.
             apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
             apply H.
             apply H5.
@@ -1079,7 +1093,7 @@ Module UntypedLambdaCalculus.
         { subst.
           inversion H0.
           { subst.
-            apply WellFormedCtxAbs0.
+            apply WellFormedCtxLam0.
             apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
             apply H.
             apply H5.
@@ -1098,7 +1112,7 @@ Module UntypedLambdaCalculus.
             apply H.
           }
           { subst.
-            apply WellFormedCtxAbs0.
+            apply WellFormedCtxLam0.
             apply (IHL (Lam y0 N) M (y :: Gamma1) Gamma2).
             apply H.
             apply H5.
