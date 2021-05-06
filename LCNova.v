@@ -182,6 +182,52 @@ Module AuxiliaPalatina.
 
   End forNat.
 
+  Section forFinSet.
+
+  Inductive FinSet : nat -> Set :=
+  | FinSetZ :
+    forall n : nat,
+    FinSet (S n)
+  | FinSetS :
+    forall n : nat,
+    FinSet n ->
+    FinSet (S n)
+  .
+
+  Lemma makeFinSet :
+    forall n : nat,
+    forall i : nat,
+    i < n ->
+    FinSet n.
+  Proof.
+    intros n.
+    induction n.
+    - intros.
+      lia.
+    - intros.
+      destruct (Nat.eq_dec i n).
+      * apply FinSetZ.
+      * apply FinSetS.
+        apply (IHn i).
+        lia.
+  Qed.
+
+  Lemma runFinSet :
+    forall n : nat,
+    FinSet n ->
+    {i : nat | i < n}.
+  Proof.
+    intros.
+    induction H.
+    * exists n.
+      lia.
+    * destruct IHFinSet as [i].
+      exists i.
+      lia.
+  Qed.
+    
+  End forFinSet.
+
 End AuxiliaPalatina.
 
 Module UntypedLambdaCalculus.
@@ -744,242 +790,115 @@ Module UntypedLambdaCalculus.
     - tauto.
   Qed.
 
-  Inductive Occurs : IVar -> Term -> Prop :=
-  | OccursIn :
-    forall z : IVar,
-    forall M : Term,
-    IsSubtermOf (Var z) M ->
-    Occurs z M
+  Definition Subst : Set :=
+    list (IVar * Term)
   .
 
-  Lemma isFreeIn_property1 :
-    forall M : Term,
-    forall z : IVar,
-    isFreeIn z M = true ->
-    Occurs z M.
-  Proof.
-    intros M.
-    induction M.
-    - intros.
-      rewrite isFreeIn_Var in H.
-      subst.
-      constructor.
-      apply IsSubtermOfRefl.
-    - intros.
-      rewrite isFreeIn_App in H.
-      destruct H.
-      assert (Occurs z M1).
-        apply IHM1.
-        apply H.
-      inversion H0.
-      subst.
-      constructor.
-      apply IsSubtermOfApp1.
-      apply H1.
-      assert (Occurs z M2).
-        apply IHM2.
-        apply H.
-      inversion H0.
-      subst.
-      constructor.
-      apply IsSubtermOfApp2.
-      apply H1.
-    - intros.
-      rewrite isFreeIn_Lam in H.
-      assert (Occurs z M).
-        apply IHM.
-        apply H.
-      inversion H0.
-      subst.
-      constructor.
-      apply IsSubtermOfLam0.
-      apply H1.
-  Qed.
-
-  Fixpoint legio (Phi : IVar -> list IVar -> Prop) (Gamma : list IVar) (N : Term) : Prop :=
-    match N with
-    | Var x => Phi x Gamma
-    | App P1 P2 => legio Phi Gamma P1 /\ legio Phi Gamma P2
-    | Lam y Q => legio Phi (y :: Gamma) Q
+  Fixpoint runSubst_Var (sigma : Subst) (x : IVar) : Term :=
+    match sigma with
+    | [] => Var x
+    | (z, N) :: sigma' =>
+      if IVar_eq_dec x z
+      then N
+      else runSubst_Var sigma' x
     end
   .
-
-  Lemma isFreeIn_property2 :
-    let Phi : IVar -> list IVar -> Prop := fun x : IVar => fun Gamma : list IVar => In x Gamma in
-    forall M : Term,
-    forall Gamma : list IVar,
-    legio Phi Gamma M <-> (forall x : IVar, isFreeIn x M = true -> Phi x Gamma).
-  Proof.
-    intros Phi M.
-    induction M.
-    - simpl.
-      intros.
-      unfold Phi.
-      constructor.
-      * intros.
-        destruct (IVar_eq_dec x x0).
-        + subst.
-          tauto.
-        + intros.
-          inversion H0.
-      * intros.
-        apply H.
-        destruct (IVar_eq_dec x x).
-        + reflexivity.
-        + contradiction n.
-          reflexivity.
-    - simpl.
-      intros.
-      unfold Phi.
-      constructor.
-      * intros.
-        rewrite orb_true_iff in H0.
-        destruct H0.
-        + apply IHM1. 
-          apply H.
-          apply H0.
-        + apply IHM2.
-          apply H.
-          apply H0.
-      * intros. 
-        constructor.
-        + apply IHM1.
-          intros.
-          apply H.
-          apply orb_true_iff.
-          tauto.
-        + apply IHM2.
-          intros.
-          apply H.
-          apply orb_true_iff.
-          tauto.
-    - simpl.
-      intros.
-      unfold Phi.
-      constructor.
-      * intros.
-        rewrite andb_true_iff in H0.
-        destruct H0.
-        destruct (IVar_eq_dec y x).
-        + inversion H0.
-        + cut (In x (y :: Gamma)).
-            simpl.
-            tauto.
-          apply IHM.
-          apply H.
-          apply H1.
-      * intros.
-        apply IHM.
-        intros.
-        simpl.
-        assert ((if IVar_eq_dec y x then false else true) && isFreeIn x M = true -> In x Gamma).
-          apply H.
-        destruct (IVar_eq_dec y x).
-        + tauto.
-        + assert (In x Gamma).
-            simpl in H1.
-            apply H1.
-            apply H0.
-          tauto.
-  Qed.
-
-  Lemma isFreeIn_property3 :
-    let Phi : IVar -> list IVar -> Prop := fun x : IVar => fun Gamma : list IVar => In x Gamma in
-    forall M : Term,
-    legio Phi [] M <-> (forall x : IVar, isFreeIn x M = false).
-  Proof.
-    intros.
-    assert (legio Phi [] M <-> (forall x : IVar, isFreeIn x M = true -> Phi x [])).
-      apply isFreeIn_property2.
-    cut ((forall x : IVar, isFreeIn x M = true -> Phi x []) <-> (forall x : IVar, isFreeIn x M = false)).
-      tauto.
-    constructor.
-    - intros.
-      assert (isFreeIn x M = true -> Phi x []).
-        apply H0.
-      destruct (isFreeIn x M).
-      * contradiction H1.
-        reflexivity.
-      * reflexivity.
-    - intros.
-      assert (isFreeIn x M = false).
-        apply H0.
-      rewrite H1 in H2.
-      inversion H2.
-  Qed.
-
-  Fixpoint makeWellFormedCtx_aux (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
-    match X with
-    | IsSubtermOfRefl N0 => Gamma
-    | IsSubtermOfApp1 N0 P1 P2 X1 => makeWellFormedCtx_aux Gamma N0 P1 X1
-    | IsSubtermOfApp2 N0 P1 P2 X2 => makeWellFormedCtx_aux Gamma N0 P2 X2
-    | IsSubtermOfLam0 N0 y Q X0 => makeWellFormedCtx_aux (y :: Gamma) N0 Q X0
-    end
-  .
-
-  Lemma makeWellFormedCtx_aux_property1 :
-    forall M : Term,
-    forall N : Term,
-    forall X : IsSubtermOf N M,
-    forall Gamma : list IVar,
-    legio (fun z : IVar => fun Gamma' => In z Gamma') Gamma M ->
-    forall z : IVar,
-    isFreeIn z N = true ->
-    In z (makeWellFormedCtx_aux Gamma N M X).
-  Proof.
-    cut (
-      forall M : Term,
-      forall N : Term,
-      forall X : IsSubtermOf N M,
-      forall Gamma : list IVar,
-      (forall x : IVar, isFreeIn x M = true -> In x Gamma) ->
-      forall z : IVar,
-      isFreeIn z N = true ->
-      In z (makeWellFormedCtx_aux Gamma N M X)
-    ).
-      intros.
-      rewrite isFreeIn_property2 in H0.
-      apply H.
-      apply H0.
-      apply H1.
-    intros M N X.
-    induction X.
-    - simpl.
-      intros.
-      apply H.
-      apply H0.
-    - simpl.
-      intros.
-      apply IHX.
-      intros.
-      apply H.
-      apply orb_true_iff.
-      tauto.
-      apply H0.
-    - simpl.
-      intros.
-      apply IHX.
-      intros.
-      apply H.
-      apply orb_true_iff.
-      tauto.
-      apply H0.
-    - simpl.
-      intros.
-      apply (IHX (y :: Gamma)).
-      { intros.
-        destruct (IVar_eq_dec y x).
-        - simpl.
-           tauto.
-        - simpl.
-          right.
-          apply H.
-          apply isFreeIn_Lam.
-          tauto.
-      }
-      apply H0.
-  Qed.
 
   End Syntax.
+
+  Section AlphaEquiv.
+
+  Fixpoint getDeBruijnIndex (Gamma : list IVar) (x : IVar) : option (FinSet (length Gamma)) :=
+    match Gamma as ctx return option (FinSet (length ctx)) with
+    | [] => None
+    | z :: Gamma' =>
+      if IVar_eq_dec x z
+      then Some (FinSetZ (length Gamma'))
+      else
+        match getDeBruijnIndex Gamma' x with
+        | None => None
+        | Some fs => Some (FinSetS _ fs)
+        end
+    end
+  .
+
+  Inductive DeBruijnTerm : nat -> Set :=
+  | DBTermBVar : forall n : nat, FinSet n -> DeBruijnTerm n
+  | DBTermFVar : forall n : nat, IVar -> DeBruijnTerm n
+  | DBTermIApp : forall n : nat, DeBruijnTerm n -> DeBruijnTerm n -> DeBruijnTerm n
+  | DBTermIAbs : forall n : nat, DeBruijnTerm (S n) -> DeBruijnTerm n
+  .
+
+  Fixpoint makeDeBruijnTerm_aux (Gamma : list IVar) (M : Term) : DeBruijnTerm (length Gamma) :=
+    match M with
+    | Var x =>
+      match getDeBruijnIndex Gamma x with
+      | None => DBTermFVar _ x
+      | Some idx => DBTermBVar _ idx
+      end
+    | App P1 P2 => DBTermIApp _ (makeDeBruijnTerm_aux Gamma P1) (makeDeBruijnTerm_aux Gamma P2)
+    | Lam y Q => DBTermIAbs _ (makeDeBruijnTerm_aux (y :: Gamma) Q)
+    end
+  .
+
+  Definition makeDeBruijnTerm : Term -> DeBruijnTerm 0 :=
+    makeDeBruijnTerm_aux []
+  .
+
+  Definition AlphaEquivByDeBruijn (M1 : Term) (M2 : Term) : Prop :=
+    makeDeBruijnTerm M1 = makeDeBruijnTerm M2
+  .
+
+  Fixpoint AlphaEquivBySubst_aux (sigma : Subst) (M1 : Term) (M2 : Term) : bool :=
+    match M1 with
+    | Var x =>
+      if Term_eq_dec (runSubst_Var sigma x) M2
+      then true
+      else false
+    | App P1_1 P2_1 =>
+      match M2 with
+      | App P1_2 P2_2 => AlphaEquivBySubst_aux sigma P1_1 P1_2 && AlphaEquivBySubst_aux sigma P2_1 P2_2
+      | _ => false
+      end
+    | Lam y1 Q1 =>
+      match M2 with
+      | Lam y2 Q2 => AlphaEquivBySubst_aux ((y1, Var y2) :: sigma) Q1 Q2
+      | _ => false
+      end
+    end
+  .
+
+  Hypothesis AlphaEquivBySubst_aux_main_property :
+    forall M1 : Term,
+    forall M2 : Term,
+    forall dbctx : list (IVar * IVar),
+    forall H : length (map snd dbctx) = length (map fst dbctx),
+    AlphaEquivBySubst_aux (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) M1 M2 = true <-> makeDeBruijnTerm_aux (map fst dbctx) M1 = eq_rect (length (map snd dbctx)) DeBruijnTerm (makeDeBruijnTerm_aux (map snd dbctx) M2) (length (map fst dbctx)) H.
+ 
+  Definition AlphaEquivBySubst (M1 : Term) (M2 : Term) : Prop :=
+    AlphaEquivBySubst_aux [] M1 M2 = true
+  .
+
+  Theorem AlphaEquivBySubst_main_property :
+    forall M1 : Term,
+    forall M2 : Term,
+    AlphaEquivBySubst M1 M2 <-> makeDeBruijnTerm M1 = makeDeBruijnTerm M2.
+  Proof.
+    intros.
+    unfold AlphaEquivBySubst.
+    assert (
+      let dbctx : list (IVar * IVar) := [] in
+      forall H : length (map snd dbctx) = length (map fst dbctx),
+      AlphaEquivBySubst_aux (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) M1 M2 = true <-> makeDeBruijnTerm_aux (map fst dbctx) M1 = eq_rect (length (map snd dbctx)) DeBruijnTerm (makeDeBruijnTerm_aux  (map snd dbctx) M2) (length (map fst dbctx)) H
+    ).
+      apply AlphaEquivBySubst_aux_main_property.
+    simpl in H.
+    assert (AlphaEquivBySubst_aux [] M1 M2 = true <-> makeDeBruijnTerm_aux [] M1 = eq_rect 0 DeBruijnTerm (makeDeBruijnTerm_aux [] M2) 0 eq_refl).
+      apply H.
+    simpl in H0.
+    apply H0.
+  Qed.
+
+  End AlphaEquiv.
 
 End UntypedLambdaCalculus.
