@@ -1168,24 +1168,25 @@ Module UntypedLambdaCalculus.
     makeDeBruijnTerm_aux []
   .
 
-  Fixpoint testCtx (Phi : list IVar -> Prop) (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : Prop :=
+  Fixpoint makeCtx (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
     match X with
-    | IsSubtermOfRefl N0 => Phi Gamma
-    | IsSubtermOfApp1 N0 P1 P2 X1 => testCtx Phi Gamma N0 P1 X1
-    | IsSubtermOfApp2 N0 P1 P2 X2 => testCtx Phi Gamma N0 P2 X2
-    | IsSubtermOfLam0 N0 y Q X0 => testCtx Phi (y :: Gamma) N0 Q X0
+    | IsSubtermOfRefl N0 => Gamma
+    | IsSubtermOfApp1 N0 P1 P2 X1 => makeCtx Gamma N0 P1 X1
+    | IsSubtermOfApp2 N0 P1 P2 X2 => makeCtx Gamma N0 P2 X2
+    | IsSubtermOfLam0 N0 y Q X0 => makeCtx (y :: Gamma) N0 Q X0
     end
   .
 
-  Lemma testCtx_main_property :
-    forall N : Term,
+  Lemma makeCtx_property1 :
     forall M : Term,
+    forall N : Term,
     forall X : IsSubtermOf M N,
     forall Gamma : list IVar,
     mapsToDeBruijn Gamma N (makeDeBruijnTerm_aux Gamma N) ->
-    testCtx (fun ctx : list IVar => mapsToDeBruijn ctx M (makeDeBruijnTerm_aux ctx M)) Gamma M N X.
+    let Gamma' : list IVar := makeCtx Gamma M N X in
+    mapsToDeBruijn Gamma' M (makeDeBruijnTerm_aux Gamma' M).
   Proof.
-    intros N M X.
+    intros M N X.
     induction X.
     - simpl.
       intros.
@@ -1193,21 +1194,21 @@ Module UntypedLambdaCalculus.
     - simpl.
       intros.
       inversion H.
-      subst.
-      apply IHX.
-      apply H4.
+      * subst.
+        apply IHX.
+        apply H4.
     - simpl.
       intros.
       inversion H.
-      subst.
-      apply IHX.
-      apply H6.
+      * subst.
+        apply IHX.
+        apply H6.
     - simpl.
       intros.
       inversion H.
-      subst.
-      apply IHX.
-      apply H2.
+      * subst.
+        apply IHX.
+        apply H2.
   Qed.
 
   End DeBruijn.
@@ -1232,8 +1233,6 @@ Module UntypedLambdaCalculus.
       end
     end
   .
-
-  
 
   End AlphaEquiv.
 
