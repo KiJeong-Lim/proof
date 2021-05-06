@@ -744,49 +744,56 @@ Module UntypedLambdaCalculus.
     - tauto.
   Qed.
 
+  Inductive Occurs : IVar -> Term -> Prop :=
+  | OccursIn :
+    forall z : IVar,
+    forall M : Term,
+    IsSubtermOf (Var z) M ->
+    Occurs z M
+  .
+
   Lemma isFreeIn_property1 :
     forall M : Term,
     forall z : IVar,
     isFreeIn z M = true ->
-    IsSubtermOf (Var z) M.
+    Occurs z M.
   Proof.
     intros M.
     induction M.
-    - simpl.
-      intros.
-      destruct (IVar_eq_dec x z).
-      * subst.
-        apply IsSubtermOfRefl.
-      * inversion H.
-    - simpl.
-      intros.
-      assert (isFreeIn z M1 = true -> IsSubtermOf (Var z) M1).
+    - intros.
+      rewrite isFreeIn_Var in H.
+      subst.
+      constructor.
+      apply IsSubtermOfRefl.
+    - intros.
+      rewrite isFreeIn_App in H.
+      destruct H.
+      assert (Occurs z M1).
         apply IHM1.
-      assert (isFreeIn z M2 = true -> IsSubtermOf (Var z) M2).
+        apply H.
+      inversion H0.
+      subst.
+      constructor.
+      apply IsSubtermOfApp1.
+      apply H1.
+      assert (Occurs z M2).
         apply IHM2.
-      destruct (isFreeIn z M1).
-      * apply IsSubtermOfApp1.
-        apply H0.
-        reflexivity.
-      * destruct (isFreeIn z M2).
-        + apply IsSubtermOfApp2.
-          apply H1.
-          reflexivity.
-        + simpl in H.
-          inversion H.
-    - simpl.
-      intros.
-      assert (isFreeIn z M = true -> IsSubtermOf (Var z) M).
+        apply H.
+      inversion H0.
+      subst.
+      constructor.
+      apply IsSubtermOfApp2.
+      apply H1.
+    - intros.
+      rewrite isFreeIn_Lam in H.
+      assert (Occurs z M).
         apply IHM.
-      destruct (isFreeIn z M).
-      * apply IsSubtermOfLam0.
-        apply H0.
-        reflexivity.
-      * destruct (IVar_eq_dec y z).
-        + simpl in H.
-          inversion H.
-        + simpl in H.
-          inversion H.
+        apply H.
+      inversion H0.
+      subst.
+      constructor.
+      apply IsSubtermOfLam0.
+      apply H1.
   Qed.
 
   Fixpoint legio (Phi : IVar -> list IVar -> Prop) (Gamma : list IVar) (N : Term) : Prop :=
@@ -901,223 +908,76 @@ Module UntypedLambdaCalculus.
       inversion H2.
   Qed.
 
-  Inductive WellFormedCtx : list IVar -> Term -> Term -> Prop :=
-  | WellFormedCtxRefl :
-    forall M : Term,
-    WellFormedCtx [] M M
-  | WellFormedCtxApp1 :
-    forall M : Term,
-    forall P1 : Term,
-    forall P2 : Term,
-    forall Gamma : list IVar,
-    WellFormedCtx Gamma M P1 ->
-    WellFormedCtx Gamma M (App P1 P2)
-  | WellFormedCtxApp2 :
-    forall M : Term,
-    forall P1 : Term,
-    forall P2 : Term,
-    forall Gamma : list IVar,
-    WellFormedCtx Gamma M P2 ->
-    WellFormedCtx Gamma M (App P1 P2)
-  | WellFormedCtxLam0 :
-    forall M : Term,
-    forall y : IVar,
-    forall Q : Term,
-    forall Gamma : list IVar,
-    WellFormedCtx (y :: Gamma) M Q ->
-    WellFormedCtx Gamma M (Lam y Q)
+  Fixpoint makeWellFormedCtx_aux (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
+    match X with
+    | IsSubtermOfRefl N0 => Gamma
+    | IsSubtermOfApp1 N0 P1 P2 X1 => makeWellFormedCtx_aux Gamma N0 P1 X1
+    | IsSubtermOfApp2 N0 P1 P2 X2 => makeWellFormedCtx_aux Gamma N0 P2 X2
+    | IsSubtermOfLam0 N0 y Q X0 => makeWellFormedCtx_aux (y :: Gamma) N0 Q X0
+    end
   .
 
-  Lemma WellFormedCtx_refl :
-    forall M : Term,
-    WellFormedCtx [] M M.
-  Proof.
-    apply WellFormedCtxRefl.
-  Qed.
-
-  Lemma WellFormedCtx_trans :
+  Lemma makeWellFormedCtx_aux_property1 :
     forall M : Term,
     forall N : Term,
-    forall L : Term,
-    forall Gamma1 : list IVar,
-    forall Gamma2 : list IVar,
-    WellFormedCtx Gamma1 M N ->
-    WellFormedCtx Gamma2 N L ->
-    WellFormedCtx (Gamma2 ++ Gamma1) M L.
+    forall X : IsSubtermOf N M,
+    forall Gamma : list IVar,
+    legio (fun z : IVar => fun Gamma' => In z Gamma') Gamma M ->
+    forall z : IVar,
+    isFreeIn z N = true ->
+    In z (makeWellFormedCtx_aux Gamma N M X).
   Proof.
     cut (
-      forall L : Term,
-      forall N : Term,
       forall M : Term,
-      forall Gamma1 : list IVar,
-      forall Gamma2 : list IVar,
-      WellFormedCtx Gamma2 M N ->
-      WellFormedCtx Gamma1 N L ->
-      WellFormedCtx (Gamma1 ++ Gamma2) M L
+      forall N : Term,
+      forall X : IsSubtermOf N M,
+      forall Gamma : list IVar,
+      (forall x : IVar, isFreeIn x M = true -> In x Gamma) ->
+      forall z : IVar,
+      isFreeIn z N = true ->
+      In z (makeWellFormedCtx_aux Gamma N M X)
     ).
       intros.
-      apply (H L N M Gamma2 Gamma1).
+      rewrite isFreeIn_property2 in H0.
+      apply H.
       apply H0.
       apply H1.
-    intros L.
-    induction L.
-    - intros N.
-      induction N.
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-        }
-        { subst.
-          inversion H0.
-        }
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-        }
-    - intros N.
-      induction N.
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-      * intros.
-        inversion H.
-        { subst.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            apply H.
-          }
-          { subst.
-            apply WellFormedCtxApp1.
-            apply (IHL1 (App N1 N2)).
-            apply H.
-            apply H5.
-          }
-          { subst.
-            apply WellFormedCtxApp2.
-            apply (IHL2 (App N1 N2)).
-            apply H.
-            apply H5.
-          }
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            apply H.
-          }
-          { subst.
-            apply WellFormedCtxApp1.
-            apply (IHL1 (App N1 N2)).
-            apply H.
-            apply H5.
-          }
-          { subst.
-            apply WellFormedCtxApp2.
-            apply (IHL2 (App N1 N2)).
-            apply H.
-            apply H5.
-          }
-        }
-      * intros.
-        inversion H.
-        { subst.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            apply WellFormedCtxApp1.
-            apply (IHL1 (Lam y N)).
-            apply H.
-            apply H5.
-          }
-          { subst.
-            apply WellFormedCtxApp2.
-            apply (IHL2 (Lam y N)).
-            apply H.
-            apply H5.
-          }
-        }
-    - intros N.
-      induction N.
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-      * intros.
-        inversion H.
-        { subst.
-          simpl.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            apply WellFormedCtxLam0.
-            apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
-            apply H.
-            apply H5.
-          }
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            apply WellFormedCtxLam0.
-            apply (IHL (App N1 N2) M (y :: Gamma1) Gamma2).
-            apply H.
-            apply H5.
-          }
-        }
-      * intros.
-        inversion H.
-        { subst.
-          rewrite app_nil_r.
-          apply H0.
-        }
-        { subst.
-          inversion H0.
-          { subst.
-            simpl.
-            apply H.
-          }
-          { subst.
-            apply WellFormedCtxLam0.
-            apply (IHL (Lam y0 N) M (y :: Gamma1) Gamma2).
-            apply H.
-            apply H5.
-          }
-        }
+    intros M N X.
+    induction X.
+    - simpl.
+      intros.
+      apply H.
+      apply H0.
+    - simpl.
+      intros.
+      apply IHX.
+      intros.
+      apply H.
+      apply orb_true_iff.
+      tauto.
+      apply H0.
+    - simpl.
+      intros.
+      apply IHX.
+      intros.
+      apply H.
+      apply orb_true_iff.
+      tauto.
+      apply H0.
+    - simpl.
+      intros.
+      apply (IHX (y :: Gamma)).
+      { intros.
+        destruct (IVar_eq_dec y x).
+        - simpl.
+           tauto.
+        - simpl.
+          right.
+          apply H.
+          apply isFreeIn_Lam.
+          tauto.
+      }
+      apply H0.
   Qed.
 
   End Syntax.
