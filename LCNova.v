@@ -285,6 +285,19 @@ Module AuxiliaPalatina.
         tauto.
   Qed.
 
+  Lemma zip_property1 {A : Type} {B : Type} :
+    forall zs : list (A * B),
+    zip (map fst zs) (map snd zs) = zs.
+  Proof.
+    intros zs.
+    induction zs.
+    - reflexivity.
+    - destruct a as [x y].
+      simpl.
+      rewrite IHzs.
+      reflexivity.
+  Qed.
+
   End forZip.
 
 End AuxiliaPalatina.
@@ -1300,17 +1313,17 @@ Module UntypedLambdaCalculus.
     | Var x1 =>
       match M2 with
       | Var x2 => runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x1 = Var x2 <-> hasSameDeBruijnIndex dbctx x1 x2 = true
-      | _ => True
+      | _ => False
       end
     | App P1_1 P2_1 =>
       match M2 with
       | App P1_2 P2_2 => WellFormedDBCtx dbctx P1_1 P1_2 /\ WellFormedDBCtx dbctx P2_1 P2_2
-      | _ => True
+      | _ => False
       end
     | Lam y1 Q1 =>
       match M2 with
       | Lam y2 Q2 => WellFormedDBCtx ((y1, y2) :: dbctx) Q1 Q2
-      | _ => True
+      | _ => False
       end
     end
   .
@@ -1543,14 +1556,38 @@ Module UntypedLambdaCalculus.
           apply H2.
   Qed.
 
-  Fixpoint makeCtx (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
-    match X with
-    | IsSubtermOfRefl N0 => Gamma
-    | IsSubtermOfApp1 N0 P1 P2 X1 => makeCtx Gamma N0 P1 X1
-    | IsSubtermOfApp2 N0 P1 P2 X2 => makeCtx Gamma N0 P2 X2
-    | IsSubtermOfLam0 N0 y Q X0 => makeCtx (y :: Gamma) N0 Q X0
-    end
-  .
+  Hypothesis WellFormedDBCtx_property2 :
+    forall M1 : Term,
+    forall M2 : Term,
+    forall dbctx : list (IVar * IVar),
+    WellFormedDBCtx dbctx M1 M2 <-> (forall z1 : IVar, forall z2 : IVar, isFreeIn z1 M1 = true -> isFreeIn z2 M2 = true -> WellFormedDBCtx dbctx (Var z1) (Var z2)).
+  
+  Theorem AlphaEquivalenceThm :
+    forall M1 : Term,
+    forall M2 : Term,
+    checkAlphaEquivWithSubst [] M1 M2 = true <-> makeDeBruijnTerm M1 = makeDeBruijnTerm M2.
+  Proof.
+    intros.
+    apply (WellFormedDBCtx_property1 M1 M2 []).
+    apply WellFormedDBCtx_property2.
+    simpl.
+    unfold hasSameDeBruijnIndex.
+    simpl.
+    intros.
+    constructor.
+    - intros.
+      inversion H1.
+      * subst.
+        destruct (IVar_eq_dec z2 z2).
+        + reflexivity.
+        + contradiction n.
+          reflexivity.
+    - intros.
+      destruct (IVar_eq_dec z1 z2).
+      * subst.
+        reflexivity.
+      * inversion H1.
+  Qed.
 
   End AlphaEquiv.
 
