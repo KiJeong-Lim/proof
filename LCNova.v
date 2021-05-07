@@ -1343,17 +1343,17 @@ Module UntypedLambdaCalculus.
     | Var x1 =>
       match M2 with
       | Var x2 => runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x1 = Var x2 <-> hasSameDeBruijnIndex dbctx x1 x2 = true
-      | _ => False
+      | _ => True
       end
     | App P1_1 P2_1 =>
       match M2 with
       | App P1_2 P2_2 => WellFormedDBCtx dbctx P1_1 P1_2 /\ WellFormedDBCtx dbctx P2_1 P2_2
-      | _ => False
+      | _ => True
       end
     | Lam y1 Q1 =>
       match M2 with
       | Lam y2 Q2 => WellFormedDBCtx ((y1, y2) :: dbctx) Q1 Q2
-      | _ => False
+      | _ => True
       end
     end
   .
@@ -1506,7 +1506,15 @@ Module UntypedLambdaCalculus.
       destruct M2.
       * simpl.
         intros.
-        inversion H.
+        constructor.
+        + intros.
+          inversion H0.
+        + intros.
+          destruct (getDeBruijnIndex (map snd dbctx) x).
+          { inversion H0.
+          }
+          { inversion H0.
+          }
       * simpl.
         intros.
         rewrite andb_true_iff.
@@ -1536,15 +1544,31 @@ Module UntypedLambdaCalculus.
           }
       * simpl.
         intros.
-        inversion H.
+        constructor.
+        + intros.
+          inversion H0.
+        + intros.
+          inversion H0.
     - intros M2.
       destruct M2.
       * simpl.
         intros.
-        inversion H.
+        constructor.
+        + intros.
+          inversion H0.
+        + intros.
+          destruct (getDeBruijnIndex (map snd dbctx) x).
+          { inversion H0.
+          }
+          { inversion H0.
+          }
       * simpl.
         intros.
-        inversion H.
+        constructor.
+        + intros.
+          inversion H0.
+        + intros.
+          inversion H0.
       * simpl.
         intros.
         constructor.
