@@ -1234,6 +1234,334 @@ Module UntypedLambdaCalculus.
     end
   .
 
+  Definition hasSameDeBruijnIndex (dbctx : list (IVar * IVar)) (x1 : IVar) (x2 : IVar) : bool :=
+    match getDeBruijnIndex (map fst dbctx) x1, getDeBruijnIndex (map snd dbctx) x2 with
+    | None, None => if IVar_eq_dec x1 x2 then true else false
+    | Some idx1, Some idx2 => if Nat.eq_dec idx1 idx2 then true else false
+    | _, _ => false
+    end
+  .
+
+  Lemma hasSameDeBruijnIndex_property1 :
+    forall dbctx : list (IVar * IVar),
+    forall x1 : IVar,
+    forall x2 : IVar,
+    hasSameDeBruijnIndex dbctx x1 x2 = true <-> ((~ In x1 (map fst dbctx) /\ ~ In x2 (map snd dbctx) /\ x1 = x2) \/ (exists idx : IVar, getDeBruijnIndex (map fst dbctx) x1 = Some idx /\ getDeBruijnIndex (map snd dbctx) x2 = Some idx)).
+  Proof.
+    intros.
+    unfold hasSameDeBruijnIndex.
+    assert (getDeBruijnIndex (map fst dbctx) x1 = None <-> ~ In x1 (map fst dbctx)).
+      apply getDeBruijnIndex_property1.
+    assert (getDeBruijnIndex (map snd dbctx) x2 = None <-> ~ In x2 (map snd dbctx)).
+      apply getDeBruijnIndex_property1.
+    destruct (getDeBruijnIndex (map fst dbctx) x1).
+    - destruct (getDeBruijnIndex (map snd dbctx) x2).
+      * destruct (Nat.eq_dec n n0).
+        + subst.
+          constructor.
+          { intros.
+            right.
+            exists n0.
+            tauto.
+          }
+          { tauto.
+          }
+        + constructor.
+          { intros.
+            inversion H1.
+          }
+          { intros.
+            destruct H1.
+            - assert (Some n = None).
+                apply H.
+                apply H1.
+              inversion H2.
+            - destruct H1 as [idx].
+              destruct H1.
+              inversion H1.
+              inversion H2.
+              subst.
+              contradiction n1.
+              reflexivity.
+          }
+      * constructor.
+        { intros.
+          inversion H1.
+        }
+        { intros.
+          destruct H1.
+          - assert (Some n = None). 
+              apply H.
+              apply H1.
+            inversion H2.
+          - destruct H1 as [idx].
+            destruct H1.
+            inversion H2.
+        }
+    - destruct (getDeBruijnIndex (map snd dbctx) x2).
+      * constructor.
+        { intros.
+          inversion H1.
+        }
+        { intros.
+          destruct H1.
+          - assert (Some n = None).
+              apply H0.
+              apply H1.
+            inversion H2.
+          - destruct H1 as [idx].
+            destruct H1.
+            inversion H1.
+        }
+      * constructor.
+        { intros.
+          destruct (IVar_eq_dec x1 x2).
+          - left.
+            constructor.
+            apply H.
+            reflexivity.
+            constructor.
+            apply H0.
+            reflexivity.
+            apply e.
+          - inversion H1.
+        }
+        { intros.
+          destruct H1.
+          - destruct (IVar_eq_dec x1 x2).
+            * reflexivity.
+            * contradiction n.
+              apply H1.
+          - destruct H1 as [idx].
+            destruct H1.
+            inversion H1.
+        }
+  Qed.
+
+  Fixpoint WellFormedDBCtx (dbctx : list (IVar * IVar)) (M1 : Term) (M2 : Term) : Prop :=
+    match M1 with
+    | Var x1 =>
+      match M2 with
+      | Var x2 => runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x1 = Var x2 <-> hasSameDeBruijnIndex dbctx x1 x2 = true
+      | _ => False
+      end
+    | App P1_1 P2_1 =>
+      match M2 with
+      | App P1_2 P2_2 => WellFormedDBCtx dbctx P1_1 P1_2 /\ WellFormedDBCtx dbctx P2_1 P2_2
+      | _ => False
+      end
+    | Lam y1 Q1 =>
+      match M2 with
+      | Lam y2 Q2 => WellFormedDBCtx ((y1, y2) :: dbctx) Q1 Q2
+      | _ => False
+      end
+    end
+  .
+
+  Lemma checkAlphaEquivWithSubst_property1 :
+    forall M1 : Term,
+    forall M2 : Term,
+    forall dbctx : list (IVar * IVar),
+    WellFormedDBCtx dbctx M1 M2 ->
+    checkAlphaEquivWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) M1 M2 = true <-> makeDeBruijnTerm_aux (map fst dbctx) M1 = makeDeBruijnTerm_aux (map snd dbctx) M2.
+  Proof.
+    assert ( claim1 :
+      forall dbctx : list (IVar * IVar),
+      forall x : IVar,
+      exists x' : IVar, runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x = Var x' 
+    ).
+    { intros dbctx.
+      induction dbctx.
+      - simpl.
+        intros.
+        exists x.
+        reflexivity.
+      - destruct a as [x1 x2].
+        simpl.
+        intros.
+        destruct (IVar_eq_dec x x1).
+        * exists x2.
+          reflexivity.
+        * apply IHdbctx. 
+    }
+    intros M1.
+    induction M1.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        intros.
+        destruct (Term_eq_dec (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) (Var x0)).
+        + assert (hasSameDeBruijnIndex dbctx x x0 = true).
+          { apply H.
+            apply e.
+          }
+          rewrite hasSameDeBruijnIndex_property1 in H0.
+          assert (getDeBruijnIndex (map fst dbctx) x = None <-> ~ In x (map fst dbctx)).
+            apply getDeBruijnIndex_property1.
+          assert (getDeBruijnIndex (map snd dbctx) x0 = None <-> ~ In x0 (map snd dbctx)).
+            apply getDeBruijnIndex_property1.
+          destruct H0.
+          { assert (getDeBruijnIndex (map fst dbctx) x = None).
+              apply H1.
+              apply H0.
+            assert (getDeBruijnIndex (map snd dbctx) x0 = None).
+              apply H2.
+              apply H0.
+            rewrite H3.
+            rewrite H4.
+            assert (x = x0).  
+              apply H0.
+            subst.
+            tauto.
+          }
+          { destruct H0 as [idx].
+            destruct H0.
+            rewrite H0.
+            rewrite H3.
+            tauto.
+          }
+        + assert (hasSameDeBruijnIndex dbctx x x0 = false).
+          { destruct (hasSameDeBruijnIndex dbctx x x0).
+            - assert (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x = Var x0).
+                apply H.
+                reflexivity.
+              contradiction n.
+            - reflexivity.
+          }
+          unfold hasSameDeBruijnIndex in H0.
+          destruct (getDeBruijnIndex (map fst dbctx) x).
+          { destruct (getDeBruijnIndex (map snd dbctx) x0).
+            - destruct (Nat.eq_dec n0 n1).
+              * rewrite e.
+                rewrite H0.
+                tauto.
+              * constructor.
+                + intros.
+                  inversion H1.
+                + intros.
+                  inversion H1.
+                  contradiction n2.
+            - constructor.
+              * intros.
+                inversion H1.
+              * intros.
+                inversion H1.
+          }
+          { destruct (getDeBruijnIndex (map snd dbctx) x0).
+            - constructor.
+              * intros.
+                inversion H1.
+              * intros.
+                inversion H1.
+            - destruct (IVar_eq_dec x x0).
+              * rewrite e.
+                rewrite H0.
+                tauto.
+              * constructor.
+                + intros.
+                  inversion H1.
+                + intros.
+                  inversion H1.
+                  contradiction n0.
+          }
+      * simpl.
+        intros.
+        assert (exists x' : IVar, (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) = Var x').
+          apply claim1.
+        destruct H0 as [x'].
+        rewrite H0.
+        constructor.
+        + intros.
+          destruct (Term_eq_dec (Var x') (App M2_1 M2_2)).
+          { inversion e.
+          }
+          { inversion H1.
+          }
+        + intros.
+          destruct (getDeBruijnIndex (map fst dbctx) x).
+          { inversion H1.
+          }
+          { inversion H1.
+          }
+      * simpl.
+        intros.
+        assert (exists x' : IVar, (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) = Var x').
+          apply claim1.
+        destruct H0 as [x'].
+        rewrite H0.
+        constructor.
+        + intros.
+          destruct (Term_eq_dec (Var x') (Lam y M2)).
+          { inversion e.
+          }
+          { inversion H1.
+          }
+        + intros.
+          destruct (getDeBruijnIndex (map fst dbctx) x).
+          { inversion H1.
+          }
+          { inversion H1.
+          }
+    - intros M2.
+      destruct M2.
+      * simpl.
+        intros.
+        inversion H.
+      * simpl.
+        intros.
+        rewrite andb_true_iff.
+        constructor.
+        + intros.
+          assert (makeDeBruijnTerm_aux (map fst dbctx) M1_1 = makeDeBruijnTerm_aux (map snd dbctx) M2_1).
+            apply IHM1_1.
+            apply H.
+            apply H0.
+          assert (makeDeBruijnTerm_aux (map fst dbctx) M1_2 = makeDeBruijnTerm_aux (map snd dbctx) M2_2).
+            apply IHM1_2.
+            apply H.
+            apply H0.
+          rewrite H1.
+          rewrite H2.
+          reflexivity.
+        + intros.
+          inversion H0.
+          constructor.
+          { apply IHM1_1.
+            apply H.
+            apply H2.
+          }
+          { apply IHM1_2.
+            apply H.
+            apply H3.
+          }
+      * simpl.
+        intros.
+        inversion H.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        intros.
+        inversion H.
+      * simpl.
+        intros.
+        inversion H.
+      * simpl.
+        intros.
+        constructor.
+        + intros.
+          assert ((makeDeBruijnTerm_aux (y :: map fst dbctx) M1) = (makeDeBruijnTerm_aux (y0 :: map snd dbctx) M2)).
+            apply (IHM1 M2 ((y, y0) :: dbctx)).
+            apply H.
+            apply H0.
+          rewrite H1.
+          reflexivity.
+        + intros.
+          inversion H0.
+          apply (IHM1 M2 ((y, y0) :: dbctx)).
+          apply H.
+          apply H2.
+  Qed.
+
   End AlphaEquiv.
 
 End UntypedLambdaCalculus.
