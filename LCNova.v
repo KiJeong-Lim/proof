@@ -1168,49 +1168,6 @@ Module UntypedLambdaCalculus.
     makeDeBruijnTerm_aux []
   .
 
-  Fixpoint makeCtx (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
-    match X with
-    | IsSubtermOfRefl N0 => Gamma
-    | IsSubtermOfApp1 N0 P1 P2 X1 => makeCtx Gamma N0 P1 X1
-    | IsSubtermOfApp2 N0 P1 P2 X2 => makeCtx Gamma N0 P2 X2
-    | IsSubtermOfLam0 N0 y Q X0 => makeCtx (y :: Gamma) N0 Q X0
-    end
-  .
-
-  Lemma makeCtx_property1 :
-    forall M : Term,
-    forall N : Term,
-    forall X : IsSubtermOf M N,
-    forall Gamma : list IVar,
-    mapsToDeBruijn Gamma N (makeDeBruijnTerm_aux Gamma N) ->
-    let Gamma' : list IVar := makeCtx Gamma M N X in
-    mapsToDeBruijn Gamma' M (makeDeBruijnTerm_aux Gamma' M).
-  Proof.
-    intros M N X.
-    induction X.
-    - simpl.
-      intros.
-      tauto.
-    - simpl.
-      intros.
-      inversion H.
-      * subst.
-        apply IHX.
-        apply H4.
-    - simpl.
-      intros.
-      inversion H.
-      * subst.
-        apply IHX.
-        apply H6.
-    - simpl.
-      intros.
-      inversion H.
-      * subst.
-        apply IHX.
-        apply H2.
-  Qed.
-
   End DeBruijn.
 
   Section AlphaEquiv.
@@ -1358,7 +1315,7 @@ Module UntypedLambdaCalculus.
     end
   .
 
-  Lemma checkAlphaEquivWithSubst_property1 :
+  Lemma WellFormedDBCtx_property1 :
     forall M1 : Term,
     forall M2 : Term,
     forall dbctx : list (IVar * IVar),
@@ -1585,6 +1542,15 @@ Module UntypedLambdaCalculus.
           apply H.
           apply H2.
   Qed.
+
+  Fixpoint makeCtx (Gamma : list IVar) (N : Term) (M : Term) (X : IsSubtermOf N M) : list IVar :=
+    match X with
+    | IsSubtermOfRefl N0 => Gamma
+    | IsSubtermOfApp1 N0 P1 P2 X1 => makeCtx Gamma N0 P1 X1
+    | IsSubtermOfApp2 N0 P1 P2 X2 => makeCtx Gamma N0 P2 X2
+    | IsSubtermOfLam0 N0 y Q X0 => makeCtx (y :: Gamma) N0 Q X0
+    end
+  .
 
   End AlphaEquiv.
 
