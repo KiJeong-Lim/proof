@@ -877,6 +877,132 @@ Module UntypedLambdaCalculus.
   .
   End Syntax.
 
+  Lemma runSubst_Var_main_property :
+    forall sigma : Subst,
+    forall x : IVar,
+    forall M : Term,
+    runSubst_Var sigma x = M <-> (if In_dec IVar_eq_dec x (map fst sigma) then (exists sigma1 : Subst, exists sigma2 : Subst, sigma = sigma1 ++ [(x, M)] ++ sigma2 /\ ~ In x (map fst sigma1)) else Var x = M).
+  Proof.
+    intros sigma.
+    induction sigma.
+    - simpl.
+      intros.
+      tauto.
+    - destruct a as [x1 M1].
+      simpl.
+      intros.
+      destruct (IVar_eq_dec x x1).
+      * subst.
+        destruct (IVar_eq_dec x1 x1).
+        + constructor.
+          { intros.
+            exists [].
+            exists sigma.
+            simpl.
+            subst.
+            tauto.
+          }
+          { intros.
+            destruct H as [sigma1].
+            destruct H as [sigma2].
+            destruct H.
+            destruct sigma1.
+            - simpl in H.
+              inversion H.
+              subst.
+              reflexivity.
+            - simpl in H.
+              destruct p as [x2 M2].
+              inversion H.
+              subst.
+              contradiction H0.
+              simpl.
+              tauto.
+          }
+        + contradiction n.
+          reflexivity.
+      * destruct (IVar_eq_dec x1 x).
+        + contradiction n.
+          rewrite e.
+          reflexivity.
+        + rewrite IHsigma.
+          destruct (in_dec IVar_eq_dec x (map fst sigma)).
+          { simpl.
+            constructor.
+            - intros.
+              destruct H as [sigma1].
+              destruct H as [sigma2].
+              exists ((x1, M1) :: sigma1).
+              exists sigma2.
+              simpl.
+              destruct H.
+              constructor.
+              rewrite H.
+              reflexivity.
+              tauto.
+            - intros.
+              destruct H as [sigma1].
+              destruct H as [sigma2].
+              destruct H.
+              destruct sigma1.
+              * simpl in H.
+                inversion H.
+                subst.
+                contradiction n.
+                reflexivity.
+              * exists sigma1.
+                exists sigma2.
+                simpl in H.
+                inversion H.
+                subst.
+                constructor.
+                reflexivity.
+                simpl in H0.
+                tauto.
+          }
+          { reflexivity.
+          }
+  Qed.
+
+  Lemma runSubst_Var_property1 :
+    forall sigma : Subst,
+    forall x : IVar,
+    forall M : Term,
+    runSubst_Var sigma x = M ->
+    (exists sigma1 : Subst, exists sigma2 : Subst, sigma = sigma1 ++ [(x, M)] ++ sigma2) \/ Var x = M.
+  Proof.
+    intros sigma.
+    induction sigma.
+    - simpl.
+      intros.
+      right.
+      apply H.
+    - destruct a as [x1 M1].
+      simpl.
+      intros.
+      destruct (IVar_eq_dec x x1).
+      * left.
+        exists [].
+        exists sigma.
+        simpl.
+        subst.
+        reflexivity.
+      * assert ((exists sigma1 sigma2 : Subst, sigma = sigma1 ++ [(x, M)] ++ sigma2) \/ Var x = M).
+          apply IHsigma.
+          apply H.
+        destruct H0.
+        + destruct H0 as [sigma1].
+          destruct H0 as [sigma2].
+          left.
+          exists ((x1, M1) :: sigma1).
+          exists sigma2.
+          simpl.
+          rewrite H0.
+          reflexivity.
+        + right.
+          apply H0.
+  Qed.
+
   Section DeBruijn.
 
   Fixpoint getDeBruijnIndex (Gamma : list IVar) (z : IVar) : option nat :=
@@ -1313,17 +1439,17 @@ Module UntypedLambdaCalculus.
     | Var x1 =>
       match M2 with
       | Var x2 => runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x1 = Var x2 <-> hasSameDeBruijnIndex dbctx x1 x2 = true
-      | _ => False
+      | _ => True
       end
     | App P1_1 P2_1 =>
       match M2 with
       | App P1_2 P2_2 => WellFormedDBCtx dbctx P1_1 P1_2 /\ WellFormedDBCtx dbctx P2_1 P2_2
-      | _ => False
+      | _ => True
       end
     | Lam y1 Q1 =>
       match M2 with
       | Lam y2 Q2 => WellFormedDBCtx ((y1, y2) :: dbctx) Q1 Q2
-      | _ => False
+      | _ => True
       end
     end
   .
@@ -1557,11 +1683,112 @@ Module UntypedLambdaCalculus.
   Qed.
 
   Hypothesis WellFormedDBCtx_property2 :
+    forall dbctx1 : list (IVar * IVar),
+    forall dbctx2 : list (IVar * IVar),
+    forall z1 : IVar,
+    forall z2 : IVar,
+    (~ In z1 (map fst dbctx1) -> ~ In z2 (map snd dbctx1) -> WellFormedDBCtx dbctx2 (Var z1) (Var z2)) ->
+    (WellFormedDBCtx (dbctx1 ++ dbctx2) (Var z1) (Var z2)).
+
+  Lemma WellFormedDBCtx_property3 :
     forall M1 : Term,
     forall M2 : Term,
     forall dbctx : list (IVar * IVar),
-    WellFormedDBCtx dbctx M1 M2 <-> (forall z1 : IVar, forall z2 : IVar, isFreeIn z1 M1 = true -> isFreeIn z2 M2 = true -> WellFormedDBCtx dbctx (Var z1) (Var z2)).
-  
+    (forall z1 : IVar, forall z2 : IVar, isFreeIn z1 M1 = true -> isFreeIn z2 M2 = true -> WellFormedDBCtx dbctx (Var z1) (Var z2)) ->
+    WellFormedDBCtx dbctx M1 M2.
+  Proof.
+    assert ( claim1 :
+      forall dbctx : list (IVar * IVar),
+      (map fst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx)) = map fst dbctx
+    ).
+    { intros dbctx.
+      induction dbctx.
+      - simpl.
+        tauto.
+      - destruct a as [z1 z2].
+        simpl.
+        intros.
+        rewrite IHdbctx.
+        reflexivity.
+    }
+    intros M1.
+    induction M1.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        intros.
+        apply H.
+        destruct (IVar_eq_dec x x).
+        { reflexivity. 
+        }
+        { contradiction n.
+          reflexivity.
+        }
+        destruct (IVar_eq_dec x0 x0).
+        { reflexivity.
+        }
+        { contradiction n.
+          reflexivity.
+        }
+      * simpl.
+        tauto.
+      * simpl.
+        tauto.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        tauto.
+      * simpl.
+        intros.
+        constructor.
+        { apply IHM1_1.
+          intros.
+          apply H.
+          rewrite orb_true_iff.
+          tauto.
+          rewrite orb_true_iff.
+          tauto.
+        }
+        { apply IHM1_2.
+          intros.
+          apply H.
+          rewrite orb_true_iff.
+          tauto.
+          rewrite orb_true_iff.
+          tauto.
+        }
+      * simpl.
+        tauto.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        tauto.
+      * simpl.
+        tauto.
+      * simpl.
+        intros.
+        apply IHM1.
+        intros.
+        apply (WellFormedDBCtx_property2 [(y, y0)] dbctx z1 z2).
+        simpl.
+        intros.
+        assert (y <> z1).
+          tauto.
+        assert (y0 <> z2).
+          tauto.
+        apply H.
+        apply andb_true_iff.
+        constructor.
+        destruct (IVar_eq_dec y z1).
+        contradiction H4.
+        reflexivity.
+        apply H0.
+        destruct (IVar_eq_dec y0 z2).
+        contradiction H5.
+        rewrite H1.
+        reflexivity.
+  Qed.
+
   Theorem AlphaEquivalenceThm :
     forall M1 : Term,
     forall M2 : Term,
@@ -1569,7 +1796,7 @@ Module UntypedLambdaCalculus.
   Proof.
     intros.
     apply (WellFormedDBCtx_property1 M1 M2 []).
-    apply WellFormedDBCtx_property2.
+    apply WellFormedDBCtx_property3.
     simpl.
     unfold hasSameDeBruijnIndex.
     simpl.
