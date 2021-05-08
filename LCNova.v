@@ -1682,81 +1682,86 @@ Module UntypedLambdaCalculus.
           apply H2.
   Qed.
 
-  Hypothesis WellFormedDBCtx_property2 :
-    forall dbctx1 : list (IVar * IVar),
-    forall dbctx2 : list (IVar * IVar),
-    forall z1 : IVar,
-    forall z2 : IVar,
-    (~ In z1 (map fst dbctx1) -> ~ In z2 (map snd dbctx1) -> WellFormedDBCtx dbctx2 (Var z1) (Var z2)) ->
-    (WellFormedDBCtx (dbctx1 ++ dbctx2) (Var z1) (Var z2)).
+  Inductive ScopeTrans : list IVar -> Term -> Term -> list IVar -> Prop :=
+  | ScopeTransRefl :
+    forall Gamma1 : list IVar,
+    forall M1 : Term,
+    ScopeTrans Gamma1 M1 M1 Gamma1
+  | ScopeTransApp1 :
+    forall Gamma1 : list IVar,
+    forall Gamma2 : list IVar,
+    forall M : Term,
+    forall P1 : Term,
+    forall P2 : Term,
+    ScopeTrans Gamma1 M P1 Gamma2 ->
+    ScopeTrans Gamma1 M (App P1 P2) Gamma2
+  | ScopeTransApp2 :
+    forall Gamma1 : list IVar,
+    forall Gamma2 : list IVar,
+    forall M : Term,
+    forall P1 : Term,
+    forall P2 : Term,
+    ScopeTrans Gamma1 M P2 Gamma2 ->
+    ScopeTrans Gamma1 M (App P1 P2) Gamma2
+  | ScopeTransLam0 :
+    forall Gamma1 : list IVar,
+    forall Gamma2 : list IVar,
+    forall M : Term,
+    forall y : IVar,
+    forall Q : Term,
+    ScopeTrans Gamma1 M Q (y :: Gamma2) ->
+    ScopeTrans Gamma1 M (Lam y Q) Gamma2
+  .
 
-  Lemma WellFormedDBCtx_property3 :
+  Lemma ScopeTrans_property1 :
     forall M1 : Term,
     forall M2 : Term,
     forall dbctx : list (IVar * IVar),
-    (forall z1 : IVar, forall z2 : IVar, isFreeIn z1 M1 = true -> isFreeIn z2 M2 = true -> WellFormedDBCtx dbctx (Var z1) (Var z2)) ->
+    (forall z1 : IVar, forall z2 : IVar, IsSubtermOf (Var z1) M1 -> IsSubtermOf (Var z2) M2 -> forall dbctx' : list (IVar * IVar), ScopeTrans (map fst dbctx') (Var z1) M1 (map fst dbctx) -> ScopeTrans (map snd dbctx') (Var z2) M2 (map snd dbctx) -> WellFormedDBCtx dbctx' (Var z1) (Var z2) ) ->
     WellFormedDBCtx dbctx M1 M2.
   Proof.
-    assert ( claim1 :
-      forall dbctx : list (IVar * IVar),
-      (map fst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx)) = map fst dbctx
-    ).
-    { intros dbctx.
-      induction dbctx.
-      - simpl.
-        tauto.
-      - destruct a as [z1 z2].
-        simpl.
-        intros.
-        rewrite IHdbctx.
-        reflexivity.
-    }
     intros M1.
     induction M1.
     - intros M2.
       destruct M2.
+      * intros.
+        apply H.
+        apply IsSubtermOfRefl.
+        apply IsSubtermOfRefl.
+        apply ScopeTransRefl.
+        apply ScopeTransRefl.
       * simpl.
+        tauto.
+      * simpl.
+        tauto.
+    - intros M2.
+      destruct M2.
+      * simpl.
+        tauto.
+      * intros.
+        constructor.
+        apply IHM1_1.
         intros.
         apply H.
-        destruct (IVar_eq_dec x x).
-        { reflexivity. 
-        }
-        { contradiction n.
-          reflexivity.
-        }
-        destruct (IVar_eq_dec x0 x0).
-        { reflexivity.
-        }
-        { contradiction n.
-          reflexivity.
-        }
-      * simpl.
-        tauto.
-      * simpl.
-        tauto.
-    - intros M2.
-      destruct M2.
-      * simpl.
-        tauto.
-      * simpl.
+        apply IsSubtermOfApp1.
+        apply H0.
+        apply IsSubtermOfApp1.
+        apply H1.
+        apply ScopeTransApp1.
+        apply H2.
+        apply ScopeTransApp1.
+        apply H3.
+        apply IHM1_2.
         intros.
-        constructor.
-        { apply IHM1_1.
-          intros.
-          apply H.
-          rewrite orb_true_iff.
-          tauto.
-          rewrite orb_true_iff.
-          tauto.
-        }
-        { apply IHM1_2.
-          intros.
-          apply H.
-          rewrite orb_true_iff.
-          tauto.
-          rewrite orb_true_iff.
-          tauto.
-        }
+        apply H.
+        apply IsSubtermOfApp2.
+        apply H0.
+        apply IsSubtermOfApp2.
+        apply H1.
+        apply ScopeTransApp2.
+        apply H2.
+        apply ScopeTransApp2.
+        apply H3.
       * simpl.
         tauto.
     - intros M2.
@@ -1765,55 +1770,18 @@ Module UntypedLambdaCalculus.
         tauto.
       * simpl.
         tauto.
-      * simpl.
-        intros.
+      * intros.
         apply IHM1.
         intros.
-        apply (WellFormedDBCtx_property2 [(y, y0)] dbctx z1 z2).
-        simpl.
-        intros.
-        assert (y <> z1).
-          tauto.
-        assert (y0 <> z2).
-          tauto.
         apply H.
-        apply andb_true_iff.
-        constructor.
-        destruct (IVar_eq_dec y z1).
-        contradiction H4.
-        reflexivity.
+        apply IsSubtermOfLam0.
         apply H0.
-        destruct (IVar_eq_dec y0 z2).
-        contradiction H5.
-        rewrite H1.
-        reflexivity.
-  Qed.
-
-  Theorem AlphaEquivalenceThm :
-    forall M1 : Term,
-    forall M2 : Term,
-    checkAlphaEquivWithSubst [] M1 M2 = true <-> makeDeBruijnTerm M1 = makeDeBruijnTerm M2.
-  Proof.
-    intros.
-    apply (WellFormedDBCtx_property1 M1 M2 []).
-    apply WellFormedDBCtx_property3.
-    simpl.
-    unfold hasSameDeBruijnIndex.
-    simpl.
-    intros.
-    constructor.
-    - intros.
-      inversion H1.
-      * subst.
-        destruct (IVar_eq_dec z2 z2).
-        + reflexivity.
-        + contradiction n.
-          reflexivity.
-    - intros.
-      destruct (IVar_eq_dec z1 z2).
-      * subst.
-        reflexivity.
-      * inversion H1.
+        apply IsSubtermOfLam0.
+        apply H1.
+        apply ScopeTransLam0.
+        apply H2.
+        apply ScopeTransLam0.
+        apply H3.
   Qed.
 
   End AlphaEquiv.
