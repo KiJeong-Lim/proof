@@ -1682,42 +1682,20 @@ Module UntypedLambdaCalculus.
           apply H2.
   Qed.
 
-  Inductive ScopeTrans : list IVar -> Term -> Term -> list IVar -> Set :=
-  | ScopeTransRefl :
-    forall Gamma1 : list IVar,
-    forall M1 : Term,
-    ScopeTrans Gamma1 M1 M1 Gamma1
-  | ScopeTransApp1 :
-    forall Gamma1 : list IVar,
-    forall Gamma2 : list IVar,
-    forall M : Term,
-    forall P1 : Term,
-    forall P2 : Term,
-    ScopeTrans Gamma1 M P1 Gamma2 ->
-    ScopeTrans Gamma1 M (App P1 P2) Gamma2
-  | ScopeTransApp2 :
-    forall Gamma1 : list IVar,
-    forall Gamma2 : list IVar,
-    forall M : Term,
-    forall P1 : Term,
-    forall P2 : Term,
-    ScopeTrans Gamma1 M P2 Gamma2 ->
-    ScopeTrans Gamma1 M (App P1 P2) Gamma2
-  | ScopeTransLam0 :
-    forall Gamma1 : list IVar,
-    forall Gamma2 : list IVar,
-    forall M : Term,
-    forall y : IVar,
-    forall Q : Term,
-    ScopeTrans Gamma1 M Q (y :: Gamma2) ->
-    ScopeTrans Gamma1 M (Lam y Q) Gamma2
+  Fixpoint makeScopeTrans (Gamma : list IVar) (M : Term) (N : Term) (X : IsSubtermOf M N) : list IVar :=
+    match X with
+    | IsSubtermOfRefl M0 => Gamma
+    | IsSubtermOfApp1 M0 P1 P2 X1 => makeScopeTrans Gamma M0 P1 X1
+    | IsSubtermOfApp2 M0 P1 P2 X2 => makeScopeTrans Gamma M0 P2 X2
+    | IsSubtermOfLam0 M0 y Q X0 => makeScopeTrans (y :: Gamma) M0 Q X0
+    end
   .
 
-  Lemma ScopeTrans_property1 :
+  Lemma makeScopeTrans_property1 :
     forall M1 : Term,
     forall M2 : Term,
     forall dbctx : list (IVar * IVar),
-    (forall z1 : IVar, forall z2 : IVar, IsSubtermOf (Var z1) M1 -> IsSubtermOf (Var z2) M2 -> forall dbctx' : list (IVar * IVar), ScopeTrans (map fst dbctx') (Var z1) M1 (map fst dbctx) -> ScopeTrans (map snd dbctx') (Var z2) M2 (map snd dbctx) -> WellFormedDBCtx dbctx' (Var z1) (Var z2)) ->
+    (forall z1 : IVar, forall X1 : IsSubtermOf (Var z1) M1, forall z2 : IVar, forall X2 : IsSubtermOf (Var z2) M2, WellFormedDBCtx (zip (makeScopeTrans (map fst dbctx) (Var z1) M1 X1) (makeScopeTrans (map snd dbctx) (Var z2) M2 X2)) (Var z1) (Var z2)) ->
     WellFormedDBCtx dbctx M1 M2.
   Proof.
     intros M1.
@@ -1725,11 +1703,10 @@ Module UntypedLambdaCalculus.
     - intros M2.
       destruct M2.
       * intros.
-        apply H.
-        apply IsSubtermOfRefl.
-        apply IsSubtermOfRefl.
-        apply ScopeTransRefl.
-        apply ScopeTransRefl.
+        assert (H0 := H x (IsSubtermOfRefl (Var x)) x0 (IsSubtermOfRefl (Var x0))).
+        simpl makeScopeTrans in H0.
+        rewrite zip_property1 in H0.
+        apply H0.
       * simpl.
         tauto.
       * simpl.
@@ -1742,26 +1719,14 @@ Module UntypedLambdaCalculus.
         constructor.
         apply IHM1_1.
         intros.
-        apply H.
-        apply IsSubtermOfApp1.
+        assert (H0 := H z1 (IsSubtermOfApp1 _ _ _ X1) z2 (IsSubtermOfApp1 _ _ _ X2)).
+        simpl makeScopeTrans in H0.
         apply H0.
-        apply IsSubtermOfApp1.
-        apply H1.
-        apply ScopeTransApp1.
-        apply H2.
-        apply ScopeTransApp1.
-        apply H3.
         apply IHM1_2.
         intros.
-        apply H.
-        apply IsSubtermOfApp2.
+        assert (H0 := H z1 (IsSubtermOfApp2 _ _ _ X1) z2 (IsSubtermOfApp2 _ _ _ X2)).
+        simpl makeScopeTrans in H0.
         apply H0.
-        apply IsSubtermOfApp2.
-        apply H1.
-        apply ScopeTransApp2.
-        apply H2.
-        apply ScopeTransApp2.
-        apply H3.
       * simpl.
         tauto.
     - intros M2.
@@ -1773,34 +1738,28 @@ Module UntypedLambdaCalculus.
       * intros.
         apply IHM1.
         intros.
-        apply H.
-        apply IsSubtermOfLam0.
+        assert (H0 := H z1 (IsSubtermOfLam0 _ _ _ X1) z2 (IsSubtermOfLam0 _ _ _ X2)).
         apply H0.
-        apply IsSubtermOfLam0.
-        apply H1.
-        apply ScopeTransLam0.
-        apply H2.
-        apply ScopeTransLam0.
-        apply H3.
   Qed.
 
-  Lemma ScopeTrans_property2 :
-    forall Gamma1 : list IVar,
-    forall Gamma2 : list IVar,
+  Hypothesis makeScopeTrans_property2 :
+    forall M1 : Term,
+    forall z1 : IVar,
+    forall X1 : IsSubtermOf (Var z1) M1,
+    forall M2 : Term,
+    forall z2 : IVar,
+    forall X2 : IsSubtermOf (Var z2) M2,
+    WellFormedDBCtx (zip (makeScopeTrans [] (Var z1) M1 X1) (makeScopeTrans [] (Var z2) M2 X2)) (Var z1) (Var z2).
+
+  Lemma WellFormedDBCtx_property2 :
     forall M1 : Term,
     forall M2 : Term,
-    ScopeTrans Gamma1 M1 M2 Gamma2 ->
-    IsSubtermOf M1 M2.
+    WellFormedDBCtx [] M1 M2.
   Proof.
     intros.
-    induction H.
-    - apply IsSubtermOfRefl.
-    - apply IsSubtermOfApp1.
-      apply IHScopeTrans.
-    - apply IsSubtermOfApp2.
-      apply IHScopeTrans.
-    - apply IsSubtermOfLam0.
-      apply IHScopeTrans.
+    apply makeScopeTrans_property1.
+    intros.
+    apply makeScopeTrans_property2.
   Qed.
 
   End AlphaEquiv.
