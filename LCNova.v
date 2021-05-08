@@ -1682,7 +1682,7 @@ Module UntypedLambdaCalculus.
           apply H2.
   Qed.
 
-  Inductive ScopeTrans : list IVar -> Term -> Term -> list IVar -> Prop :=
+  Inductive ScopeTrans : list IVar -> Term -> Term -> list IVar -> Set :=
   | ScopeTransRefl :
     forall Gamma1 : list IVar,
     forall M1 : Term,
@@ -1784,39 +1784,23 @@ Module UntypedLambdaCalculus.
         apply H3.
   Qed.
 
-  Fixpoint makeScopeTrans (Gamma : list IVar) (M : Term) (N : Term) (X : IsSubtermOf M N) : list IVar :=
-    match X with
-    | IsSubtermOfRefl M0 => Gamma
-    | IsSubtermOfApp1 M0 P1 P2 X1 => makeScopeTrans Gamma M0 P1 X1
-    | IsSubtermOfApp2 M0 P1 P2 X2 => makeScopeTrans Gamma M0 P2 X2
-    | IsSubtermOfLam0 M0 y Q X0 => makeScopeTrans (y :: Gamma) M0 Q X0
-    end
-  .
-
-  Lemma makeScopeTrans_property1 :
-    forall M : Term,
-    forall N : Term,
-    forall X : IsSubtermOf M N,
-    forall Gamma : list IVar,
-    ScopeTrans (makeScopeTrans Gamma M N X) M N Gamma.
+  Lemma ScopeTrans_property2 :
+    forall Gamma1 : list IVar,
+    forall Gamma2 : list IVar,
+    forall M1 : Term,
+    forall M2 : Term,
+    ScopeTrans Gamma1 M1 M2 Gamma2 ->
+    IsSubtermOf M1 M2.
   Proof.
-    intros M N X.
-    induction X.
-    - simpl.
-      intros.
-      apply ScopeTransRefl.
-    - simpl.
-      intros.
-      apply ScopeTransApp1.
-      apply IHX.
-    - simpl.
-      intros.
-      apply ScopeTransApp2.
-      apply IHX.
-    - simpl.
-      intros.
-      apply ScopeTransLam0.
-      apply IHX.
+    intros.
+    induction H.
+    - apply IsSubtermOfRefl.
+    - apply IsSubtermOfApp1.
+      apply IHScopeTrans.
+    - apply IsSubtermOfApp2.
+      apply IHScopeTrans.
+    - apply IsSubtermOfLam0.
+      apply IHScopeTrans.
   Qed.
 
   End AlphaEquiv.
