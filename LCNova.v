@@ -1003,6 +1003,119 @@ Module UntypedLambdaCalculus.
           apply H0.
   Qed.
 
+  Section Scoping.
+
+  Fixpoint legio (Phi : IVar -> list IVar -> Prop) (M : Term) (Gamma : list IVar) : Prop :=
+    match M with
+    | Var x => Phi x Gamma
+    | App P1 P2 => legio Phi P1 Gamma /\ legio Phi P2 Gamma
+    | Lam y Q => legio Phi Q (y :: Gamma)
+    end
+  . 
+
+  Inductive OccursIn : IVar -> Term -> Set :=
+  | OccursInRefl :
+    forall x : IVar,
+    OccursIn x (Var x)
+  | OccursInApp1 :
+    forall x : IVar,
+    forall P1 : Term,
+    forall P2 : Term,
+    OccursIn x P1 ->
+    OccursIn x (App P1 P2)
+  | OccursInApp2 :
+    forall x : IVar,
+    forall P1 : Term,
+    forall P2 : Term,
+    OccursIn x P2 ->
+    OccursIn x (App P1 P2)
+  | OccursInLam0 :
+    forall x : IVar,
+    forall y : IVar,
+    forall Q : Term,
+    OccursIn x Q ->
+    OccursIn x (Lam y Q)
+  .
+
+  Fixpoint makeScope_aux (Gamma : list IVar) (x : IVar) (M : Term) (H : OccursIn x M) : list IVar :=
+    match H with
+    | OccursInRefl x => Gamma
+    | OccursInApp1 x P1 P2 H1 => makeScope_aux Gamma x P1 H1
+    | OccursInApp2 x P1 P2 H2 => makeScope_aux Gamma x P2 H2
+    | OccursInLam0 x y Q H0 => makeScope_aux (y :: Gamma) x Q H0
+    end
+  .
+
+  Lemma legio_main_property (Phi : IVar -> list IVar -> Prop) :
+    forall M : Term,
+    forall Gamma : list IVar,
+    legio Phi M Gamma <-> (forall z : IVar, forall H : OccursIn z M, Phi z (makeScope_aux Gamma z M H)).
+  Proof.
+    assert ( claim1 :
+      forall M : Term,
+      forall z : IVar,
+      forall H : OccursIn z M,
+      forall Gamma : list IVar,
+      legio Phi M Gamma ->
+      Phi z (makeScope_aux Gamma z M H)
+    ).
+    { intros M z H.
+      induction H.
+      - simpl.
+        tauto.
+      - simpl.
+        intros.
+        apply IHOccursIn.
+        apply H0.
+      - simpl.
+        intros.
+        apply IHOccursIn.
+        apply H0.
+      - simpl.
+        intros.
+        apply IHOccursIn.
+        apply H0.
+    }
+    assert ( claim2 :
+      forall M : Term,
+      forall Gamma : list IVar,
+      (forall (z : IVar) (H : OccursIn z M), Phi z (makeScope_aux Gamma z M H)) ->
+      legio Phi M Gamma
+    ).
+    { intros M.
+      induction M.
+      - simpl.
+        intros.
+        apply (H x (OccursInRefl x)).
+      - simpl.
+        intros.
+        constructor.
+        { apply IHM1.
+          intros.
+          apply (H z (OccursInApp1 z M1 M2 H0)).
+        }
+        { apply IHM2.
+          intros.
+          apply (H z (OccursInApp2 z M1 M2 H0)).
+        }
+      - simpl.
+        intros.
+        apply IHM.
+        intros.
+        apply (H z (OccursInLam0 z y M H0)).
+    }
+    intros.
+    constructor.
+    - intros.
+      apply claim1.
+      apply H.
+    - intros.
+      apply claim2.
+      apply H.
+  Qed.
+
+  End Scoping.
+
   Section DeBruijn.
 
   Fixpoint getDeBruijnIndex (Gamma : list IVar) (z : IVar) : option nat :=
@@ -1338,7 +1451,7 @@ Module UntypedLambdaCalculus.
     end
   .
 
-  Lemma hasSameDeBruijnIndex_property1 :
+  Lemma hasSameDeBruijnIndex_main_property :
     forall dbctx : list (IVar * IVar),
     forall x1 : IVar,
     forall x2 : IVar,
@@ -1432,334 +1545,6 @@ Module UntypedLambdaCalculus.
             destruct H1.
             inversion H1.
         }
-  Qed.
-
-  Fixpoint WellFormedDBCtx (dbctx : list (IVar * IVar)) (M1 : Term) (M2 : Term) : Prop :=
-    match M1 with
-    | Var x1 =>
-      match M2 with
-      | Var x2 => runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x1 = Var x2 <-> hasSameDeBruijnIndex dbctx x1 x2 = true
-      | _ => True
-      end
-    | App P1_1 P2_1 =>
-      match M2 with
-      | App P1_2 P2_2 => WellFormedDBCtx dbctx P1_1 P1_2 /\ WellFormedDBCtx dbctx P2_1 P2_2
-      | _ => True
-      end
-    | Lam y1 Q1 =>
-      match M2 with
-      | Lam y2 Q2 => WellFormedDBCtx ((y1, y2) :: dbctx) Q1 Q2
-      | _ => True
-      end
-    end
-  .
-
-  Lemma WellFormedDBCtx_property1 :
-    forall M1 : Term,
-    forall M2 : Term,
-    forall dbctx : list (IVar * IVar),
-    WellFormedDBCtx dbctx M1 M2 ->
-    checkAlphaEquivWithSubst (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) M1 M2 = true <-> makeDeBruijnTerm_aux (map fst dbctx) M1 = makeDeBruijnTerm_aux (map snd dbctx) M2.
-  Proof.
-    assert ( claim1 :
-      forall dbctx : list (IVar * IVar),
-      forall x : IVar,
-      exists x' : IVar, runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x = Var x' 
-    ).
-    { intros dbctx.
-      induction dbctx.
-      - simpl.
-        intros.
-        exists x.
-        reflexivity.
-      - destruct a as [x1 x2].
-        simpl.
-        intros.
-        destruct (IVar_eq_dec x x1).
-        * exists x2.
-          reflexivity.
-        * apply IHdbctx. 
-    }
-    intros M1.
-    induction M1.
-    - intros M2.
-      destruct M2.
-      * simpl.
-        intros.
-        destruct (Term_eq_dec (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) (Var x0)).
-        + assert (hasSameDeBruijnIndex dbctx x x0 = true).
-          { apply H.
-            apply e.
-          }
-          rewrite hasSameDeBruijnIndex_property1 in H0.
-          assert (getDeBruijnIndex (map fst dbctx) x = None <-> ~ In x (map fst dbctx)).
-            apply getDeBruijnIndex_property1.
-          assert (getDeBruijnIndex (map snd dbctx) x0 = None <-> ~ In x0 (map snd dbctx)).
-            apply getDeBruijnIndex_property1.
-          destruct H0.
-          { assert (getDeBruijnIndex (map fst dbctx) x = None).
-              apply H1.
-              apply H0.
-            assert (getDeBruijnIndex (map snd dbctx) x0 = None).
-              apply H2.
-              apply H0.
-            rewrite H3.
-            rewrite H4.
-            assert (x = x0).  
-              apply H0.
-            subst.
-            tauto.
-          }
-          { destruct H0 as [idx].
-            destruct H0.
-            rewrite H0.
-            rewrite H3.
-            tauto.
-          }
-        + assert (hasSameDeBruijnIndex dbctx x x0 = false).
-          { destruct (hasSameDeBruijnIndex dbctx x x0).
-            - assert (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x = Var x0).
-                apply H.
-                reflexivity.
-              contradiction n.
-            - reflexivity.
-          }
-          unfold hasSameDeBruijnIndex in H0.
-          destruct (getDeBruijnIndex (map fst dbctx) x).
-          { destruct (getDeBruijnIndex (map snd dbctx) x0).
-            - destruct (Nat.eq_dec n0 n1).
-              * rewrite e.
-                rewrite H0.
-                tauto.
-              * constructor.
-                + intros.
-                  inversion H1.
-                + intros.
-                  inversion H1.
-                  contradiction n2.
-            - constructor.
-              * intros.
-                inversion H1.
-              * intros.
-                inversion H1.
-          }
-          { destruct (getDeBruijnIndex (map snd dbctx) x0).
-            - constructor.
-              * intros.
-                inversion H1.
-              * intros.
-                inversion H1.
-            - destruct (IVar_eq_dec x x0).
-              * rewrite e.
-                rewrite H0.
-                tauto.
-              * constructor.
-                + intros.
-                  inversion H1.
-                + intros.
-                  inversion H1.
-                  contradiction n0.
-          }
-      * simpl.
-        intros.
-        assert (exists x' : IVar, (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) = Var x').
-          apply claim1.
-        destruct H0 as [x'].
-        rewrite H0.
-        constructor.
-        + intros.
-          destruct (Term_eq_dec (Var x') (App M2_1 M2_2)).
-          { inversion e.
-          }
-          { inversion H1.
-          }
-        + intros.
-          destruct (getDeBruijnIndex (map fst dbctx) x).
-          { inversion H1.
-          }
-          { inversion H1.
-          }
-      * simpl.
-        intros.
-        assert (exists x' : IVar, (runSubst_Var (map (fun p : IVar * IVar => (fst p, Var (snd p))) dbctx) x) = Var x').
-          apply claim1.
-        destruct H0 as [x'].
-        rewrite H0.
-        constructor.
-        + intros.
-          destruct (Term_eq_dec (Var x') (Lam y M2)).
-          { inversion e.
-          }
-          { inversion H1.
-          }
-        + intros.
-          destruct (getDeBruijnIndex (map fst dbctx) x).
-          { inversion H1.
-          }
-          { inversion H1.
-          }
-    - intros M2.
-      destruct M2.
-      * simpl.
-        intros.
-        constructor.
-        + intros.
-          inversion H0.
-        + intros.
-          destruct (getDeBruijnIndex (map snd dbctx) x).
-          { inversion H0.
-          }
-          { inversion H0.
-          }
-      * simpl.
-        intros.
-        rewrite andb_true_iff.
-        constructor.
-        + intros.
-          assert (makeDeBruijnTerm_aux (map fst dbctx) M1_1 = makeDeBruijnTerm_aux (map snd dbctx) M2_1).
-            apply IHM1_1.
-            apply H.
-            apply H0.
-          assert (makeDeBruijnTerm_aux (map fst dbctx) M1_2 = makeDeBruijnTerm_aux (map snd dbctx) M2_2).
-            apply IHM1_2.
-            apply H.
-            apply H0.
-          rewrite H1.
-          rewrite H2.
-          reflexivity.
-        + intros.
-          inversion H0.
-          constructor.
-          { apply IHM1_1.
-            apply H.
-            apply H2.
-          }
-          { apply IHM1_2.
-            apply H.
-            apply H3.
-          }
-      * simpl.
-        intros.
-        constructor.
-        + intros.
-          inversion H0.
-        + intros.
-          inversion H0.
-    - intros M2.
-      destruct M2.
-      * simpl.
-        intros.
-        constructor.
-        + intros.
-          inversion H0.
-        + intros.
-          destruct (getDeBruijnIndex (map snd dbctx) x).
-          { inversion H0.
-          }
-          { inversion H0.
-          }
-      * simpl.
-        intros.
-        constructor.
-        + intros.
-          inversion H0.
-        + intros.
-          inversion H0.
-      * simpl.
-        intros.
-        constructor.
-        + intros.
-          assert ((makeDeBruijnTerm_aux (y :: map fst dbctx) M1) = (makeDeBruijnTerm_aux (y0 :: map snd dbctx) M2)).
-            apply (IHM1 M2 ((y, y0) :: dbctx)).
-            apply H.
-            apply H0.
-          rewrite H1.
-          reflexivity.
-        + intros.
-          inversion H0.
-          apply (IHM1 M2 ((y, y0) :: dbctx)).
-          apply H.
-          apply H2.
-  Qed.
-
-  Fixpoint makeScopeTrans (Gamma : list IVar) (M : Term) (N : Term) (X : IsSubtermOf M N) : list IVar :=
-    match X with
-    | IsSubtermOfRefl M0 => Gamma
-    | IsSubtermOfApp1 M0 P1 P2 X1 => makeScopeTrans Gamma M0 P1 X1
-    | IsSubtermOfApp2 M0 P1 P2 X2 => makeScopeTrans Gamma M0 P2 X2
-    | IsSubtermOfLam0 M0 y Q X0 => makeScopeTrans (y :: Gamma) M0 Q X0
-    end
-  .
-
-  Lemma makeScopeTrans_property1 :
-    forall M1 : Term,
-    forall M2 : Term,
-    forall dbctx : list (IVar * IVar),
-    (forall z1 : IVar, forall X1 : IsSubtermOf (Var z1) M1, forall z2 : IVar, forall X2 : IsSubtermOf (Var z2) M2, WellFormedDBCtx (zip (makeScopeTrans (map fst dbctx) (Var z1) M1 X1) (makeScopeTrans (map snd dbctx) (Var z2) M2 X2)) (Var z1) (Var z2)) ->
-    WellFormedDBCtx dbctx M1 M2.
-  Proof.
-    intros M1.
-    induction M1.
-    - intros M2.
-      destruct M2.
-      * intros.
-        assert (H0 := H x (IsSubtermOfRefl (Var x)) x0 (IsSubtermOfRefl (Var x0))).
-        simpl makeScopeTrans in H0.
-        rewrite zip_property1 in H0.
-        apply H0.
-      * simpl.
-        tauto.
-      * simpl.
-        tauto.
-    - intros M2.
-      destruct M2.
-      * simpl.
-        tauto.
-      * intros.
-        constructor.
-        apply IHM1_1.
-        intros.
-        assert (H0 := H z1 (IsSubtermOfApp1 _ _ _ X1) z2 (IsSubtermOfApp1 _ _ _ X2)).
-        simpl makeScopeTrans in H0.
-        apply H0.
-        apply IHM1_2.
-        intros.
-        assert (H0 := H z1 (IsSubtermOfApp2 _ _ _ X1) z2 (IsSubtermOfApp2 _ _ _ X2)).
-        simpl makeScopeTrans in H0.
-        apply H0.
-      * simpl.
-        tauto.
-    - intros M2.
-      destruct M2.
-      * simpl.
-        tauto.
-      * simpl.
-        tauto.
-      * intros.
-        apply IHM1.
-        intros.
-        assert (H0 := H z1 (IsSubtermOfLam0 _ _ _ X1) z2 (IsSubtermOfLam0 _ _ _ X2)).
-        apply H0.
-  Qed.
-
-  Hypothesis makeScopeTrans_property2 :
-    forall M1 : Term,
-    forall z1 : IVar,
-    forall X1 : IsSubtermOf (Var z1) M1,
-    forall M2 : Term,
-    forall z2 : IVar,
-    forall X2 : IsSubtermOf (Var z2) M2,
-    WellFormedDBCtx (zip (makeScopeTrans [] (Var z1) M1 X1) (makeScopeTrans [] (Var z2) M2 X2)) (Var z1) (Var z2).
-
-  Lemma WellFormedDBCtx_property2 :
-    forall M1 : Term,
-    forall M2 : Term,
-    WellFormedDBCtx [] M1 M2.
-  Proof.
-    intros.
-    apply makeScopeTrans_property1.
-    intros.
-    apply makeScopeTrans_property2.
   Qed.
 
   End AlphaEquiv.
