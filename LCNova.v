@@ -680,7 +680,7 @@ Module UntypedLambdaCalculus.
         }
   Qed.
 
-  Theorem StrongInductionOnTm (Phi : Term -> Prop) :
+  Theorem StrongInductionOnTerm (Phi : Term -> Prop) :
     (forall M : Term, (forall N : Term, IsSubtermOf N M -> N <> M -> Phi N) -> Phi M) ->
     forall M : Term,
     Phi M.
@@ -1793,6 +1793,142 @@ Module UntypedLambdaCalculus.
           apply (IHM1 M2 ((y, y0) :: dbctx)).
           apply H.
           apply H2.
+  Qed.
+
+  Inductive Corresponding : IVar -> IVar -> Term -> Term -> Set :=
+  | CorrespondingRefl :
+    forall z1 : IVar,
+    forall z2 : IVar,
+    forall x1 : IVar,
+    forall x2 : IVar,
+    z1 = x1 ->
+    z2 = x2 ->
+    Corresponding z1 z2 (Var x1) (Var x2)
+  | CorrespondingApp1 :
+    forall z1 : IVar,
+    forall z2 : IVar,
+    forall P1_1 : Term,
+    forall P1_2 : Term,
+    forall P2_1 : Term,
+    forall P2_2 : Term,
+    Corresponding z1 z2 P1_1 P2_1 ->
+    Corresponding z1 z2 (App P1_1 P1_2) (App P2_1 P2_2)
+  | CorrespondingApp2 :
+    forall z1 : IVar,
+    forall z2 : IVar,
+    forall P1_1 : Term,
+    forall P1_2 : Term,
+    forall P2_1 : Term,
+    forall P2_2 : Term,
+    Corresponding z1 z2 P1_2 P2_2 ->
+    Corresponding z1 z2 (App P1_1 P1_2) (App P2_1 P2_2)
+  | CorrespondingLam0 :
+    forall z1 : IVar,
+    forall z2 : IVar,
+    forall y1 : IVar,
+    forall y2 : IVar,
+    forall Q1 : Term,
+    forall Q2 : Term,
+    Corresponding z1 z2 Q1 Q2 ->
+    Corresponding z1 z2 (Lam y1 Q1) (Lam y2 Q2)
+  .
+
+  Fixpoint runCorresponding_aux (dbctx : list (IVar * IVar)) (z1 : IVar) (z2 : IVar) (M1 : Term) (M2 : Term) (X : Corresponding z1 z2 M1 M2) : list (IVar * IVar) :=
+    match X with
+    | CorrespondingRefl z1 z2 x1 x2 z1_eq_x1 z2_eq_x2 => dbctx
+    | CorrespondingApp1 z1 z2 P1_1 P1_2 P2_1 P2_2 X1 => runCorresponding_aux dbctx z1 z2 P1_1 P2_1 X1
+    | CorrespondingApp2 z1 z2 P1_1 P1_2 P2_1 P2_2 X2 => runCorresponding_aux dbctx z1 z2 P1_2 P2_2 X2
+    | CorrespondingLam0 z1 z2 y1 y2 Q1 Q2 X0 => runCorresponding_aux ((y1, y2) :: dbctx) z1 z2 Q1 Q2 X0
+    end
+  .
+
+  Lemma runCorresponding_aux_property1 :
+    forall M1 : Term,
+    forall M2 : Term,
+    forall dbctx : list (IVar * IVar),
+    WellFormedDBCtx dbctx M1 M2 <-> (forall z1 : IVar, forall z2 : IVar, forall X : Corresponding z1 z2 M1 M2, let dbctx' : list (IVar * IVar) := runCorresponding_aux dbctx z1 z2 M1 M2 X in WellFormedDBCtx dbctx' (Var z1) (Var z2)).
+  Proof.
+    assert ( claim1 :
+      forall M1 : Term,
+      forall M2 : Term,
+      forall dbctx : list (IVar * IVar),
+      (forall z1 : IVar, forall z2 : IVar, forall X : Corresponding z1 z2 M1 M2, let dbctx' : list (IVar * IVar) := runCorresponding_aux dbctx z1 z2 M1 M2 X in WellFormedDBCtx dbctx' (Var z1) (Var z2)) ->
+      WellFormedDBCtx dbctx M1 M2
+    ).
+    { intros M1.
+      induction M1.
+      - intros M2.
+        destruct M2.
+        * intros.
+          assert (H0 := H x x0 (CorrespondingRefl x x0 x x0 eq_refl eq_refl)).
+          simpl runCorresponding_aux in H0.
+          apply H0.
+        * simpl.
+          tauto.
+        * simpl.
+          tauto.
+      - intros M2.
+        destruct M2.
+        * simpl.
+          tauto.
+        * intros.
+          constructor.
+          { apply IHM1_1.
+            intros.
+            apply (H z1 z2 (CorrespondingApp1 z1 z2 _ _ _ _ X)).
+          }
+          { apply IHM1_2.
+            intros.
+            apply (H z1 z2 (CorrespondingApp2 z1 z2 _ _ _ _ X)).
+          }
+        * simpl.
+          tauto.
+      - intros M2.
+        destruct M2.
+        * simpl.
+          tauto.
+        * simpl.
+          tauto.
+        * intros.
+          apply IHM1.
+          intros.
+          apply (H z1 z2 (CorrespondingLam0 z1 z2 _ _ _ _ X)).
+    }
+    assert ( claim2 :
+      forall M1 : Term,
+      forall M2 : Term,
+      forall z1 : IVar,
+      forall z2 : IVar,
+      forall X : Corresponding z1 z2 M1 M2,
+      forall dbctx : list (IVar * IVar),
+      WellFormedDBCtx dbctx M1 M2 ->
+      WellFormedDBCtx (runCorresponding_aux dbctx z1 z2 M1 M2 X) (Var z1) (Var z2)
+    ).
+    { intros M1 M2 z1 z2 X.
+      induction X.
+      - intros.
+        subst.
+        simpl runCorresponding_aux.
+        apply H.
+      - intros.
+        simpl runCorresponding_aux.
+        apply IHX.
+        apply H.
+      - intros.
+        simpl runCorresponding_aux.
+        apply IHX.
+        apply H.
+      - intros.
+        simpl runCorresponding_aux.
+        apply IHX.
+        apply H.
+    }
+    intros.
+    constructor.
+    - intros.
+      apply claim2.
+      apply H.
+    - apply claim1.
   Qed.
 
   End AlphaEquiv.
