@@ -41,7 +41,7 @@ Proof with lia.
   cut (q = a / b)...
 Qed.
 
-Fixpoint first_nat (p : nat -> bool) (n : nat) : nat :=
+Fixpoint first_nat (p : nat -> bool) (n : nat) {struct n} : nat :=
   match n with
   | 0 => 0
   | S n' => if p (first_nat p n') then first_nat p n' else n
@@ -73,14 +73,13 @@ Proof with eauto. (* improved by Clare Jang *)
   - intros x H1 y H2.
     induction H2; simpl.
     + rewrite H1...
-    + rewrite <- IHle.
-      rewrite H1...
+    + rewrite <- IHle, H1...
   - induction x...
     simpl.
     destruct (p (first_nat p x)) eqn: H0...
 Qed.
 
-Fixpoint sum_from_0_to (n : nat) : nat :=
+Fixpoint sum_from_0_to (n : nat) {struct n} : nat :=
   match n with
   | 0 => 0
   | S n' => n + sum_from_0_to n'
@@ -94,7 +93,7 @@ Proof with lia.
   induction n; simpl in *...
 Qed.
 
-Fixpoint cantor_pairing (n : nat) : nat * nat :=
+Fixpoint cantor_pairing (n : nat) {struct n} : nat * nat :=
   match n with
   | 0 => (0, 0)
   | S n' =>
@@ -126,7 +125,7 @@ Proof with (lia || eauto).
     + intros x H.
       assert (H0 : (S x, y) = cantor_pairing (sum_from_0_to (S z) + y)). { apply (IHy (S x))... }
       assert (H1 : z + sum_from_0_to z + S y = sum_from_0_to (S z) + y). { simpl... }
-      simpl. rewrite H1. rewrite <- H0...
+      simpl. rewrite H1, <- H0...
 Qed.
 
 Lemma cantor_pairing_is_injective :
@@ -144,8 +143,7 @@ Proof with (lia || eauto).
     destruct x'; (inversion H; subst).
     + repeat (rewrite Nat.add_0_r).
       simpl.
-      rewrite (IHn 0 y' eq_refl).
-      rewrite Nat.add_0_l...
+      rewrite (IHn 0 y' eq_refl), Nat.add_0_l...
     + rewrite (IHn (S x) y' eq_refl).
       assert (H1 : forall x' : nat, S x' + y' = x' + S y')...
       repeat (rewrite H1)...
@@ -156,8 +154,9 @@ Theorem cantor_pairing_is :
   forall x : nat,
   forall y : nat,
   cantor_pairing n = (x, y) <-> n = sum_from_0_to (x + y) + y.
-Proof.
-  intros n x y; split; [apply (cantor_pairing_is_injective n x y) | intros; subst; eauto using (cantor_pairing_is_surjective x y)].
+Proof with eauto using cantor_pairing_is_injective, cantor_pairing_is_surjective.
+  intros n x y; split...
+  intros H; subst...
 Qed.
 
 Definition S_0 {A : Type} : forall n : nat, S n = 0 -> A :=
@@ -198,4 +197,185 @@ Definition FinSet_S {n : nat} {P : FinSet (S n) -> Type} : P (FZ n) -> (forall i
   end P PZ PS
 .
 
+Lemma forallb_true_iff {A : Type} {p : A -> bool} (xs : list A) :
+  forallb p xs = true <-> forall x : A, In x xs -> p x = true.
+Proof.
+  induction xs; simpl.
+  - firstorder.
+  - rewrite andb_true_iff.
+    firstorder.
+    now rewrite H2 in H1.
+Qed.
+
+Definition fold_right_max_0 : list nat -> nat :=
+  fold_right max 0
+.
+
+Lemma fold_right_max_0_in :
+  forall ns : list nat,
+  forall n : nat,
+  In n ns ->
+  fold_right_max_0 ns >= n.
+Proof with (lia || eauto).
+  unfold fold_right_max_0.
+  induction ns as [| n' ns]; simpl...
+  intros n H.
+  destruct H...
+  enough (fold_right max 0 ns >= n)...
+Qed.
+
+Lemma fold_right_max_0_app :
+  forall ns1 : list nat,
+  forall ns2 : list nat,
+  fold_right_max_0 (ns1 ++ ns2) = max (fold_right_max_0 ns1) (fold_right_max_0 ns2).
+Proof with (lia || eauto).
+  unfold fold_right_max_0.
+  induction ns1 as [|n1 ns1]; simpl... 
+  intros n.
+  rewrite IHns1...
+Qed.
+
 End AuxiliaryPalatina.
+
+Module UntypedLamdbdaCalculus.
+
+Import ListNotations.
+
+Import AuxiliaryPalatina.
+
+Definition ivar : Set :=
+  nat
+.
+
+Definition ivar_eq_dec : forall x : ivar, forall y : ivar, {x = y} + {x <> y} :=
+  Nat.eq_dec
+.
+
+Inductive tm : Set :=
+| tmVar : forall x : ivar, tm
+| tmApp : forall P1 : tm, forall P2 : tm, tm
+| tmLam : forall z : ivar, forall Q : tm, tm
+.
+
+Definition tm_eq_dec :
+  forall M1 : tm,
+  forall M2 : tm,
+  {M1 = M2} + {M1 <> M2}.
+Proof with try ((left; congruence) || (right; congruence)).
+  induction M1; destruct M2...
+  - destruct (ivar_eq_dec x x0)...
+  - destruct (IHM1_1 M2_1); destruct (IHM1_2 M2_2)...
+  - destruct (ivar_eq_dec z z0); destruct (IHM1 M2)...
+Defined.
+
+Fixpoint getFVs (M : tm) : list ivar :=
+  match M with
+  | tmVar x => [x]
+  | tmApp P1 P2 => getFVs P1 ++ getFVs P2
+  | tmLam z Q => remove ivar_eq_dec z (getFVs Q)
+  end
+.
+
+Fixpoint isFreeIn (y : ivar) (M : tm) {struct M} : bool :=
+  match M with
+  | tmVar x => Nat.eqb x y
+  | tmApp P1 P2 => isFreeIn y P1 || isFreeIn y P2
+  | tmLam z Q => isFreeIn y Q && negb (Nat.eqb y z)
+  end
+.
+
+Lemma getFVs_isFreeIn (M : tm) :
+  forall y : ivar,
+  In y (getFVs M) <-> isFreeIn y M = true.
+Proof with firstorder.
+  induction M; simpl; intros y.
+  - rewrite Nat.eqb_eq...
+  - rewrite orb_true_iff, in_app_iff...
+  - rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
+    split; intros H.
+    + apply in_remove in H...
+    + apply in_in_remove...
+Qed.
+
+Definition substitution : Set :=
+  list (ivar * tm)
+.
+
+Fixpoint run_substituion_on_ivar (sigma : substitution) (y : ivar) {struct sigma} : tm :=
+  match sigma with
+  | [] => tmVar y
+  | ((x, M) :: sigma') =>
+    if ivar_eq_dec x y
+    then M
+    else run_substituion_on_ivar sigma' y
+  end
+.
+
+Definition get_max_ivar : tm -> ivar :=
+  fun M : tm => fold_right_max_0 (getFVs M)
+.
+
+Lemma get_max_ivar_lt (M : tm) :
+  forall x : ivar,
+  get_max_ivar M < x ->
+  isFreeIn x M = false.
+Proof.
+  intros x.
+  enough (get_max_ivar M < x -> ~ In x (getFVs M)) by now rewrite getFVs_isFreeIn, not_true_iff_false in H.
+  assert (H1 : In x (getFVs M) -> fold_right_max_0 (getFVs M) >= x) by apply fold_right_max_0_in.
+  enough (fold_right_max_0 (getFVs M) >= x -> fold_right_max_0 (getFVs M) < x -> False) by now eauto.
+  lia.
+Qed.
+
+Definition isFreshIn_substitution : ivar -> substitution -> tm -> bool :=
+  fun x : ivar => fun sigma : substitution => fun M : tm => forallb (fun y : ivar => negb (isFreeIn x (run_substituion_on_ivar sigma y))) (getFVs M)
+.
+
+Definition chi : substitution -> tm -> ivar :=
+  fun sigma : substitution => fun M : tm => S (fold_right_max_0 (map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma x)) (getFVs M)))
+.
+
+Lemma property1_of_chi :
+  forall M : tm,
+  forall sigma : substitution,
+  isFreshIn_substitution (chi sigma M) sigma M = true.
+Proof with firstorder.
+  assert ( claim1 :
+    forall sigma : substitution,
+    forall M : tm,
+    forall x : ivar,
+    isFreeIn x M = true ->
+    isFreeIn (chi sigma M) (run_substituion_on_ivar sigma x) = false
+  ).
+  { intros sigma M x H.
+    enough (get_max_ivar (run_substituion_on_ivar sigma x) < chi sigma M) by now apply get_max_ivar_lt.
+    unfold chi, fold_right_max_0.
+    enough (fold_right max 0 (map (fun z : ivar => get_max_ivar (run_substituion_on_ivar sigma z)) (getFVs M)) >= get_max_ivar (run_substituion_on_ivar sigma x)) by lia.
+    rewrite <- getFVs_isFreeIn in H.
+    apply fold_right_max_0_in, in_map_iff...
+  }
+  unfold isFreshIn_substitution.
+  intros M sigma.
+  apply forallb_true_iff.
+  intros x H.
+  apply negb_true_iff, claim1, getFVs_isFreeIn...
+Qed.
+
+Lemma property2_of_chi : 
+  forall M : tm,
+  isFreeIn (chi [] M) M = false.
+Proof with eauto.
+  intros M.
+  assert (H : isFreshIn_substitution (chi [] M) [] M = true) by apply property1_of_chi.
+  unfold isFreshIn_substitution in H.
+  rewrite forallb_true_iff in H.
+  simpl in H.
+  apply not_true_iff_false.
+  intros H0.
+  assert (negb (chi [] M =? chi [] M) = true) by now apply H, getFVs_isFreeIn.
+  rewrite negb_true_iff in H1.
+  rewrite Nat.eqb_neq in H1.
+  contradiction.
+Qed.
+
+End UntypedLamdbdaCalculus.
