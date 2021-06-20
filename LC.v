@@ -254,7 +254,7 @@ Definition ivar_eq_dec : forall x : ivar, forall y : ivar, {x = y} + {x <> y} :=
 Inductive tm : Set :=
 | tmVar : forall x : ivar, tm
 | tmApp : forall P1 : tm, forall P2 : tm, tm
-| tmLam : forall z : ivar, forall Q : tm, tm
+| tmLam : forall y : ivar, forall Q : tm, tm
 .
 
 Definition tm_eq_dec :
@@ -265,30 +265,30 @@ Proof with try ((left; congruence) || (right; congruence)).
   induction M1; destruct M2...
   - destruct (ivar_eq_dec x x0)...
   - destruct (IHM1_1 M2_1); destruct (IHM1_2 M2_2)...
-  - destruct (ivar_eq_dec z z0); destruct (IHM1 M2)...
+  - destruct (ivar_eq_dec y y0); destruct (IHM1 M2)...
 Defined.
 
 Fixpoint getFVs (M : tm) : list ivar :=
   match M with
   | tmVar x => [x]
   | tmApp P1 P2 => getFVs P1 ++ getFVs P2
-  | tmLam z Q => remove ivar_eq_dec z (getFVs Q)
+  | tmLam y Q => remove ivar_eq_dec y (getFVs Q)
   end
 .
 
-Fixpoint isFreeIn (y : ivar) (M : tm) {struct M} : bool :=
+Fixpoint isFreeIn (z : ivar) (M : tm) {struct M} : bool :=
   match M with
-  | tmVar x => Nat.eqb x y
-  | tmApp P1 P2 => isFreeIn y P1 || isFreeIn y P2
-  | tmLam z Q => isFreeIn y Q && negb (Nat.eqb y z)
+  | tmVar x => Nat.eqb x z
+  | tmApp P1 P2 => isFreeIn z P1 || isFreeIn z P2
+  | tmLam y Q => isFreeIn z Q && negb (Nat.eqb z y)
   end
 .
 
 Lemma getFVs_isFreeIn (M : tm) :
-  forall y : ivar,
-  In y (getFVs M) <-> isFreeIn y M = true.
+  forall z : ivar,
+  In z (getFVs M) <-> isFreeIn z M = true.
 Proof with firstorder.
-  induction M; simpl; intros y.
+  induction M; simpl; intros z.
   - rewrite Nat.eqb_eq...
   - rewrite orb_true_iff, in_app_iff...
   - rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
@@ -301,13 +301,13 @@ Definition substitution : Set :=
   list (ivar * tm)
 .
 
-Fixpoint run_substituion_on_ivar (sigma : substitution) (y : ivar) {struct sigma} : tm :=
+Fixpoint run_substituion_on_ivar (sigma : substitution) (z : ivar) {struct sigma} : tm :=
   match sigma with
-  | [] => tmVar y
+  | [] => tmVar z
   | ((x, M) :: sigma') =>
-    if ivar_eq_dec x y
+    if ivar_eq_dec x z
     then M
-    else run_substituion_on_ivar sigma' y
+    else run_substituion_on_ivar sigma' z
   end
 .
 
@@ -328,7 +328,7 @@ Proof.
 Qed.
 
 Definition isFreshIn_substitution : ivar -> substitution -> tm -> bool :=
-  fun x : ivar => fun sigma : substitution => fun M : tm => forallb (fun y : ivar => negb (isFreeIn x (run_substituion_on_ivar sigma y))) (getFVs M)
+  fun x : ivar => fun sigma : substitution => fun M : tm => forallb (fun z : ivar => negb (isFreeIn x (run_substituion_on_ivar sigma z))) (getFVs M)
 .
 
 Definition chi : substitution -> tm -> ivar :=
@@ -372,10 +372,21 @@ Proof with eauto.
   simpl in H.
   apply not_true_iff_false.
   intros H0.
-  assert (negb (chi [] M =? chi [] M) = true) by now apply H, getFVs_isFreeIn.
+  assert (H1 : negb (chi [] M =? chi [] M) = true) by now apply H, getFVs_isFreeIn.
   rewrite negb_true_iff in H1.
   rewrite Nat.eqb_neq in H1.
   contradiction.
 Qed.
+
+Fixpoint run_substitution_on_tm (sigma : substitution) (M : tm) {struct M} : tm :=
+  match M with
+  | tmVar x => run_substituion_on_ivar sigma x
+  | tmApp P1 P2 => tmApp (run_substitution_on_tm sigma P1) (run_substitution_on_tm sigma P2)
+  | tmLam y Q =>
+    let z : ivar := chi sigma M in
+    let sigma' : substitution := (y, tmVar z) :: sigma in
+    run_substitution_on_tm sigma' Q
+  end
+.
 
 End UntypedLamdbdaCalculus.
