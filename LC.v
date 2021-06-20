@@ -149,7 +149,7 @@ Proof with (lia || eauto).
       repeat (rewrite H1)...
 Qed.
 
-Theorem cantor_pairing_is :
+Corollary cantor_pairing_is :
   forall n : nat,
   forall x : nat,
   forall y : nat,
@@ -298,16 +298,27 @@ Proof with firstorder.
 Qed.
 
 Definition substitution : Set :=
-  list (ivar * tm)
+  ivar -> tm
 .
 
-Fixpoint run_substituion_on_ivar (sigma : substitution) (z : ivar) {struct sigma} : tm :=
+Definition nil_subtitution : substitution :=
+  tmVar
+.
+
+Definition cons_substitution : ivar -> tm -> substitution -> substitution :=
+  fun x : ivar =>
+  fun M : tm =>
+  fun sigma : substitution =>
+  fun y : ivar =>
+  if ivar_eq_dec x y
+  then M
+  else sigma y
+.
+
+Fixpoint mk_substitution (sigma : list (ivar * tm)) {struct sigma} : substitution :=
   match sigma with
-  | [] => tmVar z
-  | ((x, M) :: sigma') =>
-    if ivar_eq_dec x z
-    then M
-    else run_substituion_on_ivar sigma' z
+  | [] => nil_subtitution
+  | (x, M) :: sigma' => cons_substitution x M (mk_substitution sigma')
   end
 .
 
@@ -328,11 +339,11 @@ Proof.
 Qed.
 
 Definition isFreshIn_substitution : ivar -> substitution -> tm -> bool :=
-  fun x : ivar => fun sigma : substitution => fun M : tm => forallb (fun z : ivar => negb (isFreeIn x (run_substituion_on_ivar sigma z))) (getFVs M)
+  fun x : ivar => fun sigma : substitution => fun M : tm => forallb (fun z : ivar => negb (isFreeIn x (sigma z))) (getFVs M)
 .
 
 Definition chi : substitution -> tm -> ivar :=
-  fun sigma : substitution => fun M : tm => S (fold_right_max_0 (map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma x)) (getFVs M)))
+  fun sigma : substitution => fun M : tm => S (fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma x)) (getFVs M)))
 .
 
 Theorem main_property_of_chi :
@@ -345,12 +356,12 @@ Proof with firstorder.
     forall M : tm,
     forall x : ivar,
     isFreeIn x M = true ->
-    isFreeIn (chi sigma M) (run_substituion_on_ivar sigma x) = false
+    isFreeIn (chi sigma M) (sigma x) = false
   ).
   { intros sigma M x H.
-    enough (get_max_ivar (run_substituion_on_ivar sigma x) < chi sigma M) by now apply get_max_ivar_lt.
+    enough (get_max_ivar (sigma x) < chi sigma M) by now apply get_max_ivar_lt.
     unfold chi, fold_right_max_0.
-    enough (fold_right max 0 (map (fun z : ivar => get_max_ivar (run_substituion_on_ivar sigma z)) (getFVs M)) >= get_max_ivar (run_substituion_on_ivar sigma x)) by lia.
+    enough (fold_right max 0 (map (fun z : ivar => get_max_ivar (sigma z)) (getFVs M)) >= get_max_ivar (sigma x)) by lia.
     rewrite <- getFVs_isFreeIn in H.
     apply fold_right_max_0_in, in_map_iff...
   }
@@ -363,16 +374,16 @@ Qed.
 
 Lemma chi_nil : 
   forall M : tm,
-  isFreeIn (chi [] M) M = false.
+  isFreeIn (chi nil_subtitution M) M = false.
 Proof with eauto.
   intros M.
-  assert (H : isFreshIn_substitution (chi [] M) [] M = true) by apply main_property_of_chi.
+  assert (H : isFreshIn_substitution (chi nil_subtitution M) nil_subtitution M = true) by apply main_property_of_chi.
   unfold isFreshIn_substitution in H.
   rewrite forallb_true_iff in H.
   simpl in H.
   apply not_true_iff_false.
   intros H0.
-  assert (H1 : negb (chi [] M =? chi [] M) = true) by now apply H, getFVs_isFreeIn.
+  assert (H1 : negb (chi nil_subtitution M =? chi nil_subtitution M) = true) by now apply H, getFVs_isFreeIn.
   rewrite negb_true_iff in H1.
   rewrite Nat.eqb_neq in H1.
   contradiction.
@@ -380,17 +391,17 @@ Qed.
 
 Fixpoint run_substitution_on_tm (sigma : substitution) (M : tm) {struct M} : tm :=
   match M with
-  | tmVar x => run_substituion_on_ivar sigma x
+  | tmVar x => sigma x
   | tmApp P1 P2 => tmApp (run_substitution_on_tm sigma P1) (run_substitution_on_tm sigma P2)
   | tmLam y Q =>
     let z : ivar := chi sigma M in
-    let sigma' : substitution := (y, tmVar z) :: sigma in
-    run_substitution_on_tm sigma' Q
+    let sigma' : substitution := cons_substitution y (tmVar z) sigma in
+    tmLam z (run_substitution_on_tm sigma' Q)
   end
 .
 
 Definition equiv_substitution_wrt : substitution -> substitution -> tm -> Prop :=
-  fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> run_substituion_on_ivar sigma1 x = run_substituion_on_ivar sigma2 x
+  fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> sigma1 x = sigma2 x
 .
 
 Lemma chi_equiv_substitution_wrt :
@@ -402,7 +413,7 @@ Lemma chi_equiv_substitution_wrt :
 Proof with reflexivity.
   unfold chi.
   intros M sigma1 sigma2 H.
-  assert ((map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma1 x)) (getFVs M)) = (map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma2 x)) (getFVs M))).
+  assert ((map (fun x : ivar => get_max_ivar (sigma1 x)) (getFVs M)) = (map (fun x : ivar => get_max_ivar (sigma2 x)) (getFVs M))).
   { apply map_ext_in.
     intros x H0.
     rewrite (H x (proj1 (getFVs_isFreeIn M x) H0))...
@@ -439,16 +450,84 @@ Proof with firstorder.
     rewrite (IHM1 sigma1 sigma2 H1), (IHM2 sigma1 sigma2 H2)...
   - intros sigma1 sigma2 H.
     simpl.
-    assert (H0 : equiv_substitution_wrt ((y, tmVar (chi sigma1 (tmLam y M))) :: sigma1) ((y, tmVar (chi sigma2 (tmLam y M))) :: sigma2) M).
+    assert (H0 : equiv_substitution_wrt (cons_substitution y (tmVar (chi sigma1 (tmLam y M))) sigma1) (cons_substitution y (tmVar (chi sigma2 (tmLam y M))) sigma2) M).
     { intros x H0.
-      simpl.
+      unfold cons_substitution.
       destruct (ivar_eq_dec y x).
       - rewrite (chi_equiv_substitution_wrt (tmLam y M) sigma1 sigma2 H)...
       - apply H.
         simpl.
         rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
     }
-    rewrite (IHM ((y, tmVar (chi sigma1 (tmLam y M))) :: sigma1) ((y, tmVar (chi sigma2 (tmLam y M))) :: sigma2) H0)...
+    assert (H1 : chi sigma1 (tmLam y M) = chi sigma2 (tmLam y M)) by now apply chi_equiv_substitution_wrt.
+    rewrite (IHM (cons_substitution y (tmVar (chi sigma1 (tmLam y M))) sigma1) (cons_substitution y (tmVar (chi sigma2 (tmLam y M))) sigma2) H0), H1...
+Qed.
+
+Lemma trivial_substitution :
+  forall x : ivar,
+  forall M : tm,
+  run_substitution_on_tm (cons_substitution x (tmVar x) nil_subtitution) M = run_substitution_on_tm nil_subtitution M.
+Proof with firstorder.
+  unfold cons_substitution.
+  intros x M.
+  apply main_property_of_equiv_substitution_wrt.
+  intros y H.
+  destruct (ivar_eq_dec x y)...
+Qed.
+
+Definition compose_substitution : substitution -> substitution -> substitution :=
+  fun sigma1 : substitution => fun sigma2 : substitution => fun x : ivar => run_substitution_on_tm sigma1 (sigma2 x)
+.
+
+Lemma distri_compose_cons :
+  forall M : tm,
+  forall N : tm,
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  forall x : ivar,
+  forall y : ivar,
+  isFreshIn_substitution y sigma1 (tmLam x M) = true ->
+  forall z : ivar,
+  isFreeIn z M = true ->
+  cons_substitution x N (compose_substitution sigma2 sigma1) z = compose_substitution (cons_substitution y N sigma2) (cons_substitution x (tmVar y) sigma1) z.
+Proof with firstorder.
+  intros M N sigma1 sigma2 x y H z H0.
+  unfold cons_substitution, compose_substitution.
+  destruct (ivar_eq_dec x z).
+  - simpl.
+    destruct (ivar_eq_dec y y)...
+  - unfold isFreshIn_substitution in H.
+    rewrite forallb_true_iff in H.
+    assert (H1 : isFreeIn y (sigma1 z) = false).
+    { apply negb_true_iff, H, getFVs_isFreeIn.
+      simpl.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
+    }
+    assert (claim1 : forall u : ivar, isFreeIn u (sigma1 z) = true -> cons_substitution y N sigma2 u = sigma2 u).
+    { unfold cons_substitution.
+      intros u H2.
+      destruct (ivar_eq_dec y u).
+      - subst.
+        rewrite H1 in H2.
+        discriminate.
+      - reflexivity.
+    }
+    apply main_property_of_equiv_substitution_wrt...
+Qed.
+
+Corollary distri_compose_cons_for_chi :
+  forall M : tm,
+  forall N : tm,
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  forall x : ivar,
+  let y : ivar := chi sigma1 (tmLam x M) in
+  forall z : ivar,
+  isFreeIn z M = true ->
+  cons_substitution x N (compose_substitution sigma2 sigma1) z = compose_substitution (cons_substitution y N sigma2) (cons_substitution x (tmVar y) sigma1) z.
+Proof with eauto using main_property_of_chi.
+  intros M N sigma1 sigma2 x y z H0.
+  apply (distri_compose_cons M N sigma1 sigma2 x y)...
 Qed.
 
 End UntypedLamdbdaCalculus.
