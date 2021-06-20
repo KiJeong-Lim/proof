@@ -335,7 +335,7 @@ Definition chi : substitution -> tm -> ivar :=
   fun sigma : substitution => fun M : tm => S (fold_right_max_0 (map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma x)) (getFVs M)))
 .
 
-Lemma property1_of_chi :
+Theorem main_property_of_chi :
   forall M : tm,
   forall sigma : substitution,
   isFreshIn_substitution (chi sigma M) sigma M = true.
@@ -361,12 +361,12 @@ Proof with firstorder.
   apply negb_true_iff, claim1, getFVs_isFreeIn...
 Qed.
 
-Lemma property2_of_chi : 
+Lemma chi_nil : 
   forall M : tm,
   isFreeIn (chi [] M) M = false.
 Proof with eauto.
   intros M.
-  assert (H : isFreshIn_substitution (chi [] M) [] M = true) by apply property1_of_chi.
+  assert (H : isFreshIn_substitution (chi [] M) [] M = true) by apply main_property_of_chi.
   unfold isFreshIn_substitution in H.
   rewrite forallb_true_iff in H.
   simpl in H.
@@ -388,5 +388,67 @@ Fixpoint run_substitution_on_tm (sigma : substitution) (M : tm) {struct M} : tm 
     run_substitution_on_tm sigma' Q
   end
 .
+
+Definition equiv_substitution_wrt : substitution -> substitution -> tm -> Prop :=
+  fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> run_substituion_on_ivar sigma1 x = run_substituion_on_ivar sigma2 x
+.
+
+Lemma chi_equiv_substitution_wrt :
+  forall M : tm,
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  equiv_substitution_wrt sigma1 sigma2 M ->
+  chi sigma1 M = chi sigma2 M.
+Proof with reflexivity.
+  unfold chi.
+  intros M sigma1 sigma2 H.
+  assert ((map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma1 x)) (getFVs M)) = (map (fun x : ivar => get_max_ivar (run_substituion_on_ivar sigma2 x)) (getFVs M))).
+  { apply map_ext_in.
+    intros x H0.
+    rewrite (H x (proj1 (getFVs_isFreeIn M x) H0))...
+  }
+  rewrite H0...
+Qed.
+
+Theorem main_property_of_equiv_substitution_wrt :
+  forall M : tm,
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  equiv_substitution_wrt sigma1 sigma2 M ->
+  run_substitution_on_tm sigma1 M = run_substitution_on_tm sigma2 M.
+Proof with firstorder.
+  induction M.
+  - intros sigma1 sigma2 H.
+    apply H.
+    simpl.
+    rewrite Nat.eqb_eq...
+  - intros sigma1 sigma2 H.
+    assert (H1 : equiv_substitution_wrt sigma1 sigma2 M1).
+    { intros x H0.
+      apply H.
+      simpl.
+      rewrite orb_true_iff...
+    }
+    assert (H2 : equiv_substitution_wrt sigma1 sigma2 M2).
+    { intros x H0.
+      apply H.
+      simpl.
+      rewrite orb_true_iff...
+    }
+    simpl.
+    rewrite (IHM1 sigma1 sigma2 H1), (IHM2 sigma1 sigma2 H2)...
+  - intros sigma1 sigma2 H.
+    simpl.
+    assert (H0 : equiv_substitution_wrt ((y, tmVar (chi sigma1 (tmLam y M))) :: sigma1) ((y, tmVar (chi sigma2 (tmLam y M))) :: sigma2) M).
+    { intros x H0.
+      simpl.
+      destruct (ivar_eq_dec y x).
+      - rewrite (chi_equiv_substitution_wrt (tmLam y M) sigma1 sigma2 H)...
+      - apply H.
+        simpl.
+        rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
+    }
+    rewrite (IHM ((y, tmVar (chi sigma1 (tmLam y M))) :: sigma1) ((y, tmVar (chi sigma2 (tmLam y M))) :: sigma2) H0)...
+Qed.
 
 End UntypedLamdbdaCalculus.
