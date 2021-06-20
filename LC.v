@@ -235,6 +235,123 @@ Proof with (lia || eauto).
   rewrite IHns1...
 Qed.
 
+Lemma fold_right_max_0_property1 (Phi : nat -> Prop) (Phi_dec : forall i : nat, {Phi i} + {~ Phi i}) :
+  forall ns : list nat,
+  (forall i : nat, Phi i -> In i ns) ->
+  forall n : nat,
+  Phi n ->
+  fold_right max 0 ns >= n.
+Proof with (lia || eauto).
+  induction ns; simpl.
+  - intros H n H0.
+    contradiction (H n).
+  - intros H n H0.
+    destruct (Compare_dec.le_lt_dec n a)...
+    cut (fold_right max 0 ns >= n)...
+    destruct (Phi_dec n).
+    + destruct (H n p)...
+      enough (forall ks : list nat, forall k : nat, In k ks -> fold_right max 0 ks >= k) by firstorder.
+      induction ks; simpl...
+      { intros k H2.
+        destruct H2...
+        enough (fold_right Init.Nat.max 0 ks >= k)...
+      }
+      + apply IHns...
+        intros.
+        destruct (H i H1)...
+        subst.
+        contradiction.
+Qed.
+
+Lemma fold_right_max_0_property2 :
+  forall ns : list nat,
+  forall n : nat,
+  fold_right max 0 ns > n <-> (exists i : nat, In i ns /\ i > n).
+Proof with (lia || eauto).
+  induction ns; simpl.
+  - split...
+    firstorder.
+  - intros n.
+    destruct (Compare_dec.le_lt_dec a (fold_right Init.Nat.max 0 ns))...
+    * split.
+      + intros H.
+        assert (H0 : fold_right Init.Nat.max 0 ns > n) by lia.
+        destruct (proj1 (IHns n) H0) as [i].
+        firstorder.
+      + intros H.
+        destruct H as [i].
+        destruct H.
+        destruct H.
+        { subst.
+          lia.
+        }
+        { enough (fold_right max 0 ns > n) by lia.
+          apply IHns...
+        }
+    * split.
+      + intros H.
+        exists a...
+      + intros H.
+        destruct H as [i].
+        destruct H.
+        destruct H.
+        { subst.
+          lia.
+        }
+        { enough (fold_right Init.Nat.max 0 ns > n) by lia.
+          apply IHns...
+        }
+Qed.
+
+Lemma fold_right_max_0_property3 :
+  forall ns1 : list nat,
+  forall ns2 : list nat,
+  fold_right max 0 (ns1 ++ ns2) = max (fold_right max 0 ns1) (fold_right max 0 ns2).
+Proof.
+  apply fold_right_max_0_app.
+Qed.
+
+Lemma fold_right_max_0_property4 :
+  forall ns : list nat,
+  forall n : nat,
+  In n ns ->
+  fold_right max 0 ns >= n.
+Proof with (lia || eauto).
+  induction ns; simpl...
+  intros n H.
+  destruct H...
+  enough (fold_right max 0 ns >= n) by lia...
+Qed.
+
+Lemma fold_right_max_0_property5 :
+  forall ns1 : list nat,
+  forall ns2 : list nat,
+  (forall n : nat, In n ns1 -> In n ns2) ->
+  fold_right max 0 ns1 <= fold_right max 0 ns2.
+Proof with (lia || eauto).
+  induction ns1; simpl...
+  intros ns2 H.
+  destruct (Compare_dec.le_lt_dec a (fold_right max 0 ns1)).
+  - enough (fold_right max 0 ns1 <= fold_right max 0 ns2) by lia...
+  - enough (a <= fold_right max 0 ns2) by lia.
+    apply fold_right_max_0_property4...
+Qed.
+
+Lemma fold_right_max_0_ext :
+  forall ns1 : list nat,
+  forall ns2 : list nat,
+  (forall n : nat, In n ns1 <-> In n ns2) ->
+  fold_right max 0 ns1 = fold_right max 0 ns2.
+Proof with eauto.
+  intros.
+  enough (fold_right max 0 ns1 <= fold_right max 0 ns2 /\ fold_right max 0 ns2 <= fold_right max 0 ns1) by lia.
+  split.
+  - apply fold_right_max_0_property5.
+    apply H.
+  - apply fold_right_max_0_property5.
+    apply H.
+Qed.
+
 End AuxiliaryPalatina.
 
 Module UntypedLamdbdaCalculus.
@@ -529,5 +646,33 @@ Proof with eauto using main_property_of_chi.
   intros M N sigma1 sigma2 x y z H0.
   apply (distri_compose_cons M N sigma1 sigma2 x y)...
 Qed.
+
+Theorem main_property_of_compose_substitution :
+  forall M : tm,
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  run_substitution_on_tm sigma2 (run_substitution_on_tm sigma1 M) = run_substitution_on_tm (compose_substitution sigma2 sigma1) M.
+Proof with try tauto.
+  induction M; simpl.
+  - intros sigma1 sigma2...
+  - intros sigma1 sigma2.
+    rewrite IHM1, IHM2...
+  - intros sigma1 sigma2.
+    set (x := chi sigma1 (tmLam y M)).
+    set (x' := chi sigma2 (tmLam x (run_substitution_on_tm (cons_substitution y (tmVar x) sigma1) M))).
+    set (z := chi (compose_substitution sigma2 sigma1) (tmLam y M)).
+    assert (H := IHM (cons_substitution y (tmVar x) sigma1) (cons_substitution x (tmVar x') sigma2)).
+    rewrite H.
+    assert (H0 : run_substitution_on_tm (compose_substitution (cons_substitution x (tmVar x') sigma2) (cons_substitution y (tmVar x) sigma1)) M = run_substitution_on_tm (cons_substitution y (tmVar x') (compose_substitution sigma2 sigma1)) M).
+    { apply main_property_of_equiv_substitution_wrt.
+      intros u H0.
+      assert (H1 := distri_compose_cons_for_chi M (tmVar x') sigma1 sigma2 y).
+      simpl in H1.
+      rewrite (H1 u)...
+    }
+    rewrite H0.
+    enough (x' = z) by congruence.
+    admit.
+Admitted.
 
 End UntypedLamdbdaCalculus.
