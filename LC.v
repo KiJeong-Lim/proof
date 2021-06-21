@@ -813,6 +813,15 @@ Proof with try tauto.
       }
 Qed.
 
+Parameter chi_ext :
+  forall sigma : substitution,
+  forall sigma' : substitution,
+  forall M : tm,
+  forall M' : tm,
+  (forall z : ivar, isFreeIn_wrt z sigma M <-> isFreeIn_wrt z sigma' M') ->
+  chi sigma M = chi sigma' M'
+.
+
 Theorem main_property_of_compose_substitution :
   forall M : tm,
   forall sigma1 : substitution,
@@ -824,21 +833,98 @@ Proof with try tauto.
   - intros sigma1 sigma2.
     rewrite IHM1, IHM2...
   - intros sigma1 sigma2.
-    set (x := chi sigma1 (tmLam y M)).
-    set (x' := chi sigma2 (tmLam x (run_substitution_on_tm (cons_substitution y (tmVar x) sigma1) M))).
-    set (z := chi (compose_substitution sigma2 sigma1) (tmLam y M)).
-    assert (H := IHM (cons_substitution y (tmVar x) sigma1) (cons_substitution x (tmVar x') sigma2)).
-    rewrite H.
-    assert (H0 : run_substitution_on_tm (compose_substitution (cons_substitution x (tmVar x') sigma2) (cons_substitution y (tmVar x) sigma1)) M = run_substitution_on_tm (cons_substitution y (tmVar x') (compose_substitution sigma2 sigma1)) M).
-    { apply main_property_of_equiv_substitution_wrt.
-      intros u H0.
-      assert (H1 := distri_compose_cons_for_chi M (tmVar x') sigma1 sigma2 y).
-      simpl in H1.
-      rewrite (H1 u)...
+    enough (lemma : chi sigma2 (run_substitution_on_tm sigma1 (tmLam y M)) = chi (compose_substitution sigma2 sigma1) (tmLam y M)).
+    { set (x := chi sigma1 (tmLam y M)).
+      set (x' := chi sigma2 (tmLam x (run_substitution_on_tm (cons_substitution y (tmVar x) sigma1) M))).
+      set (z := chi (compose_substitution sigma2 sigma1) (tmLam y M)).
+      assert (H := IHM (cons_substitution y (tmVar x) sigma1) (cons_substitution x (tmVar x') sigma2)).
+      rewrite H.
+      assert (H0 : run_substitution_on_tm (compose_substitution (cons_substitution x (tmVar x') sigma2) (cons_substitution y (tmVar x) sigma1)) M = run_substitution_on_tm (cons_substitution y (tmVar x') (compose_substitution sigma2 sigma1)) M).
+      { apply main_property_of_equiv_substitution_wrt.
+        intros u H0.
+        assert (H1 := distri_compose_cons_for_chi M (tmVar x') sigma1 sigma2 y).
+        simpl in H1.
+        rewrite (H1 u)...
+      }
+      rewrite H0.
+      enough (x' = z) by congruence.
+      unfold x', z.
+      apply lemma.
     }
-    rewrite H0.
-    enough (x' = z) by congruence.
-    admit.
-Admitted.
+    rename y into x.
+    set (y := chi sigma1 (tmLam x M)).
+    assert (claim1 :
+      forall y' : ivar,
+      (exists x' : ivar, isFreeIn x' (tmLam y (run_substitution_on_tm (cons_substitution x (tmVar y) sigma1) M)) = true /\ isFreeIn y' (sigma2 x') = true) ->
+      (exists u : ivar, isFreeIn u (tmLam x M) = true /\ isFreeIn y' (compose_substitution sigma2 sigma1 u) = true)
+    ).
+    { intros y' H.
+      destruct H as [x'].
+      destruct H.
+      simpl in H.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq in H.
+      destruct H.
+      assert (H2 := proj1 (isFreeIn_wrt_iff M x' (cons_substitution x (tmVar y) sigma1)) H).
+      unfold isFreeIn_wrt in H2.
+      destruct H2 as [u].
+      destruct H2.
+      unfold cons_substitution in H3.
+      destruct (ivar_eq_dec x u).
+      - unfold isFreeIn in H3.
+        rewrite Nat.eqb_eq in H3.
+        now firstorder.
+      - exists u.
+        split.
+        + simpl.
+          rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
+          now firstorder.
+        + apply (proj2 (isFreeIn_wrt_iff (sigma1 u) y' sigma2)).
+          exists x'...
+    }
+    assert ( claim2 :
+      forall y' : ivar,
+      (exists x' : ivar, isFreeIn x' (tmLam x M) = true /\ isFreeIn y' (compose_substitution sigma2 sigma1 x') = true) ->
+      (exists u : ivar, isFreeIn u (tmLam y (run_substitution_on_tm (cons_substitution x (tmVar y) sigma1) M)) = true /\ isFreeIn y' (sigma2 u) = true)
+    ).
+    { intros y' H.
+      destruct H as [x'].
+      destruct H.
+      simpl in H.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq in H.
+      destruct H.
+      assert (H2 := proj1 (isFreeIn_wrt_iff (sigma1 x') y' sigma2) H0).
+      destruct H2 as [u].
+      destruct H2.
+      assert (H4 : isFreeIn u (run_substitution_on_tm (cons_substitution x (tmVar y) sigma1) M) = true).
+      { apply isFreeIn_wrt_iff.
+        exists x'.
+        split...
+        unfold cons_substitution.
+        destruct (ivar_eq_dec x x'); firstorder.
+      }
+      exists u.
+      split...
+      simpl.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
+      split...
+      intros H5.
+      subst.
+      assert (H6 : isFreeIn y (sigma1 x') = false).
+      { assert (H6 := main_property_of_chi (tmLam x M) sigma1).
+        unfold isFreshIn_substitution in H6.
+        rewrite forallb_true_iff in H6.
+        apply negb_true_iff.
+        apply H6.
+        rewrite getFVs_isFreeIn.
+        simpl.
+        rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
+        firstorder.
+      }
+      rewrite H2 in H6.
+      discriminate.
+    }
+    apply chi_ext.
+    firstorder.
+Qed.
 
 End UntypedLamdbdaCalculus.
