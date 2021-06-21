@@ -180,7 +180,7 @@ Inductive FinSet : nat -> Set :=
 | FS : forall n : nat, FinSet n -> FinSet (S n)
 .
 
-Definition FinSet_0 {P : FinSet 0 -> Type} : forall i : FinSet 0, P i :=
+Definition FinSet_case0 {P : FinSet 0 -> Type} : forall i : FinSet 0, P i :=
   fun i : FinSet 0 =>
   match i as i0 in FinSet Sn return Sn = 0 -> P i with
   | FZ n => S_0 n
@@ -188,14 +188,28 @@ Definition FinSet_0 {P : FinSet 0 -> Type} : forall i : FinSet 0, P i :=
   end eq_refl
 .
 
-Definition FinSet_S {n : nat} {P : FinSet (S n) -> Type} : P (FZ n) -> (forall i' : FinSet n, P (FS n i')) -> forall i : FinSet (S n), P i :=
+Definition FinSet_caseS {n : nat} {P : FinSet (S n) -> Type} : P (FZ n) -> (forall i' : FinSet n, P (FS n i')) -> (forall i : FinSet (S n), P i) :=
   fun PZ : P (FZ n) =>
   fun PS : forall i' : FinSet n, P (FS n i') =>
   fun i : FinSet (S n) =>
-  match i as i0 in FinSet n0 return (match n0 as n1 return FinSet n1 -> Type with 0 => FinSet_0 | S n0' => fun i1 : FinSet (S n0') => forall P : FinSet (S n0') -> Type, P (FZ n0') -> (forall i' : FinSet n0', P (FS n0' i')) -> P i1 end) i0 with
+  match i as i0 in FinSet Sn0 return (match Sn0 as Sn return FinSet Sn -> Type with 0 => @FinSet_case0 (fun i1 : FinSet 0 => Set) | S n0 => fun i1 : FinSet (S n0) => forall P0 : FinSet (S n0) -> Type, P0 (FZ n0) -> (forall i' : FinSet n0, P0 (FS n0 i')) -> P0 i1 end) i0 with
   | FZ n0 => fun P0 : FinSet (S n0) -> Type => fun PZ0 : P0 (FZ n0) => fun PS0 : forall i' : FinSet n0, P0 (FS n0 i') => PZ0
   | FS n0 i' => fun P0 : FinSet (S n0) -> Type => fun PZ0 : P0 (FZ n0) => fun PS0 : forall i' : FinSet n0, P0 (FS n0 i') => PS0 i'
   end P PZ PS
+.
+
+Definition FinSet_rectS {P : forall n : nat, FinSet n -> Type} : (forall n : nat, P (S n) (FZ n)) -> (forall n : nat, forall i' : FinSet n, P n i' -> P (S n) (FS n i')) -> (forall n : nat, forall i : FinSet (S n), P (S n) i) :=
+  fun PZ : forall n : nat, P (S n) (FZ n) =>
+  fun PS : forall n : nat, forall i' : FinSet n, P n i' -> P (S n) (FS n i') =>
+  fix FinSet_rectS_fix (n : nat) (i : FinSet (S n)) {struct i} : P (S n) i :=
+  match i as i0 in FinSet Sn0 return P Sn0 i0 with
+  | FZ n0 => PZ n0
+  | FS n0 i' =>
+    match n0 as n1 return forall i0' : FinSet n1, P (S n1) (FS n1 i0') with
+    | 0 => fun i0' : FinSet 0 => @FinSet_case0 (fun i1 : FinSet 0 => P 1 (FS 0 i1)) i0'
+    | S n0' => fun i0' : FinSet (S n0') => PS (S n0') i0' (FinSet_rectS_fix n0' i0')
+    end i'
+  end
 .
 
 Lemma forallb_true_iff {A : Type} {p : A -> bool} (xs : list A) :
