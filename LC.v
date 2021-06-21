@@ -973,7 +973,7 @@ Proof with try tauto.
     firstorder.
 Qed.
 
-Lemma compose_one :
+Lemma main_property_of_cons_substitution :
   forall x : ivar,
   forall z : ivar,
   forall M : tm,
