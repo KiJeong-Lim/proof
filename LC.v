@@ -1,7 +1,7 @@
-From Coq.Bool Require Export Bool.
-From Coq.micromega Require Export Lia.
-From Coq.Lists Require Export List.
-From Coq.Arith Require Export PeanoNat.
+Require Import Coq.Bool.Bool.
+Require Import Coq.micromega.Lia.
+Require Import Coq.Lists.List.
+Require Import Coq.Arith.PeanoNat.
 
 Module AuxiliaryPalatina.
 
@@ -125,7 +125,8 @@ Proof with (lia || eauto).
     + intros x H.
       assert (H0 : (S x, y) = cantor_pairing (sum_from_0_to (S z) + y)). { apply (IHy (S x))... }
       assert (H1 : z + sum_from_0_to z + S y = sum_from_0_to (S z) + y). { simpl... }
-      simpl. rewrite H1, <- H0...
+      simpl.
+      rewrite H1, <- H0...
 Qed.
 
 Lemma cantor_pairing_is_injective :
@@ -235,7 +236,7 @@ Proof with (lia || eauto).
   rewrite IHns1...
 Qed.
 
-Lemma fold_right_max_0_property1 (Phi : nat -> Prop) (Phi_dec : forall i : nat, {Phi i} + {~ Phi i}) :
+Lemma property1_of_fold_right_max_0 (Phi : nat -> Prop) (Phi_dec : forall i : nat, {Phi i} + {~ Phi i}) :
   forall ns : list nat,
   (forall i : nat, Phi i -> In i ns) ->
   forall n : nat,
@@ -256,14 +257,14 @@ Proof with (lia || eauto).
         destruct H2...
         enough (fold_right Init.Nat.max 0 ks >= k)...
       }
-      + apply IHns...
-        intros.
-        destruct (H i H1)...
-        subst.
-        contradiction.
+    + apply IHns...
+      intros.
+      destruct (H i H1)...
+      subst.
+      contradiction.
 Qed.
 
-Lemma fold_right_max_0_property2 :
+Lemma property2_of_fold_right_max_0 :
   forall ns : list nat,
   forall n : nat,
   fold_right max 0 ns > n <-> (exists i : nat, In i ns /\ i > n).
@@ -273,37 +274,35 @@ Proof with (lia || eauto).
     firstorder.
   - intros n.
     destruct (Compare_dec.le_lt_dec a (fold_right Init.Nat.max 0 ns))...
-    * split.
-      + intros H.
+    { split.
+      - intros H.
         assert (H0 : fold_right Init.Nat.max 0 ns > n) by lia.
         destruct (proj1 (IHns n) H0) as [i].
         firstorder.
-      + intros H.
+      - intros H.
         destruct H as [i].
         destruct H.
         destruct H.
-        { subst.
+        + subst.
           lia.
-        }
-        { enough (fold_right max 0 ns > n) by lia.
+        + enough (fold_right max 0 ns > n) by lia.
           apply IHns...
-        }
-    * split.
-      + intros H.
+    }
+    { split.
+      - intros H.
         exists a...
-      + intros H.
+      - intros H.
         destruct H as [i].
         destruct H.
         destruct H.
-        { subst.
+        + subst.
           lia.
-        }
-        { enough (fold_right Init.Nat.max 0 ns > n) by lia.
+        + enough (fold_right Init.Nat.max 0 ns > n) by lia.
           apply IHns...
-        }
+    }
 Qed.
 
-Lemma fold_right_max_0_property3 :
+Lemma property3_of_fold_right_max_0 :
   forall ns1 : list nat,
   forall ns2 : list nat,
   fold_right max 0 (ns1 ++ ns2) = max (fold_right max 0 ns1) (fold_right max 0 ns2).
@@ -311,7 +310,7 @@ Proof.
   apply fold_right_max_0_app.
 Qed.
 
-Lemma fold_right_max_0_property4 :
+Lemma property4_of_fold_right_max_0 :
   forall ns : list nat,
   forall n : nat,
   In n ns ->
@@ -323,7 +322,7 @@ Proof with (lia || eauto).
   enough (fold_right max 0 ns >= n) by lia...
 Qed.
 
-Lemma fold_right_max_0_property5 :
+Lemma property5_of_fold_right_max_0 :
   forall ns1 : list nat,
   forall ns2 : list nat,
   (forall n : nat, In n ns1 -> In n ns2) ->
@@ -334,7 +333,7 @@ Proof with (lia || eauto).
   destruct (Compare_dec.le_lt_dec a (fold_right max 0 ns1)).
   - enough (fold_right max 0 ns1 <= fold_right max 0 ns2) by lia...
   - enough (a <= fold_right max 0 ns2) by lia.
-    apply fold_right_max_0_property4...
+    apply property4_of_fold_right_max_0...
 Qed.
 
 Lemma fold_right_max_0_ext :
@@ -342,14 +341,10 @@ Lemma fold_right_max_0_ext :
   forall ns2 : list nat,
   (forall n : nat, In n ns1 <-> In n ns2) ->
   fold_right max 0 ns1 = fold_right max 0 ns2.
-Proof with eauto.
+Proof with firstorder.
   intros.
   enough (fold_right max 0 ns1 <= fold_right max 0 ns2 /\ fold_right max 0 ns2 <= fold_right max 0 ns1) by lia.
-  split.
-  - apply fold_right_max_0_property5.
-    apply H.
-  - apply fold_right_max_0_property5.
-    apply H.
+  split; apply property5_of_fold_right_max_0...
 Qed.
 
 End AuxiliaryPalatina.
@@ -359,6 +354,8 @@ Module UntypedLamdbdaCalculus.
 Import ListNotations.
 
 Import AuxiliaryPalatina.
+
+Section Syntax.
 
 Definition ivar : Set :=
   nat
@@ -423,13 +420,7 @@ Definition nil_subtitution : substitution :=
 .
 
 Definition cons_substitution : ivar -> tm -> substitution -> substitution :=
-  fun x : ivar =>
-  fun M : tm =>
-  fun sigma : substitution =>
-  fun y : ivar =>
-  if ivar_eq_dec x y
-  then M
-  else sigma y
+  fun x : ivar => fun M : tm => fun sigma : substitution => fun y : ivar => if ivar_eq_dec x y then M else sigma y
 .
 
 Fixpoint mk_substitution (sigma : list (ivar * tm)) {struct sigma} : substitution :=
@@ -447,12 +438,11 @@ Lemma get_max_ivar_lt (M : tm) :
   forall x : ivar,
   get_max_ivar M < x ->
   isFreeIn x M = false.
-Proof.
+Proof with lia.
   intros x.
   enough (get_max_ivar M < x -> ~ In x (getFVs M)) by now rewrite getFVs_isFreeIn, not_true_iff_false in H.
   assert (H1 : In x (getFVs M) -> fold_right_max_0 (getFVs M) >= x) by apply fold_right_max_0_in.
-  enough (fold_right_max_0 (getFVs M) >= x -> fold_right_max_0 (getFVs M) < x -> False) by now eauto.
-  lia.
+  enough (fold_right_max_0 (getFVs M) >= x -> fold_right_max_0 (getFVs M) < x -> False) by now eauto...
 Qed.
 
 Definition isFreshIn_substitution : ivar -> substitution -> tm -> bool :=
@@ -777,11 +767,7 @@ Proof with try tauto.
       * exists w.
         rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
         unfold cons_substitution in H2.
-        destruct (ivar_eq_dec y w).
-        { contradiction.
-        }
-        { firstorder.
-        }
+        destruct (ivar_eq_dec y w); [contradiction | firstorder].
     + rename y into z.
       intros H.
       destruct H as [y].
@@ -911,7 +897,6 @@ Proof with try tauto.
       rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq in H.
       destruct H.
       assert (H2 := proj1 (isFreeIn_wrt_iff M x' (cons_substitution x (tmVar y) sigma1)) H).
-      unfold isFreeIn_wrt in H2.
       destruct H2 as [u].
       destruct H2.
       unfold cons_substitution in H3.
@@ -973,7 +958,7 @@ Proof with try tauto.
     firstorder.
 Qed.
 
-Lemma main_property_of_cons_substitution :
+Theorem main_property_of_cons_substitution :
   forall x : ivar,
   forall z : ivar,
   forall M : tm,
@@ -997,5 +982,7 @@ Proof with firstorder.
     rewrite negb_false_iff, Nat.eqb_eq in H.
     contradiction n...
 Qed.
+
+End Syntax.
 
 End UntypedLamdbdaCalculus.
