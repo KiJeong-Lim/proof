@@ -973,4 +973,29 @@ Proof with try tauto.
     firstorder.
 Qed.
 
+Lemma compose_one :
+  forall x : ivar,
+  forall z : ivar,
+  forall M : tm,
+  forall N : tm,
+  forall sigma : substitution,
+  isFreeIn z (tmLam x M) = false ->
+  run_substitution_on_tm (cons_substitution x N sigma) M = run_substitution_on_tm (cons_substitution z N sigma) (run_substitution_on_tm (cons_substitution x (tmVar z) nil_subtitution) M).
+Proof with firstorder.
+  intros.
+  rewrite (main_property_of_compose_substitution M (cons_substitution x (tmVar z) nil_subtitution) (cons_substitution z N sigma)).
+  apply main_property_of_equiv_substitution_wrt.
+  intros w H0.
+  unfold cons_substitution, nil_subtitution, compose_substitution.
+  destruct (ivar_eq_dec x w); simpl.
+  - destruct (ivar_eq_dec z z)...
+  - destruct (ivar_eq_dec z w)...
+    simpl in H.
+    subst.
+    rewrite H0 in H.
+    simpl in H.
+    rewrite negb_false_iff, Nat.eqb_eq in H.
+    contradiction n...
+Qed.
+
 End UntypedLamdbdaCalculus.
