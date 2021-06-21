@@ -813,14 +813,60 @@ Proof with try tauto.
       }
 Qed.
 
-Parameter chi_ext :
+Lemma chi_ext :
   forall sigma : substitution,
   forall sigma' : substitution,
   forall M : tm,
   forall M' : tm,
   (forall z : ivar, isFreeIn_wrt z sigma M <-> isFreeIn_wrt z sigma' M') ->
-  chi sigma M = chi sigma' M'
-.
+  chi sigma M = chi sigma' M'.
+Proof with firstorder.
+  unfold chi, isFreeIn_wrt.
+  intros.
+  enough ((fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma x)) (getFVs M))) = (fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma' x)) (getFVs M')))) by lia.
+  assert ( claim1 :
+    forall z : ivar,
+    In z (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) <-> In z (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))
+  ).
+  { intros z.
+    repeat (rewrite in_flat_map).
+    split.
+    - intros.
+      destruct H0 as [x].
+      rewrite getFVs_isFreeIn in H0.
+      assert (H1 : exists y : ivar, isFreeIn y M' = true /\ isFreeIn z (sigma' y) = true).
+      { apply H.
+        exists x...
+        rewrite <- getFVs_isFreeIn...
+      }
+      destruct H1 as [y].
+      exists y.
+      repeat (rewrite getFVs_isFreeIn)...
+    - intros.
+      destruct H0 as [x].
+      rewrite getFVs_isFreeIn in H0.
+      assert (H1 : exists y : ivar, isFreeIn y M = true /\ isFreeIn z (sigma y) = true).
+      { apply H.
+        exists x...
+        rewrite <- getFVs_isFreeIn...
+      }
+      destruct H1 as [y].
+      exists y.
+      repeat (rewrite getFVs_isFreeIn)...
+  }
+  assert ( claim2 : fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) = fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))) by now apply fold_right_max_0_ext.
+  unfold get_max_ivar.
+  enough ( claim3 :
+    forall xs : list ivar,
+    forall f : ivar -> list ivar,
+    fold_right_max_0 (map (fun x : ivar => fold_right_max_0 (f x)) xs) = fold_right_max_0 (flat_map f xs)
+  ).
+  { repeat (rewrite claim3)...
+  }
+  induction xs; simpl; intros f.
+  - lia.
+  - rewrite fold_right_max_0_app...
+Qed.
 
 Theorem main_property_of_compose_substitution :
   forall M : tm,
