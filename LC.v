@@ -16,7 +16,7 @@ Lemma div_mod_uniqueness :
   r < b ->
   a / b = q /\ a mod b = r.
 Proof with lia.
-  assert (forall x : nat, forall y : nat, x > y <-> (exists z : nat, x = S (y + z))).
+  assert (H : forall x : nat, forall y : nat, x > y <-> (exists z : nat, x = S (y + z))).
   { intros x y; constructor.
     - intros H; induction H.
       + exists 0...
@@ -24,21 +24,25 @@ Proof with lia.
     - intros H; destruct H as [z H]...
   }
   intros a b q r H1 H2.
-  assert (H0 : a = b * (a / b) + (a mod b)). { apply (Nat.div_mod a b)... }
-  assert (H3 : 0 <= a mod b < b). { apply (Nat.mod_bound_pos a b)... }
+  assert (H0 : a = b * (a / b) + (a mod b)) by now apply (Nat.div_mod a b); lia.
+  assert (H3 : 0 <= a mod b < b) by now apply (Nat.mod_bound_pos a b); lia.
   assert (H4 : ~ q > a / b).
   { intros H4.
-    assert (H5 : exists z : nat, q = S (a / b + z)). { apply (H q (a / b))... }
-    destruct H5 as [z H5].
-    cut (b * q + r >= b * S (a / b) + r)...
+    enough (H5 : exists z : nat, q = S (a / b + z)).
+    { destruct H5 as [z H5].
+      enough (b * q + r >= b * S (a / b) + r)...
+    }
+    apply (H q (a / b))...
   }
   assert (H5 : ~ q < a / b).
   { intros H5.
-    assert (H6 : exists z : nat, a / b = S (q + z)). { apply (H (a / b) q)... }
-    destruct H6 as [z H6].
-    cut (b * q + a mod b >= b * S (a / b) + a mod b)...
+    enough (H6 : exists z : nat, a / b = S (q + z)).
+    { destruct H6 as [z H6].
+      enough (b * q + a mod b >= b * S (a / b) + a mod b)...
+    }
+    apply (H (a / b) q)...
   }
-  cut (q = a / b)...
+  enough (q = a / b)...
 Qed.
 
 Fixpoint first_nat (p : nat -> bool) (n : nat) {struct n} : nat :=
@@ -54,7 +58,7 @@ Theorem well_ordering_principle :
   p n = true ->
   let m := first_nat p n in
   p m = true /\ (forall i : nat, p i = true -> i >= m).
-Proof with eauto. (* improved by Clare Jang *)
+Proof with eauto. (* The proof has been improved by JunYoung Clare Jang *)
   intros p n H3 m.
   assert (forall x : nat, p x = true -> p (first_nat p x) = true).
   { induction x...
@@ -117,16 +121,21 @@ Proof with (lia || eauto).
     subst...
   - induction y.
     + intros x H.
-      assert (H0 : x = S z)... subst. simpl.
+      assert (H0 : x = S z)...
+      subst.
+      simpl.
       destruct (cantor_pairing (z + sum_from_0_to z + 0)) eqn: H0.
       assert (H1 : (0, z) = cantor_pairing (sum_from_0_to z + z))...
-      rewrite Nat.add_0_r in H0. rewrite Nat.add_comm in H0. rewrite H0 in H1.
+      rewrite Nat.add_0_r, Nat.add_comm in H0.
+      rewrite H0 in H1.
       inversion H1; subst...
     + intros x H.
-      assert (H0 : (S x, y) = cantor_pairing (sum_from_0_to (S z) + y)). { apply (IHy (S x))... }
-      assert (H1 : z + sum_from_0_to z + S y = sum_from_0_to (S z) + y). { simpl... }
-      simpl.
-      rewrite H1, <- H0...
+      enough (H0 : (S x, y) = cantor_pairing (sum_from_0_to (S z) + y)).
+      { assert (H1 : z + sum_from_0_to z + S y = sum_from_0_to (S z) + y) by now simpl...
+        simpl.
+        rewrite H1, <- H0...
+      }
+      apply (IHy (S x))...
 Qed.
 
 Lemma cantor_pairing_is_injective :
@@ -138,7 +147,7 @@ Lemma cantor_pairing_is_injective :
 Proof with (lia || eauto).
   induction n; simpl.
   - intros x y H.
-    inversion H. subst...
+    inversion H; subst...
   - intros x y H.
     destruct (cantor_pairing n) as [x' y'] eqn: H0.
     destruct x'; (inversion H; subst).
@@ -192,7 +201,7 @@ Definition FinSet_caseS {n : nat} {P : FinSet (S n) -> Type} : P (FZ n) -> (fora
   fun PZ : P (FZ n) =>
   fun PS : forall i' : FinSet n, P (FS n i') =>
   fun i : FinSet (S n) =>
-  match i as i0 in FinSet Sn0 return (match Sn0 as Sn return FinSet Sn -> Type with 0 => @FinSet_case0 (fun i1 : FinSet 0 => Set) | S n0 => fun i1 : FinSet (S n0) => forall P0 : FinSet (S n0) -> Type, P0 (FZ n0) -> (forall i' : FinSet n0, P0 (FS n0 i')) -> P0 i1 end) i0 with
+  match i as i0 in FinSet Sn0 return (match Sn0 as Sn1 return FinSet Sn1 -> Type with 0 => FinSet_case0 | S n0 => fun i1 : FinSet (S n0) => forall P0 : FinSet (S n0) -> Type, P0 (FZ n0) -> (forall i' : FinSet n0, P0 (FS n0 i')) -> P0 i1 end) i0 with
   | FZ n0 => fun P0 : FinSet (S n0) -> Type => fun PZ0 : P0 (FZ n0) => fun PS0 : forall i' : FinSet n0, P0 (FS n0 i') => PZ0
   | FS n0 i' => fun P0 : FinSet (S n0) -> Type => fun PZ0 : P0 (FZ n0) => fun PS0 : forall i' : FinSet n0, P0 (FS n0 i') => PS0 i'
   end P PZ PS
@@ -214,12 +223,13 @@ Definition FinSet_rectS {P : forall n : nat, FinSet n -> Type} : (forall n : nat
 
 Lemma forallb_true_iff {A : Type} {p : A -> bool} (xs : list A) :
   forallb p xs = true <-> forall x : A, In x xs -> p x = true.
-Proof.
-  induction xs; simpl.
-  - firstorder.
-  - rewrite andb_true_iff.
-    firstorder.
-    now rewrite H2 in H1.
+Proof with try now firstorder.
+  induction xs; simpl...
+  rewrite andb_true_iff.
+  split...
+  intros H0 x H1.
+  destruct H0; destruct H1...
+  rewrite H1 in H...
 Qed.
 
 Definition fold_right_max_0 : list nat -> nat :=
@@ -245,7 +255,7 @@ Lemma fold_right_max_0_app :
   fold_right_max_0 (ns1 ++ ns2) = max (fold_right_max_0 ns1) (fold_right_max_0 ns2).
 Proof with (lia || eauto).
   unfold fold_right_max_0.
-  induction ns1 as [|n1 ns1]; simpl... 
+  induction ns1 as [| n1 ns1]; simpl... 
   intros n.
   rewrite IHns1...
 Qed.
@@ -262,15 +272,14 @@ Proof with (lia || eauto).
     contradiction (H n).
   - intros H n H0.
     destruct (Compare_dec.le_lt_dec n a)...
-    cut (fold_right max 0 ns >= n)...
+    enough (fold_right max 0 ns >= n)...
     destruct (Phi_dec n).
     + destruct (H n p)...
       enough (forall ks : list nat, forall k : nat, In k ks -> fold_right max 0 ks >= k) by firstorder.
       induction ks; simpl...
-      { intros k H2.
-        destruct H2...
-        enough (fold_right Init.Nat.max 0 ks >= k)...
-      }
+      intros k H2.
+      destruct H2...
+      enough (fold_right Init.Nat.max 0 ks >= k)...
     + apply IHns...
       intros.
       destruct (H i H1)...
@@ -287,33 +296,27 @@ Proof with (lia || eauto).
   - split...
     firstorder.
   - intros n.
-    destruct (Compare_dec.le_lt_dec a (fold_right Init.Nat.max 0 ns))...
-    { split.
-      - intros H.
-        assert (H0 : fold_right Init.Nat.max 0 ns > n) by lia.
-        destruct (proj1 (IHns n) H0) as [i].
-        firstorder.
-      - intros H.
-        destruct H as [i].
-        destruct H.
-        destruct H.
-        + subst.
-          lia.
-        + enough (fold_right max 0 ns > n) by lia.
-          apply IHns...
-    }
-    { split.
-      - intros H.
-        exists a...
-      - intros H.
-        destruct H as [i].
-        destruct H.
-        destruct H.
-        + subst.
-          lia.
-        + enough (fold_right Init.Nat.max 0 ns > n) by lia.
-          apply IHns...
-    }
+    destruct (Compare_dec.le_lt_dec a (fold_right Init.Nat.max 0 ns)); split...
+    + intros H.
+      assert (H0 : fold_right Init.Nat.max 0 ns > n)...
+      destruct (proj1 (IHns n) H0) as [i].
+      firstorder.
+    + intros H.
+      destruct H as [i].
+      destruct H.
+      destruct H.
+      * subst...
+      * enough (fold_right max 0 ns > n)...
+        apply IHns...
+    + intros H.
+      exists a...
+    + intros H.
+      destruct H as [i].
+      destruct H.
+      destruct H.
+      * subst...
+      * enough (fold_right Init.Nat.max 0 ns > n)...
+        apply IHns...
 Qed.
 
 Lemma property3_of_fold_right_max_0 :
@@ -333,7 +336,7 @@ Proof with (lia || eauto).
   induction ns; simpl...
   intros n H.
   destruct H...
-  enough (fold_right max 0 ns >= n) by lia...
+  enough (fold_right max 0 ns >= n)...
 Qed.
 
 Lemma property5_of_fold_right_max_0 :
@@ -345,8 +348,8 @@ Proof with (lia || eauto).
   induction ns1; simpl...
   intros ns2 H.
   destruct (Compare_dec.le_lt_dec a (fold_right max 0 ns1)).
-  - enough (fold_right max 0 ns1 <= fold_right max 0 ns2) by lia...
-  - enough (a <= fold_right max 0 ns2) by lia.
+  - enough (fold_right max 0 ns1 <= fold_right max 0 ns2)...
+  - enough (a <= fold_right max 0 ns2)...
     apply property4_of_fold_right_max_0...
 Qed.
 
@@ -503,8 +506,7 @@ Proof with eauto.
   apply not_true_iff_false.
   intros H0.
   assert (H1 : negb (chi nil_subtitution M =? chi nil_subtitution M) = true) by now apply H, getFVs_isFreeIn.
-  rewrite negb_true_iff in H1.
-  rewrite Nat.eqb_neq in H1.
+  rewrite negb_true_iff, Nat.eqb_neq in H1.
   contradiction.
 Qed.
 
@@ -514,8 +516,7 @@ Fixpoint run_substitution_on_tm (sigma : substitution) (M : tm) {struct M} : tm 
   | tmApp P1 P2 => tmApp (run_substitution_on_tm sigma P1) (run_substitution_on_tm sigma P2)
   | tmLam y Q =>
     let z : ivar := chi sigma M in
-    let sigma' : substitution := cons_substitution y (tmVar z) sigma in
-    tmLam z (run_substitution_on_tm sigma' Q)
+    tmLam z (run_substitution_on_tm (cons_substitution y (tmVar z) sigma) Q)
   end
 .
 
@@ -587,12 +588,10 @@ Lemma chi_equiv_substitution_wrt :
 Proof with reflexivity.
   unfold chi.
   intros sigma1 sigma2 M H.
-  assert (H0 : (map (fun x : ivar => get_max_ivar (sigma1 x)) (getFVs M)) = (map (fun x : ivar => get_max_ivar (sigma2 x)) (getFVs M))).
-  { apply map_ext_in.
-    intros x H0.
-    rewrite (H x (proj1 (getFVs_isFreeIn M x) H0))...
-  }
-  rewrite H0...
+  enough (H0 : (map (fun x : ivar => get_max_ivar (sigma1 x)) (getFVs M)) = (map (fun x : ivar => get_max_ivar (sigma2 x)) (getFVs M))) by congruence.
+  apply map_ext_in.
+  intros x H0.
+  rewrite (H x (proj1 (getFVs_isFreeIn M x) H0))...
 Qed.
 
 Theorem main_property_of_equiv_substitution_wrt :
@@ -677,7 +676,11 @@ Proof with try now firstorder.
       simpl.
       rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
     }
-    assert (claim1 : forall u : ivar, isFreeIn u (sigma1 z) = true -> cons_substitution y N sigma2 u = sigma2 u).
+    assert ( claim1 :
+      forall u : ivar,
+      isFreeIn u (sigma1 z) = true ->
+      cons_substitution y N sigma2 u = sigma2 u
+    ).
     { unfold cons_substitution.
       intros u H2.
       destruct (ivar_eq_dec y u)...
@@ -706,7 +709,7 @@ Definition isFreeIn_wrt : ivar -> substitution -> tm -> Prop :=
   fun x : ivar => fun sigma : substitution => fun M : tm => exists y : ivar, isFreeIn y M = true /\ isFreeIn x (sigma y) = true
 .
 
-Theorem isFreeIn_wrt_iff (M : tm) :
+Theorem isFreeIn_wrt_true_iff (M : tm) :
   forall z : ivar,
   forall sigma : substitution,
   isFreeIn z (run_substitution_on_tm sigma M) = true <-> isFreeIn_wrt z sigma M.
@@ -827,9 +830,9 @@ Proof with try now firstorder.
       exists y.
       repeat (rewrite getFVs_isFreeIn)...
   }
-  assert ( claim2 : fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) = fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))) by now apply fold_right_max_0_ext.
+  assert (H0 : fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) = fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))) by now apply fold_right_max_0_ext.
   unfold get_max_ivar.
-  enough ( claim3 : forall xs : list ivar, forall f : ivar -> list ivar, fold_right_max_0 (map (fun x : ivar => fold_right_max_0 (f x)) xs) = fold_right_max_0 (flat_map f xs)) by now repeat (rewrite claim3)...
+  enough (H1 : forall xs : list ivar, forall f : ivar -> list ivar, fold_right_max_0 (map (fun x : ivar => fold_right_max_0 (f x)) xs) = fold_right_max_0 (flat_map f xs)) by now repeat (rewrite H1)...
   induction xs; simpl; intros f...
   rewrite fold_right_max_0_app...
 Qed.
@@ -874,7 +877,7 @@ Proof with try now firstorder.
       simpl in H.
       rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq in H.
       destruct H.
-      assert (H2 := proj1 (isFreeIn_wrt_iff M x' (cons_substitution x (tmVar y) sigma1)) H).
+      assert (H2 := proj1 (isFreeIn_wrt_true_iff M x' (cons_substitution x (tmVar y) sigma1)) H).
       destruct H2 as [u].
       destruct H2.
       unfold cons_substitution in H3.
@@ -885,7 +888,7 @@ Proof with try now firstorder.
         split.
         + simpl.
           rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
-        + apply (proj2 (isFreeIn_wrt_iff (sigma1 u) y' sigma2))...
+        + apply (proj2 (isFreeIn_wrt_true_iff (sigma1 u) y' sigma2))...
     }
     assert ( claim2 :
       forall y' : ivar,
@@ -898,11 +901,11 @@ Proof with try now firstorder.
       simpl in H.
       rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq in H.
       destruct H.
-      assert (H2 := proj1 (isFreeIn_wrt_iff (sigma1 x') y' sigma2) H0).
+      assert (H2 := proj1 (isFreeIn_wrt_true_iff (sigma1 x') y' sigma2) H0).
       destruct H2 as [u].
       destruct H2.
       assert (H4 : isFreeIn u (run_substitution_on_tm (cons_substitution x (tmVar y) sigma1) M) = true).
-      { apply isFreeIn_wrt_iff.
+      { apply isFreeIn_wrt_true_iff.
         exists x'.
         split...
         unfold cons_substitution.
@@ -915,21 +918,19 @@ Proof with try now firstorder.
       split...
       intros H5.
       subst.
-      assert (H6 : isFreeIn y (sigma1 x') = false).
-      { assert (H6 := main_property_of_chi (tmLam x M) sigma1).
-        unfold isFreshIn_substitution in H6.
-        rewrite forallb_true_iff in H6.
-        apply negb_true_iff, H6.
-        rewrite getFVs_isFreeIn.
-        simpl.
-        rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
-      }
-      rewrite H2 in H6...
+      enough (H6 : isFreeIn y (sigma1 x') = false) by now rewrite H2 in H6.
+      assert (H5 := main_property_of_chi (tmLam x M) sigma1).
+      unfold isFreshIn_substitution in H5.
+      rewrite forallb_true_iff in H5.
+      apply negb_true_iff, H5.
+      rewrite getFVs_isFreeIn.
+      simpl.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
     }
     apply chi_ext...
 Qed.
 
-Lemma compose_substitution_one :
+Theorem main_property_of_cons_substitution :
   forall x : ivar,
   forall z : ivar,
   forall M : tm,
@@ -952,6 +953,40 @@ Proof with try now firstorder.
     simpl in H.
     rewrite negb_false_iff, Nat.eqb_eq in H.
     contradiction n...
+Qed.
+
+Lemma property1_of_equiv_substitution_wrt :
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  (forall x : ivar, sigma1 x = sigma2 x) ->
+  forall M : tm,
+  equiv_substitution_wrt sigma1 sigma2 M.
+Proof with try now firstorder.
+  unfold equiv_substitution_wrt...
+Qed.
+
+Lemma compose_one :
+  forall M : tm,
+  forall N : tm,
+  forall sigma : substitution,
+  forall x : ivar,
+  run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M = run_substitution_on_tm sigma (run_substitution_on_tm (cons_substitution x N nil_subtitution) M).
+Proof with try now firstorder.
+  intros M N sigma x.
+  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M) with (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M).
+  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M) with (run_substitution_on_tm (compose_substitution sigma (cons_substitution x N nil_subtitution)) M).
+  replace (run_substitution_on_tm (compose_substitution sigma (cons_substitution x N nil_subtitution)) M) with (run_substitution_on_tm sigma (run_substitution_on_tm (cons_substitution x N nil_subtitution) M))...
+  - rewrite main_property_of_compose_substitution...
+  - apply main_property_of_equiv_substitution_wrt.
+    apply property1_of_equiv_substitution_wrt.
+    unfold compose_substitution, cons_substitution, nil_subtitution.
+    intros z.
+    destruct (ivar_eq_dec x z)...
+  - apply main_property_of_equiv_substitution_wrt.
+    apply property1_of_equiv_substitution_wrt.
+    unfold compose_substitution, cons_substitution, nil_subtitution.
+    intros z.
+    destruct (ivar_eq_dec x z)...
 Qed.
 
 End UntypedLamdbdaCalculus.
