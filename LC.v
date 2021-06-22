@@ -579,6 +579,16 @@ Definition equiv_substitution_wrt : substitution -> substitution -> tm -> Prop :
   fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> sigma1 x = sigma2 x
 .
 
+Corollary property1_of_equiv_substitution_wrt :
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  (forall x : ivar, sigma1 x = sigma2 x) ->
+  forall M : tm,
+  equiv_substitution_wrt sigma1 sigma2 M.
+Proof with try now firstorder.
+  unfold equiv_substitution_wrt...
+Qed.
+
 Lemma chi_equiv_substitution_wrt :
   forall sigma1 : substitution,
   forall sigma2 : substitution,
@@ -930,17 +940,7 @@ Proof with try now firstorder.
     apply chi_ext...
 Qed.
 
-Lemma property1_of_equiv_substitution_wrt :
-  forall sigma1 : substitution,
-  forall sigma2 : substitution,
-  (forall x : ivar, sigma1 x = sigma2 x) ->
-  forall M : tm,
-  equiv_substitution_wrt sigma1 sigma2 M.
-Proof with try now firstorder.
-  unfold equiv_substitution_wrt...
-Qed.
-
-Lemma compose_one :
+Corollary compose_one :
   forall M : tm,
   forall N : tm,
   forall sigma : substitution,
