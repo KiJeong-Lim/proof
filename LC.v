@@ -930,6 +930,30 @@ Proof with try now firstorder.
     apply chi_ext...
 Qed.
 
+Lemma property1_of_equiv_substitution_wrt :
+  forall sigma1 : substitution,
+  forall sigma2 : substitution,
+  (forall x : ivar, sigma1 x = sigma2 x) ->
+  forall M : tm,
+  equiv_substitution_wrt sigma1 sigma2 M.
+Proof with try now firstorder.
+  unfold equiv_substitution_wrt...
+Qed.
+
+Lemma compose_one :
+  forall M : tm,
+  forall N : tm,
+  forall sigma : substitution,
+  forall x : ivar,
+  run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M = run_substitution_on_tm sigma (run_substitution_on_tm (cons_substitution x N nil_subtitution) M).
+Proof with try now firstorder.
+  intros M N sigma x.
+  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M) with (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M).
+  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M) with (run_substitution_on_tm (compose_substitution sigma (cons_substitution x N nil_subtitution)) M).
+  rewrite main_property_of_compose_substitution...
+  all: apply main_property_of_equiv_substitution_wrt; apply property1_of_equiv_substitution_wrt; unfold compose_substitution, cons_substitution, nil_subtitution; intros z; destruct (ivar_eq_dec x z)...
+Qed.
+
 Theorem main_property_of_cons_substitution :
   forall x : ivar,
   forall z : ivar,
@@ -953,40 +977,6 @@ Proof with try now firstorder.
     simpl in H.
     rewrite negb_false_iff, Nat.eqb_eq in H.
     contradiction n...
-Qed.
-
-Lemma property1_of_equiv_substitution_wrt :
-  forall sigma1 : substitution,
-  forall sigma2 : substitution,
-  (forall x : ivar, sigma1 x = sigma2 x) ->
-  forall M : tm,
-  equiv_substitution_wrt sigma1 sigma2 M.
-Proof with try now firstorder.
-  unfold equiv_substitution_wrt...
-Qed.
-
-Lemma compose_one :
-  forall M : tm,
-  forall N : tm,
-  forall sigma : substitution,
-  forall x : ivar,
-  run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M = run_substitution_on_tm sigma (run_substitution_on_tm (cons_substitution x N nil_subtitution) M).
-Proof with try now firstorder.
-  intros M N sigma x.
-  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) sigma) M) with (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M).
-  replace (run_substitution_on_tm (cons_substitution x (run_substitution_on_tm sigma N) (compose_substitution sigma nil_subtitution)) M) with (run_substitution_on_tm (compose_substitution sigma (cons_substitution x N nil_subtitution)) M).
-  replace (run_substitution_on_tm (compose_substitution sigma (cons_substitution x N nil_subtitution)) M) with (run_substitution_on_tm sigma (run_substitution_on_tm (cons_substitution x N nil_subtitution) M))...
-  - rewrite main_property_of_compose_substitution...
-  - apply main_property_of_equiv_substitution_wrt.
-    apply property1_of_equiv_substitution_wrt.
-    unfold compose_substitution, cons_substitution, nil_subtitution.
-    intros z.
-    destruct (ivar_eq_dec x z)...
-  - apply main_property_of_equiv_substitution_wrt.
-    apply property1_of_equiv_substitution_wrt.
-    unfold compose_substitution, cons_substitution, nil_subtitution.
-    intros z.
-    destruct (ivar_eq_dec x z)...
 Qed.
 
 End UntypedLamdbdaCalculus.
