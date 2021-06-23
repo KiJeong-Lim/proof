@@ -375,8 +375,6 @@ Import ListNotations.
 
 Import AuxiliaryPalatina.
 
-Section SyntaxOfLambdaCalculus.
-
 Definition ivar : Set :=
   nat
 .
@@ -401,6 +399,111 @@ Proof with try ((left; congruence) || (right; congruence)).
   - destruct (IHM1_1 M2_1); destruct (IHM1_2 M2_2)...
   - destruct (ivar_eq_dec y y0); destruct (IHM1 M2)...
 Defined.
+
+Section Subterm.
+
+Fixpoint getRank (M : tm) {struct M} : nat :=
+  match M with
+  | tmVar x => 0
+  | tmApp P1 P2 => S (max (getRank P1) (getRank P2))
+  | tmLam y Q => S (getRank Q)
+  end
+.
+
+Inductive subtm : tm -> tm -> Set :=
+| subtmRefl : forall M : tm, subtm M M
+| subtmAppL : forall P1 : tm, forall P2 : tm, forall M : tm, subtm M P1 -> subtm M (tmApp P1 P2)
+| subtmAppR : forall P1 : tm, forall P2 : tm, forall M : tm, subtm M P2 -> subtm M (tmApp P1 P2)
+| subtmLAbs : forall y : ivar, forall Q : tm, forall M : tm, subtm M Q -> subtm M (tmLam y Q)
+.
+
+Hint Constructors tm : core.
+
+Lemma subtm_getRank :
+  forall M : tm,
+  forall N : tm,
+  subtm M N ->
+  getRank M <= getRank N.
+Proof with lia.
+  intros M N X.
+  induction X; simpl...
+Qed.
+
+Lemma subtm_and_same_rank_implies_same_term :
+  forall M : tm,
+  forall N : tm,
+  subtm M N ->
+  getRank M = getRank N ->
+  M = N.
+Proof with lia.
+  intros M N X.
+  destruct X; intros.
+  - reflexivity.
+  - assert (H0 := subtm_getRank M P1 X).
+    simpl in *...
+  - assert (H0 := subtm_getRank M P2 X).
+    simpl in *...
+  - assert (H0 := subtm_getRank M Q X).
+    simpl in *...
+Qed.
+
+Lemma subtm_refl :
+  forall M1 : tm,
+  subtm M1 M1.
+Proof.
+  apply subtmRefl.
+Qed.
+
+Hint Resolve subtm_refl : core.
+
+Lemma subtm_asym :
+  forall M1 : tm,
+  forall M2 : tm,
+  subtm M1 M2 ->
+  subtm M2 M1 ->
+  M1 = M2.
+Proof with eauto.
+  intros.
+  apply subtm_and_same_rank_implies_same_term...
+  enough (getRank M1 <= getRank M2 /\ getRank M2 <= getRank M1) by lia.
+  split; apply subtm_getRank...
+Qed.
+
+Hint Resolve subtm_asym : core.
+
+Lemma subtm_trans :
+  forall M1 : tm,
+  forall M2 : tm,
+  forall M3 : tm,
+  subtm M1 M2 ->
+  subtm M2 M3 ->
+  subtm M1 M3.
+Proof with eauto.
+  enough (claim1 : forall L : tm, forall N : tm, forall M : tm, subtm N L -> subtm M N -> subtm M L)...
+  induction L.
+  all: intros; inversion H; subst...
+  - constructor 2...
+  - constructor 3...
+  - constructor 4...
+Qed.
+
+Hint Resolve subtm_trans : core.
+
+Theorem strong_induction_on_tm (phi : tm -> Prop) :
+  (forall M : tm, (forall N : tm, subtm N M -> N <> M -> phi N) -> phi M) ->
+  forall M : tm,
+  phi M.
+Proof with try now (firstorder; eauto).
+  intros XXX.
+  enough (claim1 : forall M : tm, forall L : tm, subtm L M -> phi L)...
+  induction M.
+  all: intros L H; apply XXX; intros N H0 H1; inversion H0; subst...
+  all: inversion H; subst...
+Qed.
+
+End Subterm.
+
+Section Occurences.
 
 Fixpoint getFVs (M : tm) : list ivar :=
   match M with
@@ -430,6 +533,10 @@ Proof with try now firstorder.
     + apply in_remove in H...
     + apply in_in_remove...
 Qed.
+
+End Occurences.
+
+Section Substitution.
 
 Definition substitution : Set :=
   ivar -> tm
@@ -583,7 +690,7 @@ Definition equiv_substitution_wrt : substitution -> substitution -> tm -> Prop :
   fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> sigma1 x = sigma2 x
 .
 
-Proposition property1_of_equiv_substitution_wrt :
+Lemma property1_of_equiv_substitution_wrt :
   forall sigma1 : substitution,
   forall sigma2 : substitution,
   (forall x : ivar, sigma1 x = sigma2 x) ->
@@ -804,26 +911,12 @@ Proof with try now firstorder.
   { intros z.
     repeat (rewrite in_flat_map).
     split; intros.
-    - destruct H0 as [x].
-      rewrite getFVs_isFreeIn in H0.
-      assert (H1 : exists y : ivar, isFreeIn y M' = true /\ isFreeIn z (sigma' y) = true).
-      { apply H.
-        exists x...
-        rewrite getFVs_isFreeIn in H0...
-      }
-      destruct H1 as [y].
-      exists y.
-      repeat (rewrite getFVs_isFreeIn)...
-    - destruct H0 as [x].
-      rewrite getFVs_isFreeIn in H0.
-      assert (H1 : exists y : ivar, isFreeIn y M = true /\ isFreeIn z (sigma y) = true).
-      { apply H.
-        exists x...
-        rewrite getFVs_isFreeIn in H0...
-      }
-      destruct H1 as [y].
-      exists y.
-      repeat (rewrite getFVs_isFreeIn)...
+    all: destruct H0 as [x]; rewrite getFVs_isFreeIn in H0.
+    1: assert (H1 : exists y : ivar, isFreeIn y M' = true /\ isFreeIn z (sigma' y) = true).
+    3: assert (H1 : exists y : ivar, isFreeIn y M = true /\ isFreeIn z (sigma y) = true).
+    1, 3: apply H; exists x...
+    1, 2: rewrite getFVs_isFreeIn in H0...
+    all: destruct H1 as [y]; exists y; repeat (rewrite getFVs_isFreeIn)...
   }
   assert (H0 : fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) = fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))) by now apply fold_right_max_0_ext.
   unfold get_max_ivar.
@@ -964,20 +1057,62 @@ Proof with try now firstorder.
     contradiction n...
 Qed.
 
-End SyntaxOfLambdaCalculus.
+End Substitution.
 
-Section SemanticsOfLambdaCalculus.
+#[global] Create HintDb semantic_of_lc.
 
-Class isLambdaModel (Dom : Set) : Type :=
-  { runApp : Dom -> Dom -> Dom
+Class isPreLambdaStructure (Dom : Set) : Type :=
+  { eqnDom : Dom -> Dom -> Prop
+  ; runApp : Dom -> (Dom -> Dom)
   ; runLam : (Dom -> Dom) -> Dom
-  ; runLam_ext : forall vv1 : Dom -> Dom, forall vv2 : Dom -> Dom, (forall v : Dom, vv1 v = vv2 v) -> runLam vv1 = runLam vv2
+  ; eqnDom_refl :
+    forall v1 : Dom,
+    eqnDom v1 v1
+  ; eqnDom_sym :
+    forall v1 : Dom,
+    forall v2 : Dom,
+    eqnDom v1 v2 ->
+    eqnDom v2 v1
+  ; eqnDom_trans :
+    forall v1 : Dom,
+    forall v2 : Dom,
+    forall v3 : Dom,
+    eqnDom v1 v2 ->
+    eqnDom v2 v3 ->
+    eqnDom v1 v3
+  ; runApp_ext :
+    forall v1 : Dom,
+    forall v1' : Dom,
+    forall v2 : Dom,
+    forall v2' : Dom,
+    eqnDom v1 v1' ->
+    eqnDom v2 v2' ->
+    eqnDom (runApp v1 v2) (runApp v1' v2')
+  ; runLam_ext :
+    forall vv : Dom -> Dom,
+    forall vv' : Dom -> Dom,
+    (forall v0 : Dom, eqnDom (vv v0) (vv' v0)) ->
+    eqnDom (runLam vv) (runLam vv')
   }
 .
 
+#[global] Notation "v1 =-= v2" := (eqnDom v1 v2) (at level 70, no associativity).
+
+#[global] Hint Resolve eqnDom_refl : semantic_of_lc.
+
+#[global] Hint Resolve eqnDom_sym : semantic_of_lc.
+
+#[global] Hint Resolve eqnDom_trans : semantic_of_lc.
+
+#[global] Hint Resolve runApp_ext : semantic_of_lc.
+
+#[global] Hint Resolve runLam_ext : semantic_of_lc.
+
+Section PreLambdaStructure.
+
 Variable D : Set.
 
-Fixpoint eval_tm `{D_is_model : isLambdaModel D} (E : ivar -> D) (M : tm) {struct M} : D :=
+Fixpoint eval_tm `{D_is_model : isPreLambdaStructure D} (E : ivar -> D) (M : tm) {struct M} : D :=
   match M with
   | tmVar x => E x
   | tmApp P1 P2 => runApp (eval_tm E P1) (eval_tm E P2)
@@ -985,64 +1120,71 @@ Fixpoint eval_tm `{D_is_model : isLambdaModel D} (E : ivar -> D) (M : tm) {struc
   end
 .
 
-Lemma eval_tm_ext `{D_is_model : isLambdaModel D} :
+Lemma eval_tm_ext `{D_is_model : isPreLambdaStructure D} :
   forall M : tm,
   forall E1 : ivar -> D,
   forall E2 : ivar -> D,
-  (forall z : ivar, isFreeIn z M = true -> E1 z = E2 z) ->
-  eval_tm E1 M = eval_tm E2 M.
-Proof with try now firstorder.
+  (forall z : ivar, isFreeIn z M = true -> E1 z =-= E2 z) ->
+  eval_tm E1 M =-= eval_tm E2 M.
+Proof with try now firstorder with semantic_of_lc.
   induction M; simpl.
   - intros E1 E2 H.
     apply H.
     rewrite Nat.eqb_eq...
   - intros E1 E2 H.
-    rewrite (IHM1 E1 E2), (IHM2 E1 E2)...
+    apply runApp_ext; [apply IHM1 | apply IHM2].
     all: intros z H0; apply H; rewrite orb_true_iff...
   - intros E1 E2 H.
     apply runLam_ext.
     intros v.
-    rewrite (IHM (fun z : ivar => if ivar_eq_dec y z then v else E1 z) (fun z : ivar => if ivar_eq_dec y z then v else E2 z))...
+    apply (IHM (fun z : ivar => if ivar_eq_dec y z then v else E1 z) (fun z : ivar => if ivar_eq_dec y z then v else E2 z))...
     intros z H0.
     destruct (ivar_eq_dec y z)...
     apply H.
     rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
 Qed.
 
-Theorem run_substitution_on_tm_preserves_eval_tm `{D_is_model : isLambdaModel D} :
+Theorem run_substitution_on_tm_preserves_eval_tm `{D_is_model : isPreLambdaStructure D} :
   forall M : tm,
   forall sigma : substitution,
   forall E : ivar -> D,
-  eval_tm (fun z : ivar => eval_tm E (sigma z)) M = eval_tm E (run_substitution_on_tm sigma M).
-Proof with try now firstorder.
+  eval_tm (fun z : ivar => eval_tm E (sigma z)) M =-= eval_tm E (run_substitution_on_tm sigma M).
+Proof with try now firstorder with semantic_of_lc.
   induction M.
   - intros sigma E...
   - intros sigma E.
     simpl.
-    rewrite IHM1, IHM2...
+    apply runApp_ext; [apply IHM1 | apply IHM2]...
   - intros sigma E.
-    enough (claim1 : forall v : D, eval_tm (fun z : ivar => if ivar_eq_dec y z then v else eval_tm E (sigma z)) M = eval_tm (fun z : ivar => if ivar_eq_dec (chi sigma (tmLam y M)) z then v else E z) (run_substitution_on_tm (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma) M)) by now apply runLam_ext.
+    enough (claim1 : forall v : D, eval_tm (fun z : ivar => if ivar_eq_dec y z then v else eval_tm E (sigma z)) M =-= eval_tm (fun z : ivar => if ivar_eq_dec (chi sigma (tmLam y M)) z then v else E z) (run_substitution_on_tm (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma) M)) by now apply runLam_ext.
     intros v.
-    rewrite <- IHM.
-    apply eval_tm_ext.
-    intros z H.
+    assert (H := IHM (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma) (fun z : ivar => if ivar_eq_dec (chi sigma (tmLam y M)) z then v else E z)).
+    apply eqnDom_sym in H.
+    apply eqnDom_sym, (eqnDom_trans _ _ _ H), eval_tm_ext.
+    intros z H0.
     unfold cons_substitution.
     destruct (ivar_eq_dec y z).
     + unfold eval_tm.
       destruct (ivar_eq_dec (chi sigma (tmLam y M)) (chi sigma (tmLam y M)))...
     + apply eval_tm_ext.
-      intros z' H0.
+      intros z' H1.
       destruct (ivar_eq_dec (chi sigma (tmLam y M)) z')...
       subst.
-      assert (H1 : isFreshIn_substitution (chi sigma (tmLam y M)) sigma (tmLam y M) = true) by now apply main_property_of_chi.
-      unfold isFreshIn_substitution in H1.
-      rewrite forallb_true_iff in H1.
-      enough (H2 : isFreeIn (chi sigma (tmLam y M)) (sigma z) = false) by now rewrite H2 in H0.
-      apply negb_true_iff, H1, getFVs_isFreeIn.
+      assert (H2 : isFreshIn_substitution (chi sigma (tmLam y M)) sigma (tmLam y M) = true) by now apply main_property_of_chi.
+      unfold isFreshIn_substitution in H2.
+      rewrite forallb_true_iff in H2.
+      enough (H3 : isFreeIn (chi sigma (tmLam y M)) (sigma z) = false) by now rewrite H3 in H1.
+      apply negb_true_iff, H2, getFVs_isFreeIn.
       simpl.
       rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
 Qed.
 
-End SemanticsOfLambdaCalculus.
+End PreLambdaStructure.
+
+Class isLambdaStructure (Dom : Set) `{requiresPreLambdaStructure : isPreLambdaStructure Dom} : Type :=
+  { axiomOfBeta : forall vv : Dom -> Dom, forall v : Dom, runApp (runLam vv) v =-= vv v
+  ; axiomOfEta : forall v : Dom, runLam (runApp v) =-= v
+  }
+.
 
 End UntypedLamdbdaCalculus.
