@@ -379,9 +379,13 @@ Definition ivar : Set :=
   nat
 .
 
-Definition ivar_eq_dec : forall x : ivar, forall y : ivar, {x = y} + {x <> y} :=
-  Nat.eq_dec
-.
+Definition ivar_eq_dec :
+  forall x : ivar,
+  forall y : ivar,
+  {x = y} + {x <> y}.
+Proof.
+  apply Nat.eq_dec.
+Defined.
 
 Inductive tm : Set :=
 | tmVar : forall x : ivar, tm
@@ -504,6 +508,32 @@ Qed.
 End Subterm.
 
 Section Occurences.
+
+Definition occurence_rect {XP : ivar -> tm -> Type} :
+  (forall x : ivar, XP x (tmVar x)) ->
+  (forall x : ivar, forall P1 : tm, forall P2 : tm, XP x P1 -> XP x (tmApp P1 P2)) ->
+  (forall x : ivar, forall P1 : tm, forall P2 : tm, XP x P2 -> XP x (tmApp P1 P2)) ->
+  (forall x : ivar, forall y : ivar, forall Q : tm, XP x Q -> XP x (tmLam y Q)) ->
+  (forall x : ivar, forall M : tm, subtm (tmVar x) M -> XP x M).
+Proof.
+  intros XP_refl XP_appl XP_appr XP_labs z.
+  enough (lemma : forall N : tm, forall M : tm, subtm N M -> N = tmVar z -> XP z M).
+  { intros M X.
+    apply (lemma (tmVar z) M X).
+    reflexivity.
+  }
+  intros N M X.
+  induction X.
+  - intros H.
+    rewrite H.
+    apply XP_refl.
+  - intros H.
+    apply XP_appl, IHX, H.
+  - intros H.
+    apply XP_appr, IHX, H.
+  - intros H.
+    apply XP_labs, IHX, H.
+Defined.
 
 Fixpoint getFVs (M : tm) : list ivar :=
   match M with
@@ -1059,7 +1089,7 @@ Qed.
 
 End Substitution.
 
-#[global] Create HintDb semantic_of_lc.
+#[global] Create HintDb semantics_of_ulc.
 
 Class isPreLambdaStructure (Dom : Set) : Type :=
   { eqnDom : Dom -> Dom -> Prop
@@ -1096,17 +1126,17 @@ Class isPreLambdaStructure (Dom : Set) : Type :=
   }
 .
 
-#[global] Notation "v1 =-= v2" := (eqnDom v1 v2) (at level 70, no associativity).
+Notation "v1 =-= v2" := (eqnDom v1 v2) (at level 70, no associativity).
 
-#[global] Hint Resolve eqnDom_refl : semantic_of_lc.
+#[global] Hint Resolve eqnDom_refl : semantics_of_ulc.
 
-#[global] Hint Resolve eqnDom_sym : semantic_of_lc.
+#[global] Hint Resolve eqnDom_sym : semantics_of_ulc.
 
-#[global] Hint Resolve eqnDom_trans : semantic_of_lc.
+#[global] Hint Resolve eqnDom_trans : semantics_of_ulc.
 
-#[global] Hint Resolve runApp_ext : semantic_of_lc.
+#[global] Hint Resolve runApp_ext : semantics_of_ulc.
 
-#[global] Hint Resolve runLam_ext : semantic_of_lc.
+#[global] Hint Resolve runLam_ext : semantics_of_ulc.
 
 Section PreLambdaStructure.
 
@@ -1126,7 +1156,7 @@ Lemma eval_tm_ext `{D_is_model : isPreLambdaStructure D} :
   forall E2 : ivar -> D,
   (forall z : ivar, isFreeIn z M = true -> E1 z =-= E2 z) ->
   eval_tm E1 M =-= eval_tm E2 M.
-Proof with try now firstorder with semantic_of_lc.
+Proof with try now firstorder with semantics_of_ulc.
   induction M; simpl.
   - intros E1 E2 H.
     apply H.
@@ -1149,12 +1179,11 @@ Theorem run_substitution_on_tm_preserves_eval_tm `{D_is_model : isPreLambdaStruc
   forall sigma : substitution,
   forall E : ivar -> D,
   eval_tm (fun z : ivar => eval_tm E (sigma z)) M =-= eval_tm E (run_substitution_on_tm sigma M).
-Proof with try now firstorder with semantic_of_lc.
+Proof with try now firstorder with semantics_of_ulc.
   induction M.
   - intros sigma E...
   - intros sigma E.
-    simpl.
-    apply runApp_ext; [apply IHM1 | apply IHM2]...
+    simpl...
   - intros sigma E.
     enough (claim1 : forall v : D, eval_tm (fun z : ivar => if ivar_eq_dec y z then v else eval_tm E (sigma z)) M =-= eval_tm (fun z : ivar => if ivar_eq_dec (chi sigma (tmLam y M)) z then v else E z) (run_substitution_on_tm (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma) M)) by now apply runLam_ext.
     intros v.
@@ -1182,9 +1211,13 @@ Qed.
 End PreLambdaStructure.
 
 Class isLambdaStructure (Dom : Set) `{requiresPreLambdaStructure : isPreLambdaStructure Dom} : Type :=
-  { axiomOfBeta : forall vv : Dom -> Dom, forall v : Dom, runApp (runLam vv) v =-= vv v
-  ; axiomOfEta : forall v : Dom, runLam (runApp v) =-= v
+  { respect_beta : forall vv : Dom -> Dom, forall v0 : Dom, runApp (runLam vv) v0 =-= vv v0
+  ; respect_eta : forall v : Dom, runLam (runApp v) =-= v
   }
 .
+
+#[global] Hint Resolve respect_beta : semantics_of_ulc.
+
+#[global] Hint Resolve respect_eta : semantics_of_ulc.
 
 End UntypedLamdbdaCalculus.
