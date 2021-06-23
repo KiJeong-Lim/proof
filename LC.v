@@ -58,7 +58,7 @@ Theorem well_ordering_principle :
   p n = true ->
   let m := first_nat p n in
   p m = true /\ (forall i : nat, p i = true -> i >= m).
-Proof with eauto. (* The proof has been improved by JunYoung Clare Jang *)
+Proof with eauto. (* This proof has been improved by JunYoung Clare Jang. *)
   intros p n H3 m.
   assert (forall x : nat, p x = true -> p (first_nat p x) = true).
   { induction x...
@@ -113,7 +113,7 @@ Lemma cantor_pairing_is_surjective :
   forall y : nat,
   (x, y) = cantor_pairing (sum_from_0_to (x + y) + y).
 Proof with (lia || eauto).
-  cut (forall z : nat, forall y : nat, forall x : nat, z = x + y -> (x, y) = cantor_pairing (sum_from_0_to z + y))...
+  enough (forall z : nat, forall y : nat, forall x : nat, z = x + y -> (x, y) = cantor_pairing (sum_from_0_to z + y))...
   induction z.
   - intros y x H.
     assert (H0 : x = 0)...
@@ -165,8 +165,9 @@ Corollary cantor_pairing_is :
   forall y : nat,
   cantor_pairing n = (x, y) <-> n = sum_from_0_to (x + y) + y.
 Proof with eauto using cantor_pairing_is_injective, cantor_pairing_is_surjective.
-  intros n x y; split...
-  intros H; subst...
+  split...
+  intros H.
+  subst...
 Qed.
 
 Definition S_0 {A : Type} : forall n : nat, S n = 0 -> A :=
@@ -497,7 +498,7 @@ Qed.
 Lemma chi_nil : 
   forall M : tm,
   isFreeIn (chi nil_subtitution M) M = false.
-Proof with eauto.
+Proof with try now firstorder.
   intros M.
   assert (H : isFreshIn_substitution (chi nil_subtitution M) nil_subtitution M = true) by apply main_property_of_chi.
   unfold isFreshIn_substitution in H.
@@ -506,8 +507,7 @@ Proof with eauto.
   apply not_true_iff_false.
   intros H0.
   assert (H1 : negb (chi nil_subtitution M =? chi nil_subtitution M) = true) by now apply H, getFVs_isFreeIn.
-  rewrite negb_true_iff, Nat.eqb_neq in H1.
-  contradiction.
+  rewrite negb_true_iff, Nat.eqb_neq in H1...
 Qed.
 
 Fixpoint run_substitution_on_tm (sigma : substitution) (M : tm) {struct M} : tm :=
@@ -579,7 +579,7 @@ Definition equiv_substitution_wrt : substitution -> substitution -> tm -> Prop :
   fun sigma1 : substitution => fun sigma2 : substitution => fun M : tm => forall x : ivar, isFreeIn x M = true -> sigma1 x = sigma2 x
 .
 
-Corollary property1_of_equiv_substitution_wrt :
+Proposition property1_of_equiv_substitution_wrt :
   forall sigma1 : substitution,
   forall sigma2 : substitution,
   (forall x : ivar, sigma1 x = sigma2 x) ->
@@ -727,38 +727,24 @@ Proof with try now firstorder.
   unfold isFreeIn_wrt.
   induction M; simpl.
   - intros z sigma.
-    split.
-    + intros H.
-      exists x.
+    split; intros H.
+    + exists x.
       rewrite Nat.eqb_eq...
-    + intros H.
-      destruct H as [y H].
+    + destruct H as [y H].
       rewrite Nat.eqb_eq in H.
       destruct H.
       subst...
   - intros z sigma.
     rewrite orb_true_iff.
-    split.
-    + intros H.
-      destruct H.
-      * enough (H0 : exists y : ivar, isFreeIn y M1 = true /\ isFreeIn z (sigma y) = true)...
-        { destruct H0 as [y].
-          exists y.
-          rewrite orb_true_iff...
-        }
-      * enough (H0 : exists y : ivar, isFreeIn y M2 = true /\ isFreeIn z (sigma y) = true)...
-        { destruct H0 as [y].
-          exists y.
-          rewrite orb_true_iff...
-        }
-    + intros H.
-      destruct H as [y].
+    split; intros H.
+    + destruct H; [enough (H0 : exists y : ivar, isFreeIn y M1 = true /\ isFreeIn z (sigma y) = true) | enough (H0 : exists y : ivar, isFreeIn y M2 = true /\ isFreeIn z (sigma y) = true)]...
+      all: destruct H0 as [y]; exists y; rewrite orb_true_iff...
+    + destruct H as [y].
       rewrite orb_true_iff in H...
   - intros x sigma.
     rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq.
-    split.
-    + intros H.
-      destruct H.
+    split; intros H.
+    + destruct H.
       assert (H1 := proj1 (IHM x (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma)) H).
       destruct H1 as [w].
       destruct H1.
@@ -775,7 +761,6 @@ Proof with try now firstorder.
         unfold cons_substitution in H2.
         destruct (ivar_eq_dec y w)...
     + rename y into z.
-      intros H.
       destruct H as [y].
       destruct H.
       set (w := chi sigma (tmLam z M)).
@@ -785,12 +770,10 @@ Proof with try now firstorder.
         assert (isFreshIn_substitution w sigma (tmLam z M) = true) by now apply main_property_of_chi.
         unfold isFreshIn_substitution in H1.
         rewrite forallb_true_iff in H1.
-        assert (H2 : isFreeIn w (sigma y) = false).
-        { apply negb_true_iff, H1, getFVs_isFreeIn.
-          simpl.
-          rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
-        }
-        rewrite H0 in H2...
+        enough (H2 : isFreeIn w (sigma y) = false) by now rewrite H0 in H2.
+        apply negb_true_iff, H1, getFVs_isFreeIn.
+        simpl.
+        rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
       * split...
         apply IHM.
         exists y.
@@ -809,16 +792,15 @@ Lemma chi_ext :
 Proof with try now firstorder.
   unfold chi, isFreeIn_wrt.
   intros.
-  enough ((fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma x)) (getFVs M))) = (fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma' x)) (getFVs M')))) by lia.
+  enough (fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma x)) (getFVs M)) = fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma' x)) (getFVs M'))) by lia.
   assert ( claim1 :
     forall z : ivar,
     In z (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) <-> In z (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))
   ).
   { intros z.
     repeat (rewrite in_flat_map).
-    split.
-    - intros.
-      destruct H0 as [x].
+    split; intros.
+    - destruct H0 as [x].
       rewrite getFVs_isFreeIn in H0.
       assert (H1 : exists y : ivar, isFreeIn y M' = true /\ isFreeIn z (sigma' y) = true).
       { apply H.
@@ -828,8 +810,7 @@ Proof with try now firstorder.
       destruct H1 as [y].
       exists y.
       repeat (rewrite getFVs_isFreeIn)...
-    - intros.
-      destruct H0 as [x].
+    - destruct H0 as [x].
       rewrite getFVs_isFreeIn in H0.
       assert (H1 : exists y : ivar, isFreeIn y M = true /\ isFreeIn z (sigma y) = true).
       { apply H.
@@ -842,7 +823,7 @@ Proof with try now firstorder.
   }
   assert (H0 : fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma y)) (getFVs M)) = fold_right_max_0 (flat_map (fun y : ivar => getFVs (sigma' y)) (getFVs M'))) by now apply fold_right_max_0_ext.
   unfold get_max_ivar.
-  enough (H1 : forall xs : list ivar, forall f : ivar -> list ivar, fold_right_max_0 (map (fun x : ivar => fold_right_max_0 (f x)) xs) = fold_right_max_0 (flat_map f xs)) by now repeat (rewrite H1)...
+  enough (H1 : forall xs : list ivar, forall f : ivar -> list ivar, fold_right_max_0 (map (fun x : ivar => fold_right_max_0 (f x)) xs) = fold_right_max_0 (flat_map f xs)) by now repeat (rewrite H1).
   induction xs; simpl; intros f...
   rewrite fold_right_max_0_app...
 Qed.
@@ -869,7 +850,7 @@ Proof with try now firstorder.
         intros u H0.
         assert (H1 := distri_compose_cons_for_chi M (tmVar x') sigma1 sigma2 y).
         simpl in H1.
-        rewrite (H1 u)...
+        rewrite (H1 u H0)...
       }
       rewrite H0.
       replace x' with z...
