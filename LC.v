@@ -1,7 +1,7 @@
 Require Import Coq.Bool.Bool.
-Require Import Coq.micromega.Lia.
-Require Import Coq.Lists.List.
 Require Import Coq.Arith.PeanoNat.
+Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
 
 Module AuxiliaryPalatina.
 
@@ -15,32 +15,30 @@ Lemma div_mod_uniqueness :
   a = b * q + r ->
   r < b ->
   a / b = q /\ a mod b = r.
-Proof with lia.
+Proof with try (lia || now (firstorder; eauto)).
   assert (H : forall x : nat, forall y : nat, x > y <-> (exists z : nat, x = S (y + z))).
   { intros x y; constructor.
-    - intros H; induction H.
-      + exists 0...
-      + destruct IHle as [z H0]; exists (S z)...
-    - intros H; destruct H as [z H]...
+    - intros H.
+      induction H...
+      destruct IHle as [z H0].
+      exists (S z)...
+    - intros H.
+      destruct H as [z H]...
   }
   intros a b q r H1 H2.
   assert (H0 : a = b * (a / b) + (a mod b)) by now apply (Nat.div_mod a b); lia.
   assert (H3 : 0 <= a mod b < b) by now apply (Nat.mod_bound_pos a b); lia.
   assert (H4 : ~ q > a / b).
   { intros H4.
-    enough (H5 : exists z : nat, q = S (a / b + z)).
-    { destruct H5 as [z H5].
-      enough (b * q + r >= b * S (a / b) + r)...
-    }
-    apply (H q (a / b))...
+    enough (H5 : exists z : nat, q = S (a / b + z))...
+    destruct H5 as [z H5].
+    enough (b * q + r >= b * S (a / b) + r)...
   }
   assert (H5 : ~ q < a / b).
   { intros H5.
-    enough (H6 : exists z : nat, a / b = S (q + z)).
-    { destruct H6 as [z H6].
-      enough (b * q + a mod b >= b * S (a / b) + a mod b)...
-    }
-    apply (H (a / b) q)...
+    enough (H6 : exists z : nat, a / b = S (q + z))...
+    destruct H6 as [z H6].
+    enough (b * q + a mod b >= b * S (a / b) + a mod b)...
   }
   enough (q = a / b)...
 Qed.
@@ -297,13 +295,13 @@ Lemma property2_of_fold_right_max_0 :
 Proof with (lia || eauto).
   induction ns; simpl.
   - split...
-    firstorder.
+    now firstorder.
   - intros n.
     destruct (Compare_dec.le_lt_dec a (fold_right Init.Nat.max 0 ns)); split...
     + intros H.
       assert (H0 : fold_right Init.Nat.max 0 ns > n)...
       destruct (proj1 (IHns n) H0) as [i].
-      firstorder.
+      now firstorder.
     + intros H.
       destruct H as [i].
       destruct H.
@@ -416,12 +414,12 @@ Fixpoint getRank (M : tm) {struct M} : nat :=
 
 Inductive subtm : tm -> tm -> Set :=
 | subtmRefl : forall M : tm, subtm M M
-| subtmAppL : forall P1 : tm, forall P2 : tm, forall M : tm, subtm M P1 -> subtm M (tmApp P1 P2)
-| subtmAppR : forall P1 : tm, forall P2 : tm, forall M : tm, subtm M P2 -> subtm M (tmApp P1 P2)
-| subtmLAbs : forall y : ivar, forall Q : tm, forall M : tm, subtm M Q -> subtm M (tmLam y Q)
+| subtmAppL : forall M : tm, forall P1 : tm, forall P2 : tm, subtm M P1 -> subtm M (tmApp P1 P2)
+| subtmAppR : forall M : tm, forall P1 : tm, forall P2 : tm, subtm M P2 -> subtm M (tmApp P1 P2)
+| subtmLAbs : forall M : tm, forall y : ivar, forall Q : tm, subtm M Q -> subtm M (tmLam y Q)
 .
 
-Hint Constructors tm : core.
+Local Hint Constructors tm : core.
 
 Lemma subtm_getRank :
   forall M : tm,
@@ -458,7 +456,7 @@ Proof.
   apply subtmRefl.
 Qed.
 
-Hint Resolve subtm_refl : core.
+Local Hint Resolve subtm_refl : core.
 
 Lemma subtm_asym :
   forall M1 : tm,
@@ -473,7 +471,7 @@ Proof with eauto.
   split; apply subtm_getRank...
 Qed.
 
-Hint Resolve subtm_asym : core.
+Local Hint Resolve subtm_asym : core.
 
 Lemma subtm_trans :
   forall M1 : tm,
@@ -491,7 +489,7 @@ Proof with eauto.
   - constructor 4...
 Qed.
 
-Hint Resolve subtm_trans : core.
+Local Hint Resolve subtm_trans : core.
 
 Theorem strong_induction_on_tm (phi : tm -> Prop) :
   (forall M : tm, (forall N : tm, subtm N M -> N <> M -> phi N) -> phi M) ->
@@ -509,30 +507,75 @@ End Subterm.
 
 Section Occurences.
 
-Definition occurence_rect {XP : ivar -> tm -> Type} :
-  (forall x : ivar, XP x (tmVar x)) ->
-  (forall x : ivar, forall P1 : tm, forall P2 : tm, XP x P1 -> XP x (tmApp P1 P2)) ->
-  (forall x : ivar, forall P1 : tm, forall P2 : tm, XP x P2 -> XP x (tmApp P1 P2)) ->
-  (forall x : ivar, forall y : ivar, forall Q : tm, XP x Q -> XP x (tmLam y Q)) ->
-  (forall x : ivar, forall M : tm, subtm (tmVar x) M -> XP x M).
+Definition occurence_rect {XP : forall z : ivar, forall M : tm, subtm (tmVar z) M -> Type} :
+  (forall x : ivar, XP x (tmVar x) (subtmRefl (tmVar x))) ->
+  (forall x : ivar, forall P1 : tm, forall P2 : tm, forall X : subtm (tmVar x) P1, XP x P1 X -> XP x (tmApp P1 P2) (subtmAppL (tmVar x) P1 P2 X)) ->
+  (forall x : ivar, forall P1 : tm, forall P2 : tm, forall X : subtm (tmVar x) P2, XP x P2 X -> XP x (tmApp P1 P2) (subtmAppR (tmVar x) P1 P2 X)) ->
+  (forall x : ivar, forall y : ivar, forall Q : tm, forall X : subtm (tmVar x) Q, XP x Q X -> XP x (tmLam y Q) (subtmLAbs (tmVar x) y Q X)) ->
+  (forall x : ivar, forall M : tm, forall X : subtm (tmVar x) M, XP x M X).
 Proof.
   intros XP_refl XP_appl XP_appr XP_labs z.
-  enough (lemma : forall N : tm, forall M : tm, subtm N M -> N = tmVar z -> XP z M).
-  { intros M X.
-    apply (lemma (tmVar z) M X).
-    reflexivity.
-  }
-  intros N M X.
-  induction X.
-  - intros H.
+  enough (XXX : forall N : tm, forall M : tm, forall X : subtm N M, forall H : N = tmVar z, XP z M (@eq_rect tm N (fun N0 : tm => subtm N0 M) X (tmVar z) H)) by apply (fun M : tm => fun X : subtm (tmVar z) M => XXX (tmVar z) M X eq_refl).
+  assert ( XP_Refl :
+    forall M0 : tm,
+    forall H : M0 = tmVar z,
+    XP z M0 (eq_rect M0 (fun N1 : tm => subtm N1 M0) (subtmRefl M0) (tmVar z) H)
+  ).
+  { intros.
     rewrite H.
-    apply XP_refl.
-  - intros H.
-    apply XP_appl, IHX, H.
-  - intros H.
-    apply XP_appr, IHX, H.
-  - intros H.
-    apply XP_labs, IHX, H.
+    apply (XP_refl z). 
+  }
+  assert ( XP_AppL :
+    forall M0 : tm,
+    forall P1 : tm,
+    forall P2 : tm,
+    forall H : M0 = tmVar z,
+    forall X' : subtm M0 P1,
+    (forall H0 : M0 = tmVar z, XP z P1 (eq_rect M0 (fun N1 : tm => subtm N1 P1) X' (tmVar z) H0)) ->
+    XP z (tmApp P1 P2) (eq_rect M0 (fun N1 : tm => subtm N1 (tmApp P1 P2)) (subtmAppL M0 P1 P2 X') (tmVar z) H)
+  ).
+  { intros M0 P1 P2 H.
+    rewrite H.
+    intros X' H0.
+    apply (XP_appl z P1 P2 X' (H0 eq_refl)).
+  }
+  assert ( XP_AppR :
+    forall M0 : tm,
+    forall P1 : tm,
+    forall P2 : tm,
+    forall H : M0 = tmVar z,
+    forall X' : subtm M0 P2,
+    (forall H0 : M0 = tmVar z, XP z P2 (eq_rect M0 (fun N1 : tm => subtm N1 P2) X' (tmVar z) H0)) ->
+    XP z (tmApp P1 P2) (eq_rect M0 (fun N1 : tm => subtm N1 (tmApp P1 P2)) (subtmAppR M0 P1 P2 X') (tmVar z) H)
+  ).
+  { intros M0 P1 P2 H.
+    rewrite H.
+    intros X' H0.
+    apply (XP_appr z P1 P2 X' (H0 eq_refl)).
+  }
+  assert ( XP_LAbs :
+    forall M0 : tm,
+    forall y : ivar,
+    forall Q : tm,
+    forall H : M0 = tmVar z,
+    forall X' : subtm M0 Q,
+    (forall H0 : M0 = tmVar z, XP z Q (eq_rect M0 (fun N1 : tm => subtm N1 Q) X' (tmVar z) H0)) ->
+    XP z (tmLam y Q) (eq_rect M0 (fun N1 : tm => subtm N1 (tmLam y Q)) (subtmLAbs M0 y Q X') (tmVar z) H)
+  ).
+  { intros M0 y Q H.
+    rewrite H.
+    intros X' H0.
+    apply (XP_labs z y Q X' (H0 eq_refl)).
+  }
+  apply (
+    fix occurence_rect_fix (N : tm) (M : tm) (X : subtm N M) {struct X} : forall H : N = tmVar z, XP z M (eq_rect N (fun N1 : tm => subtm N1 M) X (tmVar z) H) :=
+    match X as X0 in subtm N0 M0 return forall H : N0 = tmVar z, XP z M0 (eq_rect N0 (fun N1 : tm => subtm N1 M0) X0 (tmVar z) H) with
+    | subtmRefl M0 => fun H : M0 = tmVar z => XP_Refl M0 H 
+    | subtmAppL M0 P1 P2 X' => fun H : M0 = tmVar z => XP_AppL M0 P1 P2 H X' (occurence_rect_fix M0 P1 X')
+    | subtmAppR M0 P1 P2 X' => fun H : M0 = tmVar z => XP_AppR M0 P1 P2 H X' (occurence_rect_fix M0 P2 X')
+    | subtmLAbs M0 y Q X' => fun H : M0 = tmVar z => XP_LAbs M0 y Q H X' (occurence_rect_fix M0 Q X')
+    end
+  ).
 Defined.
 
 Fixpoint getFVs (M : tm) : list ivar :=
@@ -851,21 +894,20 @@ Corollary distri_compose_cons_for_chi :
   forall z : ivar,
   isFreeIn z M = true ->
   cons_substitution x N (compose_substitution sigma2 sigma1) z = compose_substitution (cons_substitution y N sigma2) (cons_substitution x (tmVar y) sigma1) z.
-Proof with eauto using main_property_of_chi.
-  intros M N sigma1 sigma2 x y z H0.
-  apply (distri_compose_cons M N sigma1 sigma2 x y)...
+Proof with eauto using distri_compose_cons, main_property_of_chi.
+  intros M N sigma1 sigma2 x y z H...
 Qed.
 
-Definition isFreeIn_wrt : ivar -> substitution -> tm -> Prop :=
+Definition FreeIn_wrt : ivar -> substitution -> tm -> Prop :=
   fun x : ivar => fun sigma : substitution => fun M : tm => exists y : ivar, isFreeIn y M = true /\ isFreeIn x (sigma y) = true
 .
 
 Theorem isFreeIn_wrt_true_iff (M : tm) :
   forall z : ivar,
   forall sigma : substitution,
-  isFreeIn z (run_substitution_on_tm sigma M) = true <-> isFreeIn_wrt z sigma M.
+  isFreeIn z (run_substitution_on_tm sigma M) = true <-> FreeIn_wrt z sigma M.
 Proof with try now firstorder.
-  unfold isFreeIn_wrt.
+  unfold FreeIn_wrt.
   induction M; simpl.
   - intros z sigma.
     split; intros H.
@@ -928,10 +970,10 @@ Lemma chi_ext :
   forall sigma' : substitution,
   forall M : tm,
   forall M' : tm,
-  (forall z : ivar, isFreeIn_wrt z sigma M <-> isFreeIn_wrt z sigma' M') ->
+  (forall z : ivar, FreeIn_wrt z sigma M <-> FreeIn_wrt z sigma' M') ->
   chi sigma M = chi sigma' M'.
 Proof with try now firstorder.
-  unfold chi, isFreeIn_wrt.
+  unfold chi, FreeIn_wrt.
   intros.
   enough (fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma x)) (getFVs M)) = fold_right_max_0 (map (fun x : ivar => get_max_ivar (sigma' x)) (getFVs M'))) by lia.
   assert ( claim1 :
@@ -1126,7 +1168,7 @@ Class isPreLambdaStructure (Dom : Set) : Type :=
   }
 .
 
-Notation "v1 =-= v2" := (eqnDom v1 v2) (at level 70, no associativity).
+Local Notation "v1 =-= v2" := (eqnDom v1 v2) (at level 70, no associativity) : type_scope.
 
 #[global] Hint Resolve eqnDom_refl : semantics_of_ulc.
 
