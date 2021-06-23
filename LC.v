@@ -45,10 +45,12 @@ Proof with lia.
   enough (q = a / b)...
 Qed.
 
-Fixpoint first_nat (p : nat -> bool) (n : nat) {struct n} : nat :=
+Definition first_nat : (nat -> bool) -> nat -> nat :=
+  fun p : nat -> bool =>
+  fix first_nat_fix (n : nat) {struct n} : nat :=
   match n with
   | 0 => 0
-  | S n' => if p (first_nat p n') then first_nat p n' else n
+  | S n' => if p (first_nat_fix n') then first_nat_fix n' else n
   end
 .
 
@@ -372,6 +374,8 @@ Module UntypedLamdbdaCalculus.
 Import ListNotations.
 
 Import AuxiliaryPalatina.
+
+Section SyntaxOfLambdaCalculus.
 
 Definition ivar : Set :=
   nat
@@ -959,5 +963,86 @@ Proof with try now firstorder.
     rewrite negb_false_iff, Nat.eqb_eq in H.
     contradiction n...
 Qed.
+
+End SyntaxOfLambdaCalculus.
+
+Section SemanticsOfLambdaCalculus.
+
+Class isLambdaModel (Dom : Set) : Type :=
+  { runApp : Dom -> Dom -> Dom
+  ; runLam : (Dom -> Dom) -> Dom
+  ; runLam_ext : forall vv1 : Dom -> Dom, forall vv2 : Dom -> Dom, (forall v : Dom, vv1 v = vv2 v) -> runLam vv1 = runLam vv2
+  }
+.
+
+Variable D : Set.
+
+Fixpoint eval_tm `{D_is_model : isLambdaModel D} (E : ivar -> D) (M : tm) {struct M} : D :=
+  match M with
+  | tmVar x => E x
+  | tmApp P1 P2 => runApp (eval_tm E P1) (eval_tm E P2)
+  | tmLam y Q => runLam (fun v : D => eval_tm (fun z : ivar => if ivar_eq_dec y z then v else E z) Q)
+  end
+.
+
+Lemma eval_tm_ext `{D_is_model : isLambdaModel D} :
+  forall M : tm,
+  forall E1 : ivar -> D,
+  forall E2 : ivar -> D,
+  (forall z : ivar, isFreeIn z M = true -> E1 z = E2 z) ->
+  eval_tm E1 M = eval_tm E2 M.
+Proof with try now firstorder.
+  induction M; simpl.
+  - intros E1 E2 H.
+    apply H.
+    rewrite Nat.eqb_eq...
+  - intros E1 E2 H.
+    rewrite (IHM1 E1 E2), (IHM2 E1 E2)...
+    all: intros z H0; apply H; rewrite orb_true_iff...
+  - intros E1 E2 H.
+    apply runLam_ext.
+    intros v.
+    rewrite (IHM (fun z : ivar => if ivar_eq_dec y z then v else E1 z) (fun z : ivar => if ivar_eq_dec y z then v else E2 z))...
+    intros z H0.
+    destruct (ivar_eq_dec y z)...
+    apply H.
+    rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
+Qed.
+
+Theorem run_substitution_on_tm_preserves_eval_tm `{D_is_model : isLambdaModel D} :
+  forall M : tm,
+  forall sigma : substitution,
+  forall E : ivar -> D,
+  eval_tm (fun z : ivar => eval_tm E (sigma z)) M = eval_tm E (run_substitution_on_tm sigma M).
+Proof with try now firstorder.
+  induction M.
+  - intros sigma E...
+  - intros sigma E.
+    simpl.
+    rewrite IHM1, IHM2...
+  - intros sigma E.
+    enough (claim1 : forall v : D, eval_tm (fun z : ivar => if ivar_eq_dec y z then v else eval_tm E (sigma z)) M = eval_tm (fun z : ivar => if ivar_eq_dec (chi sigma (tmLam y M)) z then v else E z) (run_substitution_on_tm (cons_substitution y (tmVar (chi sigma (tmLam y M))) sigma) M)) by now apply runLam_ext.
+    intros v.
+    rewrite <- IHM.
+    apply eval_tm_ext.
+    intros z H.
+    unfold cons_substitution.
+    destruct (ivar_eq_dec y z).
+    + unfold eval_tm.
+      destruct (ivar_eq_dec (chi sigma (tmLam y M)) (chi sigma (tmLam y M)))...
+    + apply eval_tm_ext.
+      intros z' H0.
+      destruct (ivar_eq_dec (chi sigma (tmLam y M)) z')...
+      subst.
+      assert (H1 : isFreshIn_substitution (chi sigma (tmLam y M)) sigma (tmLam y M) = true) by now apply main_property_of_chi.
+      unfold isFreshIn_substitution in H1.
+      rewrite forallb_true_iff in H1.
+      enough (H2 : isFreeIn (chi sigma (tmLam y M)) (sigma z) = false) by now rewrite H2 in H0.
+      apply negb_true_iff, H1, getFVs_isFreeIn.
+      simpl.
+      rewrite andb_true_iff, negb_true_iff, Nat.eqb_neq...
+Qed.
+
+End SemanticsOfLambdaCalculus.
 
 End UntypedLamdbdaCalculus.
