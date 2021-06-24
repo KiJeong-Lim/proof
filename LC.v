@@ -2,6 +2,7 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Coq.Logic.Classical.
 
 Module AuxiliaryPalatina.
 
@@ -602,9 +603,42 @@ Definition U_x `{D_is_cpo : CompletePartialOrder D} : D -> Ensemble D :=
   fun x : D => fun z : D => ~ leq z x
 .
 
-Hypothesis U_x_is_open `{D_is_cpo : CompletePartialOrder D} :
+Lemma U_x_is_open `{D_is_cpo : CompletePartialOrder D} :
   forall x : D,
   is_open_set (U_x x).
+Proof with eauto with *.
+  intros x.
+  assert ( claim1 :
+    forall y : D,
+    forall z : D,
+    member y (U_x x) ->
+    leq y z ->
+    member z (U_x x)
+  ).
+  { unfold U_x...
+  }
+  split...
+  intros.
+  inversion H; subst...
+  assert ( claim2 :
+    ~ (forall x0 : D, leq x0 x \/ ~ member x0 X)
+  ).
+  { intros H4.
+    contradiction H1.
+    unfold is_supremum in H0.
+    apply (proj2 (H0 x)).
+    intros x0 H5.
+    destruct (H4 x0)...
+    contradiction.
+  }
+  apply not_all_ex_not in claim2.
+  destruct claim2 as [x1].
+  exists x1.
+  apply not_or_and in H4.
+  destruct H4.
+  apply NNPP in H5.
+  constructor...
+Qed.
 
 End PropertiesOfScottTopology.
 
