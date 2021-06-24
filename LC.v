@@ -7,6 +7,8 @@ Module AuxiliaryPalatina.
 
 Import ListNotations.
 
+Section Utilities.
+
 Definition case_eq {A : Type} : forall x : A, forall y : A, forall phi : forall x0 : A, x0 = y -> Type, phi y eq_refl -> forall H : x = y, phi x H :=
   fun x : A =>
   fun y : A =>
@@ -379,13 +381,215 @@ Proof with try now firstorder.
   split; apply property5_of_fold_right_max_0...
 Qed.
 
+End Utilities.
+
+#[global] Create HintDb naive_set_theory.
+
+Definition Ensemble (A : Type) : Type :=
+  A -> Prop
+.
+
+Definition member {A : Type} : A -> Ensemble A -> Prop :=
+  fun x : A => fun xs : Ensemble A => xs x
+.
+
+#[global] Hint Unfold member : naive_set_theory.
+
+Definition isSubsetOf {A : Type} : Ensemble A -> Ensemble A -> Prop :=
+  fun xs1 : Ensemble A => fun xs2 : Ensemble A => forall x : A, member x xs1 -> member x xs2
+.
+
+#[global] Hint Unfold isSubsetOf : naive_set_theory.
+
+Inductive full {A : Type} : Ensemble A :=
+| In_full {x : A} : member x full
+.
+
+#[global] Hint Constructors full : naive_set_theory.
+
+Inductive empty {A : Type} : Ensemble A :=
+.
+
+#[global] Hint Constructors empty : naive_set_theory.
+
+Inductive singleton {A : Type} : A -> Ensemble A :=
+| In_singleton {x : A} : member x (singleton x)
+.
+
+#[global] Hint Constructors singleton : naive_set_theory.
+
+Inductive unions {A : Type} : Ensemble (Ensemble A) -> Ensemble A :=
+| In_unions {x : A} {xss : Ensemble (Ensemble A)} : forall xs : Ensemble A, member x xs -> member xs xss -> member x (unions xss)
+.
+
+#[global] Hint Constructors unions : naive_set_theory.
+
+Inductive union {A : Type} : Ensemble A -> Ensemble A -> Ensemble A :=
+| Inl_union {x : A} {xs1 : Ensemble A} {xs2 : Ensemble A} : member x xs1 -> member x (union xs1 xs2)
+| Inr_union {x : A} {xs1 : Ensemble A} {xs2 : Ensemble A} : member x xs2 -> member x (union xs1 xs2)
+.
+
+#[global] Hint Constructors union : naive_set_theory.
+
+Inductive intersection {A : Type} : Ensemble A -> Ensemble A -> Ensemble A :=
+| In_intersection {x : A} {xs1 : Ensemble A} {xs2 : Ensemble A} : member x xs1 -> member x xs2 -> member x (intersection xs1 xs2)
+.
+
+#[global] Hint Constructors intersection : naive_set_theory.
+
+Definition NonEmpty {A : Type} : Ensemble A -> Prop :=
+  fun xs : Ensemble A => exists x : A, member x xs
+.
+
+#[global] Hint Unfold NonEmpty : naive_set_theory.
+
+Class TopologicalSpace (X : Set) : Type :=
+  { is_open_set : Ensemble X -> Prop
+  ; open_set_for_full :
+    is_open_set full
+  ; open_set_for_unions :
+    forall xss : Ensemble (Ensemble X),
+    (forall xs : Ensemble X, member xs xss -> is_open_set xs) ->
+    is_open_set (unions xss)
+  ; open_set_for_intersection :
+    forall xs1 : Ensemble X,
+    forall xs2 : Ensemble X,
+    is_open_set xs1 ->
+    is_open_set xs2 ->
+    is_open_set (intersection xs1 xs2)
+  }
+.
+
 End AuxiliaryPalatina.
+
+Module ScottTopology.
+
+Import ListNotations.
+
+Import AuxiliaryPalatina.
+
+Class Poset (D : Set) : Type :=
+  { leq : D -> D -> Prop
+  ; leq_refl :
+    forall v1 : D,
+    leq v1 v1
+  ; leq_asym :
+    forall v1 : D,
+    forall v2 : D,
+    leq v1 v2 ->
+    leq v2 v1 ->
+    v1 = v2
+  ; leq_trans :
+    forall v1 : D,
+    forall v2 : D,
+    forall v3 : D,
+    leq v1 v2 ->
+    leq v2 v3 ->
+    leq v1 v3
+  }
+.
+
+Definition directed {D : Set} `{D_is_poset : Poset D} : Ensemble D -> Prop :=
+  fun X : Ensemble D => NonEmpty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ leq x1 x3 /\ leq x2 x3)
+.
+
+Definition is_supremum {D : Set} `{D_is_poset : Poset D} : D -> Ensemble D -> Prop :=
+  fun sup_xs : D => fun xs : Ensemble D => forall x : D, leq sup_xs x <-> (forall x0 : D, member x0 xs -> leq x0 x)
+.
+
+Class Cpo (D : Set) `{requiresPoset : Poset D} : Type :=
+  { bottom : D
+  ; bottom_least :
+    forall x : D,
+    leq bottom x
+  ; supremum_exists :
+    forall xs : Ensemble D,
+    directed xs ->
+    {sup_xs : D | is_supremum sup_xs xs}
+  }
+.
+
+Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
+  { supremum_always_exists :
+    forall xs : Ensemble D,
+    {sup_xs : D | is_supremum sup_xs xs}
+  }
+.
+
+Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : Cpo D :=
+  { bottom := supremum_always_exists empty
+  }
+.
+
+Next Obligation with eauto with naive_set_theory.
+  assert (H := proj2_sig (supremum_always_exists empty)).
+  simpl in H.
+  apply H.
+  intros.
+  inversion H0.
+Qed.
+
+Next Obligation with eauto with naive_set_theory.
+  apply supremum_always_exists.
+Qed.
+
+Program Instance scott_topology (D : Set) `{D_is_poset : Poset D} (requiresCpo : Cpo D) : TopologicalSpace D :=
+  { is_open_set := fun O : Ensemble D => (forall x : D, forall y : D, member x O -> leq x y -> member y O) /\ (forall X : Ensemble D, directed X -> forall sup_X : D, is_supremum sup_X X -> member sup_X O -> NonEmpty (intersection X O))
+  }
+.
+
+Next Obligation with eauto with naive_set_theory.
+  split.
+  - intros.
+    constructor.
+  - intros.
+    destruct H.
+    destruct H.
+    exists x.
+    constructor...
+Qed.
+
+Next Obligation with eauto with naive_set_theory.
+  split.
+  - intros.
+    destruct H0.
+    apply (In_unions xs)...
+    apply (proj1 (H xs H2) x y H0 H1).
+  - intros.
+    inversion H0; subst.
+    inversion H2; subst. 
+    destruct (proj2 (H xs H6) X H0 sup_X H1 H5) as [x].
+    inversion H7; subst.
+    exists x.
+    constructor...
+Qed.
+
+Next Obligation with eauto with naive_set_theory.
+  split.
+  - intros.
+    destruct H3...
+  - intros.
+    inversion H5; subst.
+    destruct (H2 X H3 sup_X H4 H6) as [x1].
+    destruct (H1 X H3 sup_X H4 H7) as [x2].
+    inversion H3; subst.
+    inversion H8; inversion H9; subst.
+    destruct (H11 x1 H12 x2 H17) as [x].
+    destruct H14.
+    destruct H15.
+    exists x.
+    constructor...
+Qed.
+
+End ScottTopology.
 
 Module UntypedLamdbdaCalculus.
 
 Import ListNotations.
 
 Import AuxiliaryPalatina.
+
+Import ScottTopology.
 
 Definition ivar : Set :=
   nat
@@ -521,7 +725,7 @@ End Subterm.
 
 Section Occurences.
 
-Definition occurence_rect {XP : forall z : ivar, forall M : tm, subtm (tmVar z) M -> Type} :
+Definition occurence_rect (XP : forall z : ivar, forall M : tm, subtm (tmVar z) M -> Type) :
   (forall x : ivar, XP x (tmVar x) (subtmRefl (tmVar x))) ->
   (forall x : ivar, forall P1 : tm, forall P2 : tm, forall X : subtm (tmVar x) P1, XP x P1 X -> XP x (tmApp P1 P2) (subtmAppL (tmVar x) P1 P2 X)) ->
   (forall x : ivar, forall P1 : tm, forall P2 : tm, forall X : subtm (tmVar x) P2, XP x P2 X -> XP x (tmApp P1 P2) (subtmAppR (tmVar x) P1 P2 X)) ->
