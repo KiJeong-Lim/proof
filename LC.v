@@ -468,6 +468,8 @@ Import ListNotations.
 
 Import AuxiliaryPalatina.
 
+#[global] Create HintDb scott_topology_hints.
+
 Class Poset (D : Set) : Type :=
   { leq : D -> D -> Prop
   ; leq_refl :
@@ -489,15 +491,25 @@ Class Poset (D : Set) : Type :=
   }
 .
 
+#[global] Hint Resolve leq_refl : scott_topology_hints.
+
+#[global] Hint Resolve leq_asym : scott_topology_hints.
+
+#[global] Hint Resolve leq_trans : scott_topology_hints.
+
 Definition directed {D : Set} `{D_is_poset : Poset D} : Ensemble D -> Prop :=
   fun X : Ensemble D => NonEmpty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ leq x1 x3 /\ leq x2 x3)
 .
+
+#[global] Hint Unfold directed : scott_topology_hints.
 
 Definition is_supremum {D : Set} `{D_is_poset : Poset D} : D -> Ensemble D -> Prop :=
   fun sup_xs : D => fun xs : Ensemble D => forall x : D, leq sup_xs x <-> (forall x0 : D, member x0 xs -> leq x0 x)
 .
 
-Class Cpo (D : Set) `{requiresPoset : Poset D} : Type :=
+#[global] Hint Unfold is_supremum : scott_topology_hints.
+
+Class CompletePartialOrder (D : Set) `{requiresPoset : Poset D} : Type :=
   { bottom : D
   ; bottom_least :
     forall x : D,
@@ -509,6 +521,10 @@ Class Cpo (D : Set) `{requiresPoset : Poset D} : Type :=
   }
 .
 
+#[global] Hint Resolve bottom_least : scott_topology_hints.
+
+#[global] Hint Resolve supremum_exists : scott_topology_hints.
+
 Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
   { supremum_always_exists :
     forall xs : Ensemble D,
@@ -516,7 +532,9 @@ Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
   }
 .
 
-Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : Cpo D :=
+#[global] Hint Resolve supremum_always_exists : scott_topology_hints.
+
+Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
   { bottom := supremum_always_exists empty
   }
 .
@@ -533,39 +551,35 @@ Next Obligation with eauto with naive_set_theory.
   apply supremum_always_exists.
 Qed.
 
-Program Instance scott_topology (D : Set) `{D_is_poset : Poset D} (requiresCpo : Cpo D) : TopologicalSpace D :=
+Program Instance scott_topology (D : Set) `{D_is_poset : Poset D} (requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
   { is_open_set := fun O : Ensemble D => (forall x : D, forall y : D, member x O -> leq x y -> member y O) /\ (forall X : Ensemble D, directed X -> forall sup_X : D, is_supremum sup_X X -> member sup_X O -> NonEmpty (intersection X O))
   }
 .
 
-Next Obligation with eauto with naive_set_theory.
-  split.
-  - intros.
-    constructor.
-  - intros.
-    destruct H.
-    destruct H.
-    exists x.
-    constructor...
+Next Obligation with eauto with *.
+  split...
+  intros.
+  destruct H.
+  destruct H.
+  exists x...
 Qed.
 
-Next Obligation with eauto with naive_set_theory.
+Next Obligation with eauto with *.
   split.
   - intros.
     destruct H0.
     apply (In_unions xs)...
-    apply (proj1 (H xs H2) x y H0 H1).
+    apply (proj1 (H xs H2) x y)...
   - intros.
     inversion H0; subst.
     inversion H2; subst. 
     destruct (proj2 (H xs H6) X H0 sup_X H1 H5) as [x].
     inversion H7; subst.
-    exists x.
-    constructor...
+    exists x...
 Qed.
 
-Next Obligation with eauto with naive_set_theory.
-  split.
+Next Obligation with eauto with *.
+  split...
   - intros.
     destruct H3...
   - intros.
@@ -577,9 +591,22 @@ Next Obligation with eauto with naive_set_theory.
     destruct (H11 x1 H12 x2 H17) as [x].
     destruct H14.
     destruct H15.
-    exists x.
-    constructor...
+    exists x...
 Qed.
+
+Section PropertiesOfScottTopology.
+
+Variable D : Set.
+
+Definition U_x `{D_is_cpo : CompletePartialOrder D} : D -> Ensemble D :=
+  fun x : D => fun z : D => ~ leq z x
+.
+
+Hypothesis U_x_is_open `{D_is_cpo : CompletePartialOrder D} :
+  forall x : D,
+  is_open_set (U_x x).
+
+End PropertiesOfScottTopology.
 
 End ScottTopology.
 
