@@ -458,13 +458,13 @@ Definition NonEmpty {A : Type} : Ensemble A -> Prop :=
 
 End AuxiliaryPalatina.
 
-Module ScottTopology.
+Module DomainTheory.
 
 Import ListNotations.
 
 Import AuxiliaryPalatina.
 
-#[global] Create HintDb scott_topology_hints.
+#[global] Create HintDb domain_theory_hints.
 
 Class TopologicalSpace (X : Set) : Type :=
   { is_open_set : Ensemble X -> Prop
@@ -483,17 +483,17 @@ Class TopologicalSpace (X : Set) : Type :=
   }
 .
 
-#[global] Hint Resolve open_set_for_full : scott_topology_hints.
+#[global] Hint Resolve open_set_for_full : domain_theory_hints.
 
-#[global] Hint Resolve open_set_for_unions : scott_topology_hints.
+#[global] Hint Resolve open_set_for_unions : domain_theory_hints.
 
-#[global] Hint Resolve open_set_for_intersection : scott_topology_hints.
+#[global] Hint Resolve open_set_for_intersection : domain_theory_hints.
 
 Definition is_continuous_map {X : Set} {Y : Set} `{X_is_topology : TopologicalSpace X} `{Y_is_topology : TopologicalSpace Y} : (X -> Y) -> Prop :=
   fun f : X -> Y => forall ys : Ensemble Y, is_open_set ys -> is_open_set (inverse_image f ys)
 .
 
-#[global] Hint Unfold is_continuous_map : scott_topology_hints.
+#[global] Hint Unfold is_continuous_map : domain_theory_hints.
 
 Class Poset (D : Set) : Type :=
   { leq : D -> D -> Prop
@@ -516,23 +516,23 @@ Class Poset (D : Set) : Type :=
   }
 .
 
-#[global] Hint Resolve leq_refl : scott_topology_hints.
+#[global] Hint Resolve leq_refl : domain_theory_hints.
 
-#[global] Hint Resolve leq_asym : scott_topology_hints.
+#[global] Hint Resolve leq_asym : domain_theory_hints.
 
-#[global] Hint Resolve leq_trans : scott_topology_hints.
+#[global] Hint Resolve leq_trans : domain_theory_hints.
 
 Definition directed {D : Set} `{D_is_poset : Poset D} : Ensemble D -> Prop :=
   fun X : Ensemble D => NonEmpty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ leq x1 x3 /\ leq x2 x3)
 .
 
-#[global] Hint Unfold directed : scott_topology_hints.
+#[global] Hint Unfold directed : domain_theory_hints.
 
 Definition is_supremum {D : Set} `{D_is_poset : Poset D} : D -> Ensemble D -> Prop :=
   fun sup_xs : D => fun xs : Ensemble D => forall x : D, leq sup_xs x <-> (forall x0 : D, member x0 xs -> leq x0 x)
 .
 
-#[global] Hint Unfold is_supremum : scott_topology_hints.
+#[global] Hint Unfold is_supremum : domain_theory_hints.
 
 Lemma supremum_unique {D : Set} `{D_is_poset : Poset D} :
   forall X : Ensemble D,
@@ -552,7 +552,7 @@ Proof with eauto with *.
     apply H1...
 Qed.
 
-#[global] Hint Resolve supremum_unique : scott_topology_hints.
+#[global] Hint Resolve supremum_unique : domain_theory_hints.
 
 Lemma supremum_ext {D : Set} `{D_is_poset : Poset D} :
   forall X1 : Ensemble D,
@@ -576,7 +576,7 @@ Proof with eauto with *.
     apply H1...
 Qed.
 
-#[global] Hint Resolve supremum_ext : scott_topology_hints.
+#[global] Hint Resolve supremum_ext : domain_theory_hints.
 
 Class CompletePartialOrder (D : Set) `{requiresPoset : Poset D} : Type :=
   { bottom : D
@@ -590,9 +590,9 @@ Class CompletePartialOrder (D : Set) `{requiresPoset : Poset D} : Type :=
   }
 .
 
-#[global] Hint Resolve bottom_least : scott_topology_hints.
+#[global] Hint Resolve bottom_least : domain_theory_hints.
 
-#[global] Hint Resolve supremum_exists : scott_topology_hints.
+#[global] Hint Resolve supremum_exists : domain_theory_hints.
 
 Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
   { supremum_always_exists :
@@ -601,7 +601,7 @@ Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
   }
 .
 
-#[global] Hint Resolve supremum_always_exists : scott_topology_hints.
+#[global] Hint Resolve supremum_always_exists : domain_theory_hints.
 
 Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
   { bottom := supremum_always_exists empty
@@ -702,13 +702,7 @@ Proof with eauto with *.
   unfold U_x...
 Qed.
 
-Section PropertiesOfScottTopology.
-
-Variable D : Set.
-
-Variable D' : Set.
-
-Definition characterization_of_continuous_map_on_cpos `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : (D -> D') -> Prop :=
+Definition characterization_of_continuous_map_on_cpos {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : (D -> D') -> Prop :=
   fun f : D -> D' =>
   forall X : Ensemble D,
   directed X ->
@@ -716,28 +710,30 @@ Definition characterization_of_continuous_map_on_cpos `{D_is_cpo : CompleteParti
   exists sup_X : D, exists sup_Y : D', is_supremum sup_X X /\ is_supremum sup_Y Y /\ f sup_X = sup_Y
 .
 
-Theorem the_main_reason_for_introducing_the_Scott_topology `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+Lemma continuous_maps_on_cpos_are_always_monotonic {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall f : D -> D',
+  is_continuous_map f ->
+  forall x1 : D,
+  forall x2 : D,
+  leq x1 x2 ->
+  leq (f x1) (f x2).
+Proof with eauto with *.
+  intros f H x1 x2 H0.
+  apply NNPP.
+  intros H1.
+  assert (H2 : member (f x1) (U_x (f x2))) by now unfold U_x.
+  assert (H3 : member x1 (inverse_image f (U_x (f x2)))) by now constructor.
+  assert (H4 : is_open_set (inverse_image f (U_x (f x2)))) by now apply H, U_x_is_open.
+  assert (H5 : member x2 (inverse_image f (U_x (f x2)))) by now apply (proj1 H4 x1 x2).
+  enough (H6 : member (f x2) (U_x (f x2)))...
+  inversion H5...
+Qed.
+
+Theorem the_main_reason_for_introducing_the_Scott_topology {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall f : D -> D',
   is_continuous_map f <-> characterization_of_continuous_map_on_cpos f.
 Proof with eauto with *.
-  assert ( claim1 :
-    forall f : D -> D',
-    is_continuous_map f ->
-    forall x1 : D,
-    forall x2 : D,
-    leq x1 x2 ->
-    leq (f x1) (f x2)
-  ).
-  { intros f H x1 x2 H0.
-    apply NNPP.
-    intros H1.
-    assert (H2 : member (f x1) (U_x (f x2))) by now unfold U_x.
-    assert (H3 : member x1 (inverse_image f (U_x (f x2)))) by now constructor.
-    assert (H4 : is_open_set (inverse_image f (U_x (f x2)))) by now apply H, U_x_is_open.
-    assert (H5 : member x2 (inverse_image f (U_x (f x2)))) by now apply (proj1 H4 x1 x2).
-    enough (H6 : member (f x2) (U_x (f x2)))...
-    inversion H5...
-  }
+  assert (claim1 : forall f : D -> D', is_continuous_map f -> forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)) by apply continuous_maps_on_cpos_are_always_monotonic.
   unfold characterization_of_continuous_map_on_cpos; split; intros H.
   - intros X H0.
     inversion H0; subst.
@@ -778,12 +774,7 @@ Proof with eauto with *.
       apply H5...
     }
     assert (H8 : f sup_X = sup_Y) by now apply leq_asym...
-  - assert ( claim2 :
-      forall x1 : D,
-      forall x2 : D,
-      leq x1 x2 ->
-      leq (f x1) (f x2)
-    ).
+  - assert (claim2 : forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)).
     { intros x1 x2 H0.
       set (X := union (singleton x1) (singleton x2)).
       set (Y := image f X).
@@ -862,9 +853,117 @@ Proof with eauto with *.
       exists x...
 Qed.
 
-End PropertiesOfScottTopology.
+Program Instance direct_product_of_two_poset {D : Set} {D' : Set} `{D_is_poset : Poset D} `{D'_is_poset : Poset D'} : Poset (D * D') :=
+  { leq := fun d1 : D * D' => fun d2 : D * D' => leq (fst d1) (fst d2) /\ leq (snd d1) (snd d2)
+  }
+.
 
-End ScottTopology.
+Next Obligation with eauto with *.
+  split...
+Qed.
+
+Next Obligation with eauto with *.
+  apply pair_equal_spec...
+Qed.
+
+Next Obligation with eauto with *.
+  split...
+Qed.
+
+Inductive getFsts {D : Set} {D' : Set} : Ensemble (D * D') -> Ensemble D :=
+| In_getFsts {ps : Ensemble (D * D')} :
+  forall x : D,
+  forall x' : D',
+  member (x, x') ps ->
+  member x (getFsts ps)
+.
+
+#[global] Hint Constructors getFsts : domain_theory_hints.
+
+Inductive getSnds {D : Set} {D' : Set} : Ensemble (D * D') -> Ensemble D' :=
+| In_getSnds {ps : Ensemble (D * D')} :
+  forall x : D,
+  forall x' : D',
+  member (x, x') ps ->
+  member x' (getSnds ps)
+.
+
+#[global] Hint Constructors getSnds : domain_theory_hints.
+
+Program Instance direct_product_of_two_cpos {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : CompletePartialOrder (D * D') :=
+  { bottom := (bottom, bottom)
+  }
+.
+
+Next Obligation with eauto with *.
+  split...
+Qed.
+
+Next Obligation with eauto with *.
+  assert (H0 : directed (getFsts xs)).
+  { destruct H.
+    split.
+    - destruct H.
+      exists (fst x).
+      apply (In_getFsts (fst x) (snd x)).
+      rewrite <- surjective_pairing...
+    - intros x1 H1 x2 H2.
+      inversion H1; subst.
+      rename x' into y1.
+      inversion H2; subst.
+      rename x' into y2.
+      destruct (H0 (x1, y1) H3 (x2, y2) H4) as [p].
+      destruct p as [x3 y3].
+      exists x3.
+      destruct H5.
+      destruct H6.
+      repeat split...
+      + apply H6.
+      + apply H7. 
+  }
+  assert (H1 : directed (getSnds xs)).
+  { destruct H.
+    split.
+    - destruct H.
+      exists (snd x).
+      apply (In_getSnds (fst x) (snd x)).
+      rewrite <- surjective_pairing...
+    - intros y1 H2 y2 H3.
+      inversion H2; subst.
+      rename x into x1.
+      inversion H3; subst.
+      rename x into x2.
+      destruct (H1 (x1, y1) H4 (x2, y2) H5) as [p].
+      destruct p as [x3 y3].
+      exists y3.
+      destruct H6.
+      destruct H7.
+      repeat split...
+      + apply H7.
+      + apply H8. 
+  }
+  destruct (supremum_exists (getFsts xs) H0) as [sup_fst_xs H2].
+  destruct (supremum_exists (getSnds xs) H1) as [sup_snd_xs H3].
+  exists (sup_fst_xs, sup_snd_xs).
+  intros p.
+  destruct p as [x y].
+  split.
+  - intros H4 p0 H5.
+    destruct p0 as [x0 y0].
+    split; [apply H2 | apply H3]...
+    all: apply H4.
+  - intros H4.
+    split; [apply H2 | apply H3]...
+    + intros x0 H5.
+      inversion H5; subst.
+      rename x' into y0.
+      apply (H4 (x0, y0))...
+    + intros y0 H5.
+      inversion H5; subst.
+      apply (H4 (x0, y0))...
+Qed.
+
+End DomainTheory.
 
 Module UntypedLamdbdaCalculus.
 
@@ -872,7 +971,7 @@ Import ListNotations.
 
 Import AuxiliaryPalatina.
 
-Import ScottTopology.
+Import DomainTheory.
 
 Definition ivar : Set :=
   nat
