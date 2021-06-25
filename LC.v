@@ -1100,13 +1100,22 @@ Proof with eauto with *.
     apply (In_image f3)...
 Qed.
 
-(* Must we use the Axiom of Choice to prove the following lemma?
+(* Question:
+Must we use the Axiom of Choice to prove the following lemma?
+
 Lemma _1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall fs : Ensemble (D -> D'),
   (forall f : D -> D', member f fs -> is_continuous_map f) ->
   forall directed_fs : directed fs,
   let f' : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f : D -> D' => f x) fs) (requirement1_1_2_10 fs directed_fs x)) in
   is_continuous_map f'.
+
+The informal proof in the book `The Lambda Calculus Its Syntax and Semantics` is:
+\begin{proof}
+  Since ${f_i}_i$ is directed, ${f_i(x)}_i$ is directed for all $x$ and hence $f$
+  exists. Moreover for directed $X \subseteq D$,
+  $$ f(sup X) = sup_{i} sup_{x \in X} f_i(x) = sup_{x \in X} sup_{i} f_i(x) = sup f(X). $$
+\end{proof}
 *)
 
 End DomainTheory.
