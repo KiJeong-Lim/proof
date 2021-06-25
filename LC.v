@@ -438,11 +438,33 @@ Inductive intersection {A : Type} : Ensemble A -> Ensemble A -> Ensemble A :=
 
 #[global] Hint Constructors intersection : naive_set_theory.
 
+Inductive image {A : Type} {B : Type} : (A -> B) -> Ensemble A -> Ensemble B :=
+| In_image {f : A -> B} {xs : Ensemble A} : forall x : A, member x xs -> member (f x) (image f xs)
+.
+
+#[global] Hint Constructors image : naive_set_theory.
+
+Inductive inverse_image {A : Type} {B : Type} : (A -> B) -> Ensemble B -> Ensemble A :=
+| In_inverse_image {f : A -> B} {ys : Ensemble B} : forall x : A, member (f x) ys -> member x (inverse_image f ys)
+.
+
+#[global] Hint Constructors inverse_image : naive_set_theory.
+
 Definition NonEmpty {A : Type} : Ensemble A -> Prop :=
   fun xs : Ensemble A => exists x : A, member x xs
 .
 
 #[global] Hint Unfold NonEmpty : naive_set_theory.
+
+End AuxiliaryPalatina.
+
+Module ScottTopology.
+
+Import ListNotations.
+
+Import AuxiliaryPalatina.
+
+#[global] Create HintDb scott_topology_hints.
 
 Class TopologicalSpace (X : Set) : Type :=
   { is_open_set : Ensemble X -> Prop
@@ -461,15 +483,17 @@ Class TopologicalSpace (X : Set) : Type :=
   }
 .
 
-End AuxiliaryPalatina.
+#[global] Hint Resolve open_set_for_full : scott_topology_hints.
 
-Module ScottTopology.
+#[global] Hint Resolve open_set_for_unions : scott_topology_hints.
 
-Import ListNotations.
+#[global] Hint Resolve open_set_for_intersection : scott_topology_hints.
 
-Import AuxiliaryPalatina.
+Definition is_continuous_map {X : Set} {Y : Set} `{X_is_topology : TopologicalSpace X} `{Y_is_topology : TopologicalSpace Y} : (X -> Y) -> Prop :=
+  fun f : X -> Y => forall ys : Ensemble Y, is_open_set ys -> is_open_set (inverse_image f ys)
+.
 
-#[global] Create HintDb scott_topology_hints.
+#[global] Hint Unfold is_continuous_map : scott_topology_hints.
 
 Class Poset (D : Set) : Type :=
   { leq : D -> D -> Prop
@@ -509,6 +533,50 @@ Definition is_supremum {D : Set} `{D_is_poset : Poset D} : D -> Ensemble D -> Pr
 .
 
 #[global] Hint Unfold is_supremum : scott_topology_hints.
+
+Lemma supremum_unique {D : Set} `{D_is_poset : Poset D} :
+  forall X : Ensemble D,
+  forall x1 : D,
+  forall x2 : D,
+  is_supremum x1 X ->
+  is_supremum x2 X ->
+  x1 = x2.
+Proof with eauto with *.
+  intros X x1 x2 H1 H2.
+  apply leq_asym.
+  - apply H1.
+    intros x H.
+    apply H2...
+  - apply H2.
+    intros x H.
+    apply H1...
+Qed.
+
+#[global] Hint Resolve supremum_unique : scott_topology_hints.
+
+Lemma supremum_ext {D : Set} `{D_is_poset : Poset D} :
+  forall X1 : Ensemble D,
+  forall X2 : Ensemble D,
+  isSubsetOf X1 X2 ->
+  isSubsetOf X2 X1 ->
+  forall x1 : D,
+  forall x2 : D,
+  is_supremum x1 X1 ->
+  is_supremum x2 X2 ->
+  x1 = x2.
+Proof with eauto with *.
+  unfold isSubsetOf.
+  intros X1 X2 X1_subset_X2 X2_subset_X1 x1 x2 H1 H2.
+  apply leq_asym.
+  - apply H1.
+    intros x H.
+    apply H2...
+  - apply H2.
+    intros x H.
+    apply H1...
+Qed.
+
+#[global] Hint Resolve supremum_ext : scott_topology_hints.
 
 Class CompletePartialOrder (D : Set) `{requiresPoset : Poset D} : Type :=
   { bottom : D
@@ -580,7 +648,7 @@ Next Obligation with eauto with *.
 Qed.
 
 Next Obligation with eauto with *.
-  split...
+  split.
   - intros.
     destruct H3...
   - intros.
@@ -595,15 +663,11 @@ Next Obligation with eauto with *.
     exists x...
 Qed.
 
-Section PropertiesOfScottTopology.
-
-Variable D : Set.
-
-Definition U_x `{D_is_cpo : CompletePartialOrder D} : D -> Ensemble D :=
+Definition U_x {D : Set} `{D_is_cpo : CompletePartialOrder D} : D -> Ensemble D :=
   fun x : D => fun z : D => ~ leq z x
 .
 
-Lemma U_x_is_open `{D_is_cpo : CompletePartialOrder D} :
+Lemma U_x_is_open {D : Set} `{D_is_cpo : CompletePartialOrder D} :
   forall x : D,
   is_open_set (U_x x).
 Proof with eauto with *.
@@ -618,9 +682,7 @@ Proof with eauto with *.
   { split...
     intros.
     inversion H; subst...
-    assert ( claim2 :
-      ~ (forall x0 : D, leq x0 x \/ ~ member x0 X)
-    ).
+    assert (claim2 : ~ (forall x0 : D, leq x0 x \/ ~ member x0 X)).
     { intros H4.
       contradiction H1.
       unfold is_supremum in H0.
@@ -638,6 +700,166 @@ Proof with eauto with *.
     constructor...
   }
   unfold U_x...
+Qed.
+
+Section PropertiesOfScottTopology.
+
+Variable D : Set.
+
+Variable D' : Set.
+
+Definition characterization_of_continuous_map_on_cpos `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : (D -> D') -> Prop :=
+  fun f : D -> D' =>
+  forall X : Ensemble D,
+  directed X ->
+  let Y : Ensemble D' := image f X in
+  exists sup_X : D, exists sup_Y : D', is_supremum sup_X X /\ is_supremum sup_Y Y /\ f sup_X = sup_Y
+.
+
+Theorem the_main_reason_for_introducing_the_Scott_topology `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall f : D -> D',
+  is_continuous_map f <-> characterization_of_continuous_map_on_cpos f.
+Proof with eauto with *.
+  assert ( claim1 :
+    forall f : D -> D',
+    is_continuous_map f ->
+    forall x1 : D,
+    forall x2 : D,
+    leq x1 x2 ->
+    leq (f x1) (f x2)
+  ).
+  { intros f H x1 x2 H0.
+    apply NNPP.
+    intros H1.
+    assert (H2 : member (f x1) (U_x (f x2))) by now unfold U_x.
+    assert (H3 : member x1 (inverse_image f (U_x (f x2)))) by now constructor.
+    assert (H4 : is_open_set (inverse_image f (U_x (f x2)))) by now apply H, U_x_is_open.
+    assert (H5 : member x2 (inverse_image f (U_x (f x2)))) by now apply (proj1 H4 x1 x2).
+    enough (H6 : member (f x2) (U_x (f x2)))...
+    inversion H5...
+  }
+  unfold characterization_of_continuous_map_on_cpos; split; intros H.
+  - intros X H0.
+    inversion H0; subst.
+    set (Y := image f X).
+    assert (H3 : directed Y).
+    { split.
+      - destruct H1...
+      - intros y1 H3 y2 H4.
+        inversion H3; inversion H4; subst.
+        rename x into x1, x0 into x2.
+        destruct (H2 x1 H5 x2 H9) as [x3].
+        exists (f x3).
+        destruct H6.
+        destruct H7.
+        repeat split...
+    }
+    destruct (supremum_exists X H0) as [sup_X H4].
+    exists sup_X.
+    destruct (supremum_exists Y H3) as [sup_Y H5].
+    exists sup_Y.
+    assert (H6 : leq sup_Y (f sup_X)).
+    { apply H5.
+      intros y H6.
+      inversion H6; subst.
+      apply (claim1 f H), H4...
+    }
+    assert (H7 : leq (f sup_X) sup_Y).
+    { apply NNPP.
+      intros H7.
+      assert (H8 : member (f sup_X) (U_x sup_Y)) by now unfold U_x.
+      assert (H9 : member sup_X (inverse_image f (U_x sup_Y))) by now constructor.
+      assert (H10 : is_open_set (inverse_image f (U_x sup_Y))) by now apply H, U_x_is_open.
+      destruct H10.
+      destruct (H11 X H0 sup_X H4 H9) as [x1].
+      inversion H12; subst.
+      inversion H14; subst.
+      contradiction H15.
+      apply H5...
+    }
+    assert (H8 : f sup_X = sup_Y) by now apply leq_asym...
+  - assert ( claim2 :
+      forall x1 : D,
+      forall x2 : D,
+      leq x1 x2 ->
+      leq (f x1) (f x2)
+    ).
+    { intros x1 x2 H0.
+      set (X := union (singleton x1) (singleton x2)).
+      set (Y := image f X).
+      assert (H1 : is_supremum x2 X).
+      { intros x.
+        split.
+        - intros H1 x' H2.
+          inversion H2; inversion H3; subst...
+        - intros H1.
+          apply H1...
+      }
+      assert (H2 : directed X).
+      { split.
+        - exists x1...
+        - intros x1' H2 x2' H3.
+          exists x2.
+          repeat split...
+          + inversion H2; (inversion H4; subst)...
+          + inversion H3; (inversion H4; subst)... 
+      }
+      destruct (H X H2) as [sup_X H3].
+      destruct H3 as [sup_Y H3].
+      destruct H3.
+      destruct H4.
+      assert (H6 : sup_X = x2) by now apply (supremum_unique X).
+      assert (H7 : sup_Y = f x2).
+      { apply (supremum_unique Y)...
+        intros y.
+        split...
+        subst sup_X sup_Y.
+        intros H7 y' H8.
+        apply H4...
+      }
+      subst sup_X sup_Y.
+      apply H4...
+    }
+    intros O H0.
+    split.
+    + intros x1 x2 H1 H2.
+      inversion H1; subst.
+      constructor.
+      apply (proj1 H0 (f x1) (f x2))...
+    + intros X H1 sup_X H2 H3.
+      destruct (H X H1) as [sup_X' H4].
+      destruct H4 as [sup_Y H4].
+      destruct H4.
+      destruct H5.
+      assert (sup_X = sup_X') by now apply (supremum_unique X).
+      subst sup_X'.
+      assert (H7 : member sup_Y O).
+      { rewrite <- H6.
+        inversion H3; subst...
+      }
+      assert (H8 : directed (image f X)).
+      { destruct H1.
+        split.
+        - destruct H1 as [x1].
+          exists (f x1)...
+        - intros y1 H9 y2 H10.
+          inversion H9; subst.
+          inversion H10; subst.
+          rename x into x1, x0 into x2.
+          destruct (H8 x1 H11 x2 H6).
+          destruct H12.
+          destruct H13.
+          destruct (H8 x1 H11 x2 H6) as [x3].
+          destruct H15.
+          destruct H16.
+          exists (f x3).
+          repeat split...
+      }
+      assert (H9 : NonEmpty (intersection (image f X) O)) by now apply (proj2 H0 (image f X) H8 sup_Y).
+      destruct H9 as [y1].
+      inversion H9; subst.
+      inversion H10; subst.
+      exists x...
 Qed.
 
 End PropertiesOfScottTopology.
