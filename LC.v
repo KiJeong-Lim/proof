@@ -2,6 +2,7 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Coq.Classes.RelationClasses.
 Require Import Coq.Logic.Classical.
 
 Module AuxiliaryPalatina.
@@ -439,7 +440,7 @@ Inductive intersection {A : Type} : Ensemble A -> Ensemble A -> Ensemble A :=
 #[global] Hint Constructors intersection : naive_set_theory.
 
 Inductive image {A : Type} {B : Type} : (A -> B) -> Ensemble A -> Ensemble B :=
-| In_image {f : A -> B} {xs : Ensemble A} : forall x : A, member x xs -> member (f x) (image f xs)
+| In_image {xs : Ensemble A} : forall x : A, forall f : A -> B, member x xs -> member (f x) (image f xs)
 .
 
 #[global] Hint Constructors image : naive_set_theory.
@@ -495,30 +496,75 @@ Definition is_continuous_map {X : Set} {Y : Set} `{X_is_topology : TopologicalSp
 
 #[global] Hint Unfold is_continuous_map : domain_theory_hints.
 
-Class Poset (D : Set) : Type :=
-  { leq : D -> D -> Prop
-  ; leq_refl :
-    forall v1 : D,
-    leq v1 v1
-  ; leq_asym :
-    forall v1 : D,
-    forall v2 : D,
-    leq v1 v2 ->
-    leq v2 v1 ->
-    v1 = v2
-  ; leq_trans :
-    forall v1 : D,
-    forall v2 : D,
-    forall v3 : D,
-    leq v1 v2 ->
-    leq v2 v3 ->
-    leq v1 v3
+Class Poset_minor (X : Set) : Type :=
+  { eql : X -> X -> Prop
+  ; leq : X -> X -> Prop
+  ; requriesEquivalence :> Equivalence eql
+  ; requiresPreOrder :> PreOrder leq
+  ; requiresPartialOrder :> PartialOrder eql leq
   }
 .
 
-#[global] Hint Resolve leq_refl : domain_theory_hints.
+Local Notation "x =-= y" := (eql x y) (at level 70, no associativity) : type_scope.
+
+Class Poset (Y : Set) : Type :=
+  { requiresPoset_minor :> Poset_minor Y
+  ; substitutablity {X : Set} {requiresPoset_minor : Poset_minor X} : forall x1 : X, forall x2 : X, x1 =-= x2 -> forall f : X -> Y, f x1 =-= f x2
+  }
+.
+
+#[global] Hint Resolve substitutablity : domain_theory_hints.
+
+Lemma leq_refl1 {D : Set} `{D_is_poset_minor : Poset_minor D} :
+  forall x1 : D,
+  forall x2 : D,
+  x1 =-= x2 ->
+  leq x1 x2.
+Proof with eauto.
+  intros.
+  apply partial_order_equivalence in H.
+  destruct H...
+Qed.
+
+#[global] Hint Resolve leq_refl1 : domain_theory_hints.
+
+Lemma leq_refl2 {D : Set} `{D_is_poset_minor : Poset D} :
+  forall x1 : D,
+  forall x2 : D,
+  x1 =-= x2 ->
+  leq x2 x1.
+Proof with eauto.
+  intros.
+  apply partial_order_equivalence in H.
+  destruct H...
+Qed.
+
+#[global] Hint Resolve leq_refl2 : domain_theory_hints.
+
+Lemma leq_asym {D : Set} `{D_is_poset_minor : Poset_minor D} :
+  forall x1 : D,
+  forall x2 : D,
+  leq x1 x2 ->
+  leq x2 x1 ->
+  x1 =-= x2.
+Proof with eauto.
+  intros.
+  apply antisymmetry...
+Qed.
 
 #[global] Hint Resolve leq_asym : domain_theory_hints.
+
+Lemma leq_trans {D : Set} `{D_is_poset_minor : Poset_minor D} :
+  forall x1 : D,
+  forall x2 : D,
+  forall x3 : D,
+  leq x1 x2 ->
+  leq x2 x3 ->
+  leq x1 x3.
+Proof.
+  intros.
+  apply (transitivity (R:=leq) H H0).
+Qed.
 
 #[global] Hint Resolve leq_trans : domain_theory_hints.
 
@@ -534,13 +580,13 @@ Definition is_supremum {D : Set} `{D_is_poset : Poset D} : D -> Ensemble D -> Pr
 
 #[global] Hint Unfold is_supremum : domain_theory_hints.
 
-Lemma supremum_unique {D : Set} `{D_is_poset : Poset D} :
+Lemma supremum_unique {D : Set} `{D_is_poset_minor : Poset D} :
   forall X : Ensemble D,
   forall x1 : D,
   forall x2 : D,
   is_supremum x1 X ->
   is_supremum x2 X ->
-  x1 = x2.
+  x1 =-= x2.
 Proof with eauto with *.
   intros X x1 x2 H1 H2.
   apply leq_asym.
@@ -554,7 +600,7 @@ Qed.
 
 #[global] Hint Resolve supremum_unique : domain_theory_hints.
 
-Lemma supremum_ext {D : Set} `{D_is_poset : Poset D} :
+Lemma supremum_ext {D : Set} `{D_is_poset_minor : Poset D} :
   forall X1 : Ensemble D,
   forall X2 : Ensemble D,
   isSubsetOf X1 X2 ->
@@ -563,7 +609,7 @@ Lemma supremum_ext {D : Set} `{D_is_poset : Poset D} :
   forall x2 : D,
   is_supremum x1 X1 ->
   is_supremum x2 X2 ->
-  x1 = x2.
+  x1 =-= x2.
 Proof with eauto with *.
   unfold isSubsetOf.
   intros X1 X2 X1_subset_X2 X2_subset_X1 x1 x2 H1 H2.
@@ -603,7 +649,7 @@ Class CompleteLattice (D : Set) `{requiresPoset : Poset D} : Type :=
 
 #[global] Hint Resolve supremum_always_exists : domain_theory_hints.
 
-Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
+Global Program Instance each_complete_lattice_is_a_cpo (D : Set) `{D_is_poset : Poset D} (requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
   { bottom := supremum_always_exists empty
   }
 .
@@ -620,7 +666,7 @@ Next Obligation with eauto with naive_set_theory.
   apply supremum_always_exists.
 Qed.
 
-Program Instance scott_topology (D : Set) `{D_is_poset : Poset D} (requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
+Global Program Instance scott_topology (D : Set) `{D_is_poset : Poset D} (requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
   { is_open_set := fun O : Ensemble D => (forall x : D, forall y : D, member x O -> leq x y -> member y O) /\ (forall X : Ensemble D, directed X -> forall sup_X : D, is_supremum sup_X X -> member sup_X O -> NonEmpty (intersection X O))
   }
 .
@@ -699,7 +745,10 @@ Proof with eauto with *.
     apply NNPP in H5.
     constructor...
   }
-  unfold U_x...
+  unfold U_x, member.
+  intros y z H H0 H1.
+  contradiction H.
+  apply (transitivity (R:=leq) H0 H1).
 Qed.
 
 Definition characterization_of_continuous_map_on_cpos {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : (D -> D') -> Prop :=
@@ -707,7 +756,7 @@ Definition characterization_of_continuous_map_on_cpos {D : Set} {D' : Set} `{D_i
   forall X : Ensemble D,
   directed X ->
   let Y : Ensemble D' := image f X in
-  exists sup_X : D, exists sup_Y : D', is_supremum sup_X X /\ is_supremum sup_Y Y /\ f sup_X = sup_Y
+  exists sup_X : D, exists sup_Y : D', is_supremum sup_X X /\ is_supremum sup_Y Y /\ f sup_X =-= sup_Y
 .
 
 Lemma continuous_maps_on_cpos_are_always_monotonic {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
@@ -773,7 +822,7 @@ Proof with eauto with *.
       contradiction H15.
       apply H5...
     }
-    assert (H8 : f sup_X = sup_Y) by now apply leq_asym...
+    assert (H8 : f sup_X =-= sup_Y) by now apply antisymmetry...
   - assert (claim2 : forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)).
     { intros x1 x2 H0.
       set (X := union (singleton x1) (singleton x2)).
@@ -799,16 +848,15 @@ Proof with eauto with *.
       destruct H3 as [sup_Y H3].
       destruct H3.
       destruct H4.
-      assert (H6 : sup_X = x2) by now apply (supremum_unique X).
-      assert (H7 : sup_Y = f x2).
+      assert (H6 : sup_X =-= x2) by now apply (supremum_unique X).
+      assert (H7 : sup_Y =-= f x2).
       { apply (supremum_unique Y)...
         intros y.
         split...
-        subst sup_X sup_Y.
         intros H7 y' H8.
+        apply (leq_trans y' (f x2) y)...
         apply H4...
       }
-      subst sup_X sup_Y.
       apply H4...
     }
     intros O H0.
@@ -822,52 +870,84 @@ Proof with eauto with *.
       destruct H4 as [sup_Y H4].
       destruct H4.
       destruct H5.
-      assert (sup_X = sup_X') by now apply (supremum_unique X).
-      subst sup_X'.
-      assert (H7 : member sup_Y O).
-      { rewrite <- H6.
-        inversion H3; subst...
+      assert (sup_X =-= sup_X') by now apply (supremum_unique X).
+      assert (H8 : member (f sup_X) O).
+      { inversion H3; subst...
       }
-      assert (H8 : directed (image f X)).
+      assert (H9 : directed (image f X)).
       { destruct H1.
         split.
         - destruct H1 as [x1].
           exists (f x1)...
-        - intros y1 H9 y2 H10.
-          inversion H9; subst.
+        - intros y1 H10 y2 H11.
           inversion H10; subst.
+          inversion H11; subst.
           rename x into x1, x0 into x2.
-          destruct (H8 x1 H11 x2 H6).
-          destruct H12.
-          destruct H13.
-          destruct (H8 x1 H11 x2 H6) as [x3].
+          destruct (H9 x1 H12 x2 H13) as [x3].
+          destruct H14.
           destruct H15.
-          destruct H16.
           exists (f x3).
           repeat split...
       }
-      assert (H9 : NonEmpty (intersection (image f X) O)) by now apply (proj2 H0 (image f X) H8 sup_Y).
-      destruct H9 as [y1].
-      inversion H9; subst.
+      assert (H10 : NonEmpty (intersection (image f X) O)).
+      { apply (proj2 H0 (image f X) H9 (f sup_X))...
+        intros y.
+        split.
+        - intros.
+          apply H5...
+          apply (leq_trans sup_Y (f sup_X) y)...
+        - intros.
+          apply (leq_trans (f sup_X) sup_Y y)...
+          apply H5...
+      }
+      destruct H10 as [y1].
       inversion H10; subst.
+      inversion H11; subst.
       exists x...
 Qed.
 
-Program Instance direct_product_of_two_poset {D : Set} {D' : Set} `{D_is_poset : Poset D} `{D'_is_poset : Poset D'} : Poset (D * D') :=
-  { leq := fun d1 : D * D' => fun d2 : D * D' => leq (fst d1) (fst d2) /\ leq (snd d1) (snd d2)
+Global Program Instance direct_product_of_two_poset_minor {D : Set} {D' : Set} `{D_is_poset_minor : Poset_minor D} `{D'_is_poset_minor : Poset_minor D'} : Poset_minor (D * D') :=
+  { eql := fun d1 : D * D' => fun d2 : D * D' => eql (fst d1) (fst d2) /\ eql (snd d1) (snd d2)
+  ; leq := fun d1 : D * D' => fun d2 : D * D' => leq (fst d1) (fst d2) /\ leq (snd d1) (snd d2)
   }
 .
 
 Next Obligation with eauto with *.
-  split...
+  repeat split...
+  destruct H...
+  destruct H...
+  destruct H, H0.
+  apply (transitivity H H0).
+  destruct H, H0.
+  apply (transitivity H1 H2).
 Qed.
 
 Next Obligation with eauto with *.
-  apply pair_equal_spec...
+  repeat split...
+  destruct H, H0...
+  destruct H, H0...
 Qed.
 
 Next Obligation with eauto with *.
-  split...
+  repeat split...
+  destruct H...
+  destruct H...
+  destruct H...
+  destruct H...
+  destruct H.
+  destruct H0, H...
+  destruct H.
+  destruct H0, H...
+Qed.
+
+Global Program Instance direct_product_of_two_poset {D : Set} {D' : Set} `{D_is_poset : Poset D} `{D'_is_poset : Poset D'} : Poset (D * D') :=
+  {}
+.
+
+Next Obligation with eauto with *.
+  constructor.
+  apply (substitutablity x1 x2 H (fun x : X => fst (f x))).
+  apply (substitutablity x1 x2 H (fun x : X => snd (f x))).
 Qed.
 
 Inductive getFsts {D : Set} {D' : Set} : Ensemble (D * D') -> Ensemble D :=
@@ -962,6 +1042,72 @@ Next Obligation with eauto with *.
       inversion H5; subst.
       apply (H4 (x0, y0))...
 Qed.
+
+Global Program Instance ContinuousMaps_is_Poset_minor {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset_minor (D -> D') :=
+  { eql := fun f1 : D -> D' => fun f2 : D -> D' => forall x : D, eql (f1 x) (f2 x)
+  ; leq := fun f1 : D -> D' => fun f2 : D -> D' => forall x : D, leq (f1 x) (f2 x)
+  }
+.
+
+Next Obligation with eauto with *.
+  repeat split...
+  intros f1 f2 f3 H1 H2 x.
+  apply (transitivity (H1 x) (H2 x)).
+Qed.
+
+Next Obligation with eauto with *.
+  repeat split...
+Qed.
+
+Next Obligation with eauto with *.
+  intros f1 f2.
+  repeat split...
+  intros x.
+  apply leq_refl2...
+  intros H.
+  destruct H...
+Qed.
+
+Global Program Instance ContinuousMaps_is_Poset {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset (D -> D') :=
+  {}
+.
+
+Next Obligation with eauto with *.
+  apply (substitutablity x1 x2 H (fun x' : X => f x' x)).
+Qed.
+
+Lemma requirement1_1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall fs : Ensemble (D -> D'),
+  directed fs ->
+  forall x : D,
+  directed (image (fun f : D -> D' => f x) fs).
+Proof with eauto with *.
+  intros fs H x.
+  destruct H.
+  split.
+  - destruct H as [f0].
+    exists (f0 x).
+    apply (In_image f0)...
+  - intros y1 H1 y2 H2.
+    inversion H1; subst.
+    inversion H2; subst.
+    rename x0 into f1, x1 into f2.
+    destruct (H0 f1 H3 f2 H4) as [f3].
+    destruct H5.
+    destruct H6.
+    exists (f3 x).
+    repeat split...
+    apply (In_image f3)...
+Qed.
+
+(* Must we use the Axiom of Choice to prove the following lemma?
+Lemma _1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall fs : Ensemble (D -> D'),
+  (forall f : D -> D', member f fs -> is_continuous_map f) ->
+  forall directed_fs : directed fs,
+  let f' : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f : D -> D' => f x) fs) (requirement1_1_2_10 fs directed_fs x)) in
+  is_continuous_map f'.
+*)
 
 End DomainTheory.
 
