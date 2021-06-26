@@ -1321,6 +1321,45 @@ Next Obligation with eauto with *.
     apply (H0 f0 H3 x).
 Qed.
 
+(* [PROVE ME] 2021-06-26:
+
+\begin{lstlisting}
+Lemma separately_continuous_iff {D1 : Set} {D2 : Set} {D3 : Set} `{D1_is_cpo : CompletePartialOrder D1} `{D2_is_cpo : CompletePartialOrder D2} `{D3_is_cpo : CompletePartialOrder D3} :
+  forall f : D1 * D2 -> D3,
+  is_continuous_map f <-> ((forall x1 : D1, is_continuous_map (fun x2 : D2 => f (x1, x2))) /\ (forall x2 : D2, is_continuous_map (fun x1 : D1 => f (x1, x2)))).
+\end{lstlisting}
+
+1.2.12 Lemma
+Let $f : D_1 \times D_2 \to D_3$.
+Then $f$ is continuous iff $f$ is continuous of its arguments separately.
+
+\begin{proof}
+  ($\Rightarrow$) Let $g = x_1 \mapsto f \left(x_1 , x_2 \right)$.
+    Then for directed $X \subseteq D_1$,
+    \begin{align*}
+      g \left( \sup X \right) 
+      & = f \left( \sup X , x_2 \right) \\
+      & = f \left( \sup \left\{ \left( x_1 , x_2 \right) | x_1 \in X \right\} \right) \\
+      & = \sup f \left( \left\{ \left( x_1 , x_2 \right) | x_1 \in X \right\} \right) \\
+      & = \sup g \left( X \right) .
+    \end{align*}
+    Hence $g$ is continuous and similarly $x_2 \mapsto f \left( x_1 , x_2 \right)$.
+  ($\Leftarrow$) Let $X \subseteq D_1 \times D_2$ be directed.
+    Then
+    \begin{align*}
+      f \left( \sup X \right)
+      & = f \left( \sup X_1 , \sup X_2 \right) \\
+      & = \sup_{x_1 \in X_1} f \left( x_1, X_2 \right) \\
+      & = \sup_{x_1 \in X_1} \sup_{x_2 \in X_2} f \left( x_1 , x_2 \right) \\
+      & = \sup_{\left( x_1 , x_2 \right) \in X} f \left( x_1 , x_2 \right) \\
+      & = \sup f \left( X \right)
+    \end{align*}
+    and so $f$ is continuous,
+    where $$ X_1 := \left\{ x_1 \in D_1 | \left( \exists x_2 \in D_2 \right) \left[ \left( x_1 , x_2 \right) \in X \right] \right\} ; $$ and $$ X_2 := \left\{ x_2 \in D_2 | \left( \exists x_1 \in D_1 \right) \left[ \left( x_1 , x_2 \right) \in X \right] \right\} . $$
+\end{proof}
+
+*)
+
 End DomainTheory.
 
 Module UntypedLamdbdaCalculus.
