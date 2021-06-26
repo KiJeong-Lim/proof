@@ -1078,7 +1078,7 @@ Next Obligation with eauto with *.
       apply (H4 (x0, y0))...
 Qed.
 
-Local Notation "D1 ~> D2" := ({f : D1 -> D2 | is_continuous_map f}) (at level 5, right associativity) : type_scope.
+Local Notation "D1 ~> D2" := ({f : D1 -> D2 | is_continuous_map f}) (at level 15, right associativity) : type_scope.
 
 Lemma continuous_maps_are_continuous {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall f : D ~> D',
@@ -1267,6 +1267,58 @@ Proof with eauto with *.
       apply (leq_trans y1 (f x1) y)...
   }
   apply lemma2, lemma1...
+Qed.
+
+Definition supremum_of_continuous_maps {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall fs : Ensemble (D ~> D'),
+  directed fs ->
+  D ~> D'.
+Proof with eauto with *.
+  intros fs directed_fs.
+  exists (fun x : D => proj1_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x))).
+  apply sup_of_continuous_maps_on_cpos_exists_if_their_set_is_directed...
+Defined.
+
+Definition bottom_of_continuous_maps {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  D ~> D'.
+Proof with eauto with *.
+  exists (fun _ : D => bottom).
+  intros Y [H H0].
+  split.
+  - intros x1 x2 H1 H2.
+    inversion H1; subst...
+  - intros X [[x0 H1] H2] sup_X H3 H4.
+    exists x0.
+    constructor...
+    inversion H4; subst...
+Defined.
+
+Global Program Instance set_continuous_maps_on_cpos_is_cpo {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : CompletePartialOrder (D ~> D') :=
+  { bottom := bottom_of_continuous_maps
+  }
+.
+
+Next Obligation with eauto with *.
+  apply bottom_least...
+Qed.
+
+Next Obligation with eauto with *.
+  rename xs into fs.
+  exists (supremum_of_continuous_maps fs H).
+  intros f.
+  split.
+  - intros H0 f0 H1 x.
+    apply (leq_trans (proj1_sig f0 x) (proj1_sig (supremum_of_continuous_maps fs H) x) (proj1_sig f x))...
+    assert (H2 : is_supremum (proj1_sig (supremum_of_continuous_maps fs H) x) (image (fun f_i : D ~> D' => proj1_sig f_i x) fs)) by now apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs H x))).
+    apply H2...
+    apply (In_image f0)...
+  - intros H0 x.
+    assert (H1 : is_supremum (proj1_sig (supremum_of_continuous_maps fs H) x) (image (fun f_i : D ~> D' => proj1_sig f_i x) fs)) by now apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs H x))).
+    apply H1...
+    intros y H2.
+    inversion H2; subst.
+    rename x0 into f0.
+    apply (H0 f0 H3 x).
 Qed.
 
 End DomainTheory.
