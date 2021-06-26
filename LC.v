@@ -1100,7 +1100,7 @@ Proof with eauto with *.
     apply (In_image f3)...
 Qed.
 
-(* [Question] Must we use the Axiom of Choice to prove Lemma 1.2.10?
+(* [Question] 2021-06-26: Must we use the Axiom of Choice to prove Lemma 1.2.10?
 
 1.2.9. Definition.
 Let $D$, $D'$ be given.
@@ -1114,7 +1114,7 @@ Let ${f_i}_i \subseteq [D -> D']$ be a directed family of maps.
 Define $$ f(x) = \sup_{i} f_i(x) . $$
 Then $f$ is well defined and continuous.
 
-In Coq:
+Lemma 1.2.10 is stated in Coq as follows:
 \begin{lstlisting}
 Lemma _1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall fs : Ensemble (D -> D'),
