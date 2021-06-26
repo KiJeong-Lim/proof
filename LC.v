@@ -1100,16 +1100,18 @@ Proof with eauto with *.
     apply (In_image f3)...
 Qed.
 
-(* [Question] Must we use the Axiom of Choice to prove the lemma 1.2.10?
+(* [Question] Must we use the Axiom of Choice to prove Lemma 1.2.10?
 
-1.2.9. Definition. Let $D$, $D'$ be given. Define
-  $$ [D -> D'] = { f : D -> D' | f continuous } . $$
+1.2.9. Definition.
+Let $D$, $D'$ be given.
+Define $$ [D -> D'] = { f : D -> D' | f continuous } . $$
 This set can be partially ordered pointwise:
-  $$ f \leq g \iff (\forall x \in D) [ f(x) \leq g(x) ] . $$
+$$ f \leq g \iff (\forall x \in D) [ f(x) \leq g(x) ] . $$
 Clearly $[D -> D']$ is a poset.
 
-1.2.10. Lemma. Let ${f_i}_i \subseteq [D -> D']$ be a directed family of maps. Define
-  $$ f(x) = \sup_{i} f_i(x) . $$
+1.2.10. Lemma.
+Let ${f_i}_i \subseteq [D -> D']$ be a directed family of maps.
+Define $$ f(x) = \sup_{i} f_i(x) . $$
 Then $f$ is well defined and continuous.
 
 In Coq:
@@ -1122,11 +1124,17 @@ Lemma _1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_
   is_continuous_map f'.
 \end{lstlisting}
 
-The informal proof in the book `The Lambda Calculus Its Syntax and Semantics' is:
+The informal proof of Lemma 1.2.10 in the book `The Lambda Calculus Its Syntax and Semantics' is:
 \begin{proof}
-  Since ${f_i}_i$ is directed, ${f_i(x)}_i$ is directed for all $x$ and hence $f$
-  exists. Moreover for directed $X \subseteq D$,
-  $$ f(\sup X) = \sup_{i} \sup_{x \in X} f_i(x) = \sup_{x \in X} \sup_{i} f_i(x) = \sup f(X) . $$
+  Since ${f_i}_i$ is directed,
+  ${f_i(x)}_i$ is directed for all $x$ and hence $f$ exists.
+  Moreover for directed $X \subseteq D$,
+  \begin{align*}
+    f(\sup X)
+    & = \sup_{i} \sup_{x \in X} f_i(x) \\
+    & = \sup_{x \in X} \sup_{i} f_i(x) \\
+    & = \sup f(X) . \\
+  \end{align*}
 \end{proof}
 *)
 
