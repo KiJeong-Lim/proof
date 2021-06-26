@@ -585,17 +585,24 @@ Lemma supremum_unique {D : Set} `{D_is_poset_minor : Poset D} :
   forall x1 : D,
   forall x2 : D,
   is_supremum x1 X ->
-  is_supremum x2 X ->
-  x1 =-= x2.
+  is_supremum x2 X <-> x1 =-= x2.
 Proof with eauto with *.
-  intros X x1 x2 H1 H2.
-  apply leq_asym.
-  - apply H1.
-    intros x H.
-    apply H2...
-  - apply H2.
-    intros x H.
-    apply H1...
+  intros X x1 x2 H1.
+  split; intros H2.
+  - apply leq_asym.
+    + apply H1.
+      intros x H.
+      apply H2...
+    + apply H2.
+      intros x H.
+      apply H1...
+  - intros x.
+    split.
+    + intros H3 x' H4.
+      apply H1...
+    + intros H4.
+      apply (leq_trans x2 x1 x)...
+      apply H1...
 Qed.
 
 #[global] Hint Resolve supremum_unique : domain_theory_hints.
@@ -778,6 +785,65 @@ Proof with eauto with *.
   inversion H5...
 Qed.
 
+Lemma property1_of_Scott_topology {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall f : D -> D',
+  is_continuous_map f ->
+  forall X : Ensemble D,
+  directed X ->
+  directed (image f X).
+Proof with eauto with *.
+  intros f H X H0.
+  destruct H0 as [H0 H1].
+  assert (H2 : forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)) by now apply continuous_maps_on_cpos_are_always_monotonic.
+  split.
+  - destruct H0 as [x0]...
+  - intros y1 H3 y2 H4.
+    inversion H3; inversion H4; subst.
+    rename x into x1, x0 into x2.
+    destruct (H1 x1 H5 x2 H9) as [x3].
+    exists (f x3).
+    destruct H6.
+    destruct H7.
+    repeat split...
+Qed.
+
+Lemma property2_of_Scott_topology {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall f : D -> D',
+  is_continuous_map f ->
+  forall X : Ensemble D,
+  directed X ->
+  forall sup_X : D,
+  is_supremum sup_X X ->
+  directed (image f X) ->
+  {sup_Y : D' | is_supremum sup_Y (image f X) /\ f sup_X =-= sup_Y}.
+Proof with eauto with *.
+  intros f H X H0 sup_X H1 H2.
+  set (Y := image f X).
+  assert (H3 : forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)) by now apply continuous_maps_on_cpos_are_always_monotonic.
+  destruct (supremum_exists Y H2) as [sup_Y H4].
+  exists sup_Y.
+  assert (claim1 : leq sup_Y (f sup_X)).
+  { apply H4.
+    intros y H5.
+    inversion H5; subst.
+    apply H3, H1...
+  }
+  assert (claim2 : leq (f sup_X) sup_Y).
+  { apply NNPP.
+    intros H5.
+    assert (H6 : member (f sup_X) (U_x sup_Y)) by now unfold U_x.
+    assert (H7 : member sup_X (inverse_image f (U_x sup_Y))) by now constructor.
+    assert (H8 : is_open_set (inverse_image f (U_x sup_Y))) by now apply H, U_x_is_open.
+    destruct H8.
+    destruct (H9 X H0 sup_X H1 H7) as [x1].
+    inversion H10; subst.
+    inversion H12; subst.
+    contradiction H13.
+    apply H4...
+  }
+  split...
+Qed.
+
 Theorem the_main_reason_for_introducing_the_Scott_topology {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall f : D -> D',
   is_continuous_map f <-> characterization_of_continuous_map_on_cpos f.
@@ -787,42 +853,11 @@ Proof with eauto with *.
   - intros X H0.
     inversion H0; subst.
     set (Y := image f X).
-    assert (H3 : directed Y).
-    { split.
-      - destruct H1...
-      - intros y1 H3 y2 H4.
-        inversion H3; inversion H4; subst.
-        rename x into x1, x0 into x2.
-        destruct (H2 x1 H5 x2 H9) as [x3].
-        exists (f x3).
-        destruct H6.
-        destruct H7.
-        repeat split...
-    }
+    assert (H3 : directed Y) by now apply property1_of_Scott_topology.
     destruct (supremum_exists X H0) as [sup_X H4].
     exists sup_X.
-    destruct (supremum_exists Y H3) as [sup_Y H5].
-    exists sup_Y.
-    assert (H6 : leq sup_Y (f sup_X)).
-    { apply H5.
-      intros y H6.
-      inversion H6; subst.
-      apply (claim1 f H), H4...
-    }
-    assert (H7 : leq (f sup_X) sup_Y).
-    { apply NNPP.
-      intros H7.
-      assert (H8 : member (f sup_X) (U_x sup_Y)) by now unfold U_x.
-      assert (H9 : member sup_X (inverse_image f (U_x sup_Y))) by now constructor.
-      assert (H10 : is_open_set (inverse_image f (U_x sup_Y))) by now apply H, U_x_is_open.
-      destruct H10.
-      destruct (H11 X H0 sup_X H4 H9) as [x1].
-      inversion H12; subst.
-      inversion H14; subst.
-      contradiction H15.
-      apply H5...
-    }
-    assert (H8 : f sup_X =-= sup_Y) by now apply antisymmetry...
+    destruct (property2_of_Scott_topology f H X H0 sup_X H4 H3) as [sup_Y H5].
+    exists sup_Y...
   - assert (claim2 : forall x1 : D, forall x2 : D, leq x1 x2 -> leq (f x1) (f x2)).
     { intros x1 x2 H0.
       set (X := union (singleton x1) (singleton x2)).
@@ -1076,7 +1111,7 @@ Next Obligation with eauto with *.
   apply (substitutablity x1 x2 H (fun x' : X => f x' x)).
 Qed.
 
-Lemma requirement1_1_2_10 {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+Lemma sup_of_maps_on_cpos_is_well_defined {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall fs : Ensemble (D -> D'),
   directed fs ->
   forall x : D,
@@ -1137,6 +1172,38 @@ The informal proof of Lemma 1.2.10 in the book `The Lambda Calculus Its Syntax a
   \end{align*}
 \end{proof}
 *)
+
+Lemma sup_of_maps_on_cpos_exists_if_set_of_maps_are_directed {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall fs : Ensemble (D -> D'),
+  (forall f : D -> D', member f fs -> is_continuous_map f) ->
+  forall directed_fs : directed fs,
+  let f' : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f : D -> D' => f x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x)) in
+  is_continuous_map f'.
+Proof with eauto with *.
+  intros fs H H0 f'.
+  apply the_main_reason_for_introducing_the_Scott_topology.
+  intros X H1 Y.
+  destruct (supremum_exists X H1) as [sup_X H2].
+  exists sup_X, (f' sup_X).
+  enough (is_supremum (f' sup_X) Y)...
+  assert ( claim1 :
+    forall f : D -> D',
+    member f fs ->
+    is_supremum (f sup_X) (image f X)
+  ).
+  { intros f H3.
+    assert (H4 : is_continuous_map f) by now apply H.
+    assert (H5 : characterization_of_continuous_map_on_cpos f) by now apply the_main_reason_for_introducing_the_Scott_topology.
+    destruct (H5 X H1) as [sup_X' H6].
+    destruct H6 as [sup_Y' H6].
+    destruct H6.
+    destruct H7.
+    assert (H9 : sup_X' =-= sup_X) by now apply (supremum_unique X).
+    apply (supremum_unique (image f X) sup_Y' (f sup_X))...
+    symmetry.
+    transitivity (f sup_X')...
+  }
+  give_up.
 
 End DomainTheory.
 
