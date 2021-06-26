@@ -1078,9 +1078,20 @@ Next Obligation with eauto with *.
       apply (H4 (x0, y0))...
 Qed.
 
-Global Program Instance ContinuousMaps_is_Poset_minor {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset_minor (D -> D') :=
-  { eql := fun f1 : D -> D' => fun f2 : D -> D' => forall x : D, eql (f1 x) (f2 x)
-  ; leq := fun f1 : D -> D' => fun f2 : D -> D' => forall x : D, leq (f1 x) (f2 x)
+Local Notation "D1 ~> D2" := ({f : D1 -> D2 | is_continuous_map f}) (at level 5, right associativity) : type_scope.
+
+Lemma continuous_maps_are_continuous {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall f : D ~> D',
+  is_continuous_map (proj1_sig f).
+Proof.
+  apply proj2_sig.
+Qed.
+
+#[global] Hint Resolve continuous_maps_are_continuous : domain_theory_hints.
+
+Global Program Instance ContinuousMaps_is_Poset_minor {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset_minor (D ~> D') :=
+  { eql := fun f1 : D ~> D' => fun f2 : D ~> D' => forall x : D, eql (proj1_sig f1 x) (proj1_sig f2 x)
+  ; leq := fun f1 : D ~> D' => fun f2 : D ~> D' => forall x : D, leq (proj1_sig f1 x) (proj1_sig f2 x)
   }
 .
 
@@ -1103,25 +1114,25 @@ Next Obligation with eauto with *.
   destruct H...
 Qed.
 
-Global Program Instance ContinuousMaps_is_Poset {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset (D -> D') :=
+Global Program Instance ContinuousMaps_is_Poset {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} : Poset (D ~> D') :=
   {}
 .
 
 Next Obligation with eauto with *.
-  apply (substitutablity x1 x2 H (fun x' : X => f x' x)).
+  apply (substitutablity x1 x2 H (fun x' : X => proj1_sig (f x') x)).
 Qed.
 
 Lemma sup_of_maps_on_cpos_is_well_defined {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
-  forall fs : Ensemble (D -> D'),
+  forall fs : Ensemble (D ~> D'),
   directed fs ->
   forall x : D,
-  directed (image (fun f : D -> D' => f x) fs).
+  directed (image (fun f : D ~> D' => proj1_sig f x) fs).
 Proof with eauto with *.
   intros fs H x.
   destruct H.
   split.
   - destruct H as [f0].
-    exists (f0 x).
+    exists (proj1_sig f0 x).
     apply (In_image f0)...
   - intros y1 H1 y2 H2.
     inversion H1; subst.
@@ -1129,105 +1140,86 @@ Proof with eauto with *.
     rename x0 into f1, x1 into f2.
     destruct (H0 f1 H3 f2 H4) as [f3].
     destruct H5 as [H5 [H6 H7]].
-    exists (f3 x).
+    exists (proj1_sig f3 x).
     repeat split...
     apply (In_image f3)...
 Qed.
 
 Lemma sup_of_continuous_maps_on_cpos_exists_if_their_set_is_directed {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
-  forall fs : Ensemble (D -> D'),
-  (forall f_i : D -> D', member f_i fs -> is_continuous_map f_i) ->
+  forall fs : Ensemble (D ~> D'),
   forall directed_fs : directed fs,
-  let f : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f_i : D -> D' => f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x)) in
+  let f : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x)) in
   is_continuous_map f.
 Proof with eauto with *.
-  intros fs H H0 f.
+  intros fs H f.
   apply the_main_reason_for_introducing_the_Scott_topology.
-  intros X H1 Y.
-  destruct (supremum_exists X H1) as [sup_X H2].
+  intros X H0 Y.
+  destruct (supremum_exists X H0) as [sup_X H1].
   exists sup_X, (f sup_X).
   enough (is_supremum (f sup_X) Y)...
   assert ( claim1 :
-    forall f_i : D -> D',
+    forall f_i : D ~> D',
     member f_i fs ->
-    is_supremum (f_i sup_X) (image f_i X)
+    is_supremum (proj1_sig f_i sup_X) (image (fun x : D => proj1_sig f_i x) X)
   ).
-  { intros f_i H3.
-    assert (H4 : is_continuous_map f_i) by now apply H.
-    assert (H5 : characterization_of_continuous_map_on_cpos f_i) by now apply the_main_reason_for_introducing_the_Scott_topology.
-    destruct (H5 X H1) as [sup_X' [sup_Y' [H6 [H7 H8]]]].
-    assert (H9 : sup_X' =-= sup_X) by now apply (supremum_unique X).
-    apply (supremum_unique (image f_i X) sup_Y' (f_i sup_X))...
+  { intros f_i H2.
+    assert (H3 : is_continuous_map (proj1_sig f_i)) by now apply (proj2_sig f_i).
+    assert (H4 : characterization_of_continuous_map_on_cpos (proj1_sig f_i)) by now apply the_main_reason_for_introducing_the_Scott_topology.
+    destruct (H4 X H0) as [sup_X' [sup_Y' [H5 [H6 H7]]]].
+    assert (H8 : sup_X' =-= sup_X) by now apply (supremum_unique X).
+    apply (supremum_unique (image (fun x : D => proj1_sig f_i x) X) sup_Y' (proj1_sig f_i sup_X))...
     symmetry.
-    transitivity (f_i sup_X')...
+    transitivity (proj1_sig f_i sup_X')...
   }
-  assert (claim2 : is_supremum (f sup_X) (image (fun f_i : D -> D' => f_i sup_X) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i sup_X) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 sup_X))).
-  set (sup_f_i_X_i := fun y : D' => exists f_i : D -> D', member f_i fs /\ is_supremum y (image f_i X)).
+  assert (claim2 : is_supremum (f sup_X) (image (fun f_i : D ~> D' => proj1_sig f_i sup_X) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i sup_X) fs) (sup_of_maps_on_cpos_is_well_defined fs H sup_X))).
+  set (sup_f_i_X_i := fun y : D' => exists f_i : D ~> D', member f_i fs /\ is_supremum y (image (fun x : D => proj1_sig f_i x) X)).
+  set (sup_x_X_f_i := fun y : D' => exists x : D, member x X /\ is_supremum y (image (fun f_i : D ~> D' => proj1_sig f_i x) fs)).
+  set (f_i_x := fun y : D' => exists f_i : D ~> D', exists x : D, member f_i fs /\ member x X /\ y =-= proj1_sig f_i x).
   assert (claim3 : is_supremum (f sup_X) sup_f_i_X_i).
   { intros y.
     split.
-    - intros H3 y1 H4.
-      destruct H4 as [f1 [H4 H5]].
-      assert (H6 : is_supremum (f1 sup_X) (image f1 X)) by now apply claim1.
-      assert (H7 : y1 =-= f1 sup_X) by now apply (supremum_unique (image f1 X)).
-      apply (leq_trans y1 (f1 sup_X) y)...
-      apply (leq_trans (f1 sup_X) (f sup_X) y)...
+    - intros H2 y1 H3.
+      destruct H3 as [f1 [H3 H4]].
+      assert (H5 : is_supremum (proj1_sig f1 sup_X) (image (fun x : D => proj1_sig f1 x) X)) by now apply claim1.
+      assert (H6 : y1 =-= proj1_sig f1 sup_X) by now apply (supremum_unique (image (fun x : D => proj1_sig f1 x) X)).
+      apply (leq_trans y1 (proj1_sig f1 sup_X) y)...
+      apply (leq_trans (proj1_sig f1 sup_X) (f sup_X) y)...
       apply claim2...
       apply (In_image f1)...
-    - intros H3.
+    - intros H2.
       apply claim2...
-      intros y1 H4.
-      apply H3.
-      inversion H4; subst...
+      intros y1 H3.
+      apply H2.
+      inversion H3; subst...
       rename x into f1.
       exists f1...
   }
-  set (sup_x_X_f_i := fun y : D' => exists x : D, member x X /\ is_supremum y (image (fun f_i : D -> D' => f_i x) fs)).
-  enough (claim4 : is_supremum (f sup_X) sup_x_X_f_i).
-  { intros y.
-    split.
-    - intros H3 y1 H4.
-      inversion H4; subst.
-      rename x into x1.
-      assert (H6 : is_supremum (f x1) (image (fun f_i : D -> D' => f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 x1))).
-      apply claim4...
-      exists x1...
-    - intros H3.
-      apply claim4...
-      intros y1 H4.
-      destruct H4 as [x1 [H4 H5]].
-      assert (H6 : is_supremum (f x1) (image (fun f_i : D -> D' => f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 x1))).
-      assert (H7 : y1 =-= f x1) by now apply (supremum_unique (image (fun f_i : D -> D' => f_i x1) fs) y1 (f x1)).
-      apply (leq_trans y1 (f x1) y)...
-  }
-  set (f_i_x := fun y : D' => exists f_i : D -> D', exists x : D, member f_i fs /\ member x X /\ y =-= f_i x).
   assert ( lemma1 :
     forall sup : D',
     is_supremum sup sup_f_i_X_i ->
     is_supremum sup f_i_x
   ).
-  { intros sup H3 y.
+  { intros sup H2 y.
     split.
-    - intros H4 y1 H5.
-      destruct H5 as [f1 [x1 [H5 [H6 H7]]]].
-      enough (H8 : forall x : D, forall x' : D, leq x x' -> leq (f1 x) (f1 x')).
-      { assert (H9 : leq (f1 x1) (f1 sup_X)) by now apply H8, H2.
+    - intros H3 y1 H4.
+      destruct H4 as [f1 [x1 [H4 [H5 H6]]]].
+      enough (H7 : forall x : D, forall x' : D, leq x x' -> leq (proj1_sig f1 x) (proj1_sig f1 x')).
+      { assert (H8 : leq (proj1_sig f1 x1) (proj1_sig f1 sup_X)) by now apply H7, H1.
         apply (leq_trans y1 sup y)...
-        apply (leq_trans y1 (f1 x1) sup)...
-        apply (leq_trans (f1 x1) (f1 sup_X) sup)...
-        apply H3...
+        apply (leq_trans y1 (proj1_sig f1 x1) sup)...
+        apply (leq_trans (proj1_sig f1 x1) (proj1_sig f1 sup_X) sup)...
+        apply H2...
         exists f1...
       }
       apply continuous_maps_on_cpos_are_always_monotonic...
-    - intros H4.
-      apply H3.
-      intros y1 H5.
-      destruct H5 as [f1 [H5 H6]].
-      apply H6.
-      intros y' H7.
-      inversion H7; subst.
+    - intros H3.
+      apply H2.
+      intros y1 [f1 [H4 H5]].
+      apply H5.
+      intros y' H6.
+      inversion H6; subst.
       rename x into x1.
-      apply H4.
+      apply H3.
       exists f1, x1...
   }
   assert ( lemma2 :
@@ -1235,32 +1227,46 @@ Proof with eauto with *.
     is_supremum sup f_i_x ->
     is_supremum sup sup_x_X_f_i
   ).
-  { intros sup H3 y.
+  { intros sup H2 y.
     split.
-    - intros H4 y1 H5.
-      destruct H5 as [x1 [H5 H6]].
-      apply H6.
-      intros x' H7.
-      inversion H7; subst.
+    - intros H3 y1 [x1 [H4 H5]].
+      apply H5.
+      intros x' H6.
+      inversion H6; subst.
       rename x into f1.
-      apply H3...
+      apply H2...
       exists f1, x1...
-    - intros H4.
-      apply H3.
-      intros y1 H5.
-      destruct H5 as [f1 [x1 [H5 [H6 H7]]]].
-      apply (leq_trans y1 (f1 x1) y)...
-      assert (H8 : is_supremum (f x1) (image (fun f_i : D -> D' => f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 x1))).
-      assert (H9 : leq (f1 x1) (f x1)).
-      { apply H8...
+    - intros H3.
+      apply H2.
+      intros y1 [f1 [x1 [H4 [H5 H6]]]].
+      apply (leq_trans y1 (proj1_sig f1 x1) y)...
+      assert (H7 : is_supremum (f x1) (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H x1))).
+      assert (H8 : leq (proj1_sig f1 x1) (f x1)).
+      { apply H7...
         apply (In_image f1)...
       }
-      apply (leq_trans (f1 x1) (f x1) y)...
-      apply H4...
-      assert (H10 : is_supremum (f x1) (image (fun f_i : D -> D' => f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 x1))).
+      apply (leq_trans (proj1_sig f1 x1) (f x1) y)...
+      apply H3...
+      assert (H9 : is_supremum (f x1) (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H x1))).
       exists x1...
   }
-  apply (lemma2 (f sup_X) (lemma1 (f sup_X) claim3)).
+  enough (claim4 : is_supremum (f sup_X) sup_x_X_f_i).
+  { intros y.
+    split.  
+    - intros H2 y1 H3.
+      inversion H3; subst.
+      rename x into x1.
+      assert (H5 : is_supremum (f x1) (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H x1))).
+      apply claim4...
+      exists x1...
+    - intros H2.
+      apply claim4...
+      intros y1 [x1 [H3 H4]].
+      assert (H5 : is_supremum (f x1) (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs) (sup_of_maps_on_cpos_is_well_defined fs H x1))).
+      assert (H6 : y1 =-= f x1) by now apply (supremum_unique (image (fun f_i : D ~> D' => proj1_sig f_i x1) fs) y1 (f x1)).
+      apply (leq_trans y1 (f x1) y)...
+  }
+  apply lemma2, lemma1...
 Qed.
 
 End DomainTheory.
