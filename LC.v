@@ -1173,37 +1173,39 @@ The informal proof of Lemma 1.2.10 in the book `The Lambda Calculus Its Syntax a
 \end{proof}
 *)
 
-Lemma sup_of_maps_on_cpos_exists_if_set_of_maps_are_directed {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+Lemma sup_of_continuous_maps_on_cpos_exists_if_their_set_is_directed {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
   forall fs : Ensemble (D -> D'),
-  (forall f : D -> D', member f fs -> is_continuous_map f) ->
+  (forall f_i : D -> D', member f_i fs -> is_continuous_map f_i) ->
   forall directed_fs : directed fs,
-  let f' : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f : D -> D' => f x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x)) in
-  is_continuous_map f'.
+  let f : D -> D' := fun x : D => proj1_sig (supremum_exists (image (fun f_i : D -> D' => f_i x) fs) (sup_of_maps_on_cpos_is_well_defined fs directed_fs x)) in
+  is_continuous_map f.
 Proof with eauto with *.
-  intros fs H H0 f'.
+  intros fs H H0 f.
   apply the_main_reason_for_introducing_the_Scott_topology.
   intros X H1 Y.
   destruct (supremum_exists X H1) as [sup_X H2].
-  exists sup_X, (f' sup_X).
-  enough (is_supremum (f' sup_X) Y)...
+  exists sup_X, (f sup_X).
+  enough (is_supremum (f sup_X) Y)...
   assert ( claim1 :
-    forall f : D -> D',
-    member f fs ->
-    is_supremum (f sup_X) (image f X)
+    forall f_i : D -> D',
+    member f_i fs ->
+    is_supremum (f_i sup_X) (image f_i X)
   ).
-  { intros f H3.
-    assert (H4 : is_continuous_map f) by now apply H.
-    assert (H5 : characterization_of_continuous_map_on_cpos f) by now apply the_main_reason_for_introducing_the_Scott_topology.
+  { intros f_i H3.
+    assert (H4 : is_continuous_map f_i) by now apply H.
+    assert (H5 : characterization_of_continuous_map_on_cpos f_i) by now apply the_main_reason_for_introducing_the_Scott_topology.
     destruct (H5 X H1) as [sup_X' H6].
     destruct H6 as [sup_Y' H6].
     destruct H6.
     destruct H7.
     assert (H9 : sup_X' =-= sup_X) by now apply (supremum_unique X).
-    apply (supremum_unique (image f X) sup_Y' (f sup_X))...
+    apply (supremum_unique (image f_i X) sup_Y' (f_i sup_X))...
     symmetry.
-    transitivity (f sup_X')...
+    transitivity (f_i sup_X')...
   }
-  give_up.
+  assert (claim2 : is_supremum (f sup_X) (image (fun f_i : D -> D' => f_i sup_X) fs)) by apply (proj2_sig (supremum_exists (image (fun f_i : D -> D' => f_i sup_X) fs) (sup_of_maps_on_cpos_is_well_defined fs H0 sup_X))).
+  admit.
+Admitted.
 
 End DomainTheory.
 
