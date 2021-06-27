@@ -615,18 +615,24 @@ Lemma supremum_ext {D : Set} `{D_is_poset_minor : Poset D} :
   forall x1 : D,
   forall x2 : D,
   is_supremum x1 X1 ->
-  is_supremum x2 X2 ->
-  x1 =-= x2.
+  is_supremum x2 X2 <-> x1 =-= x2.
 Proof with eauto with *.
-  unfold isSubsetOf.
-  intros X1 X2 X1_subset_X2 X2_subset_X1 x1 x2 H1 H2.
-  apply leq_asym.
-  - apply H1.
-    intros x H.
-    apply H2...
-  - apply H2.
-    intros x H.
-    apply H1...
+  intros X1 X2 H H0 x1 x2 H1.
+  split; intros H2.
+  - apply leq_asym.
+    + apply H1.
+      intros x H3.
+      apply H2...
+    + apply H2.
+      intros x H3.
+      apply H1...
+  - intros x.
+    split.
+    + intros H3 x' H4.
+      apply H1...
+    + intros H4.
+      apply (leq_trans x2 x1 x)...
+      apply H1...
 Qed.
 
 #[global] Hint Resolve supremum_ext : domain_theory_hints.
@@ -1076,7 +1082,7 @@ Next Obligation with eauto with *.
     + intros y0 H5.
       inversion H5; subst.
       apply (H4 (x0, y0))...
-Qed.
+Defined.
 
 Local Notation "D1 ~> D2" := ({f : D1 -> D2 | is_continuous_map f}) (at level 15, right associativity) : type_scope.
 
@@ -1319,9 +1325,9 @@ Next Obligation with eauto with *.
     inversion H2; subst.
     rename x0 into f0.
     apply (H0 f0 H3 x).
-Qed.
+Defined.
 
-(* [PROVE ME] 2021-06-26:
+(* [PROVE ME] 2021-06-27:
 
 \begin{lstlisting}
 Lemma separately_continuous_iff {D1 : Set} {D2 : Set} {D3 : Set} `{D1_is_cpo : CompletePartialOrder D1} `{D2_is_cpo : CompletePartialOrder D2} `{D3_is_cpo : CompletePartialOrder D3} :
