@@ -2608,8 +2608,9 @@ Qed.
 
 End PreLambdaStructure.
 
-Class isLambdaStructure (Dom : Set) `{requiresPreLambdaStructure : isPreLambdaStructure Dom} : Type :=
-  { respect_beta : forall vv : Dom -> Dom, forall v0 : Dom, runApp (runLam vv) v0 =-= vv v0
+Class isLambdaStructure (Dom : Set) : Type :=
+  { requiresPreLambdaStructure :> isPreLambdaStructure Dom
+  ; respect_beta : forall vv : Dom -> Dom, forall v0 : Dom, runApp (runLam vv) v0 =-= vv v0
   ; respect_eta : forall v : Dom, runLam (runApp v) =-= v
   }
 .
