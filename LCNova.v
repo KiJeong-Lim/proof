@@ -367,7 +367,7 @@ Proof with eauto with *.
   apply (isSupremum_ext X X)...
 Qed.
 
-Lemma sup_unions_Xs_isSupremum_image_sup_Xs {D : Type} `{D_isPoset : Poset D} :
+Lemma sup_unions_Xs_is_sup_image_sup_Xs {D : Type} `{D_isPoset : Poset D} :
   forall Xs : ensemble (ensemble D),
   (forall X : ensemble D, member X Xs -> exists sup_X : D, isSupremum sup_X X) ->
   forall sup1 : D,
@@ -515,7 +515,7 @@ Class CompleteLattice (D : Set) : Type :=
 
 Global Hint Resolve supremum_always_exists : my_hints.
 
-Global Program Instance each_complete_lattice_is_a_cpo (D : Set) (D_requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
+Global Program Instance each_complete_lattice_is_a_cpo  {D : Set} (D_requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
   { CompletePartialOrder_requiresPoset := CompleteLattice_requiresPoset
   ; bottom := supremum_always_exists empty
   }
@@ -534,7 +534,7 @@ Next Obligation with eauto with *.
   apply supremum_always_exists.
 Qed.
 
-Global Program Instance scott_topology (D : Set) (D_requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
+Global Program Instance ScottTopology {D : Set} (D_requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
   { isOpen := fun O : ensemble D => (forall x : D, forall y : D, member x O -> x =< y -> member y O) /\ (forall X : ensemble D, isDirected X -> forall sup_X : D, isSupremum sup_X X -> member sup_X O -> nonempty (intersection X O))
   }
 .
@@ -542,8 +542,7 @@ Global Program Instance scott_topology (D : Set) (D_requiresCompletePartialOrder
 Next Obligation with eauto with *.
   split...
   intros.
-  destruct H as [[x H] H2].
-  exists x...
+  destruct H as [[x H] H2]...
 Qed.
 
 Next Obligation with eauto with *.
@@ -555,9 +554,8 @@ Next Obligation with eauto with *.
   - intros.
     inversion H0; subst.
     inversion H2; subst. 
-    destruct (proj2 (H xs H6) X H0 sup_X H1 H5) as [x].
-    inversion H7; subst.
-    exists x...
+    destruct (proj2 (H xs H6) X H0 sup_X H1 H5) as [x H7].
+    inversion H7; subst...
 Qed.
 
 Next Obligation with eauto with *.
@@ -566,54 +564,55 @@ Next Obligation with eauto with *.
     destruct H3...
   - intros.
     inversion H5; subst.
-    destruct (H2 X H3 sup_X H4 H6) as [x1].
-    destruct (H1 X H3 sup_X H4 H7) as [x2].
+    destruct (H2 X H3 sup_X H4 H6) as [x1 H8].
+    destruct (H1 X H3 sup_X H4 H7) as [x2 H9].
     inversion H3; subst.
     inversion H8; inversion H9; subst.
-    destruct (H11 x1 H12 x2 H17) as [x].
+    destruct (H11 x1 H12 x2 H17) as [x H14].
     destruct H14.
     destruct H15.
     exists x...
 Qed.
 
-Definition U_x {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} : D -> ensemble D :=
+Definition U {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} : D -> ensemble D :=
   fun x : D => fun z : D => ~ z =< x
 .
 
-Lemma U_x_is_open {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} :
+Global Hint Unfold U : my_hints.
+
+Lemma U_isOpen {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} :
   forall x : D,
-  isOpen (U_x x).
+  isOpen (U x).
 Proof with eauto with *.
   intros x.
-  enough ( claim1 :
+  assert ( claim1 :
     forall y : D,
     forall z : D,
-    member y (U_x x) ->
+    member y (U x) ->
     y =< z ->
-    member z (U_x x)
+    member z (U x)
   ).
-  { split...
-    intros.
-    inversion H; subst...
-    assert (claim2 : ~ (forall x0 : D, x0 =< x \/ ~ member x0 X)).
-    { intros H4.
-      contradiction H1.
-      apply (proj2 (H0 x)).
-      intros x0 H5.
-      destruct (H4 x0)...
-      contradiction.
-    }
-    apply not_all_ex_not in claim2.
-    destruct claim2 as [x1].
-    exists x1.
-    apply not_or_and in H4.
-    destruct H4.
-    apply NNPP in H5.
-    constructor...
+  { intros y z H H0 H1.
+    contradiction H.
+    transitivity z...
   }
-  intros y z H H0 H1.
-  contradiction H.
-  transitivity z...
+  split...
+  intros X H sup_X H0 H1.
+  inversion H; subst.
+  assert (claim2 : ~ (forall x0 : D, x0 =< x \/ ~ member x0 X)).
+  { intros H4.
+    contradiction H1.
+    apply (proj2 (H0 x)).
+    intros x0 H5.
+    destruct (H4 x0)...
+    contradiction.
+  }
+  apply not_all_ex_not in claim2.
+  destruct claim2 as [x1].
+  exists x1.
+  apply not_or_and in H4.
+  destruct H4 as [H4 H5].
+  apply NNPP in H5...
 Qed.
 
 End DomainTheory.
