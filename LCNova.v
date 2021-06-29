@@ -286,18 +286,23 @@ Inductive preimage {A : Type} {B : Type} : (A -> B) -> ensemble B -> ensemble A 
 
 Global Hint Constructors preimage : my_hints.
 
+Definition nonempty {A : Type} : ensemble A -> Prop :=
+  fun xs : ensemble A => exists x : A, member x xs
+.
+
+Global Hint Unfold nonempty : my_hints.
+
+Definition empty {A : Type} : ensemble A :=
+  finiteensemble nil
+.
+
+Global Hint Unfold empty : my_hints.
+
 Definition singleton {A : Type} : A -> ensemble A :=
   fun x : A => finiteensemble (cons x nil)
 .
 
 Global Hint Unfold singleton : my_hints.
-
-Definition nonempty {A : Set} : ensemble A -> Set :=
-  fun xs : ensemble A =>
-  {x : A | member x xs}
-.
-
-Global Hint Unfold nonempty : my_hints.
 
 Definition isSupremum {D : Type} `{D_isPoset : Poset D} : D -> ensemble D -> Prop :=
   fun sup : D => fun X : ensemble D => forall d : D, sup =< d <-> (forall x : D, member x X -> x =< d)
@@ -362,32 +367,7 @@ Proof with eauto with *.
   apply (isSupremum_ext X X)...
 Qed.
 
-Lemma isSupremum_singleton {D : Type} `{D_isPoset : Poset D} :
-  forall d0 : D,
-  forall sup : D,
-  isSupremum sup (singleton d0) <-> d0 == sup.
-Proof with eauto with *.
-  assert ( claim1 :
-    forall x : D,
-    isSupremum x (singleton x)
-  ).
-  { intros x.
-    split.
-    - intros H x' H0.
-      inversion H0; subst.
-      simpl in H1.
-      destruct H1.
-      + subst...
-      + contradiction.
-    - intros H.
-      apply H...
-  }
-  intros d0 sup.
-  assert (H1 := claim1 d0).
-  apply (isSupremum_unique (singleton d0))...
-Qed.
-
-Lemma isSupremum_unions {D : Set} `{D_isPoset : Poset D} :
+Lemma sup_unions_Xs_isSupremum_image_sup_Xs {D : Type} `{D_isPoset : Poset D} :
   forall Xs : ensemble (ensemble D),
   (forall X : ensemble D, member X Xs -> exists sup_X : D, isSupremum sup_X X) ->
   forall sup1 : D,
@@ -396,7 +376,7 @@ Lemma isSupremum_unions {D : Set} `{D_isPoset : Poset D} :
   isSupremum sup2 (fun sup_X : D => exists X : ensemble D, member X Xs /\ isSupremum sup_X X) <-> sup1 == sup2.
 Proof with eauto with *.
   intros Xs H sup1 H0 sup2.
-  set (sup_Xs := fun sup_X : D => exists X : ensemble D, X \in Xs /\ isSupremum sup_X X).
+  set (sup_Xs := fun sup_X : D => exists X : ensemble D, member X Xs /\ isSupremum sup_X X).
   split.
   - intros H1.
     apply Poset_asym.
@@ -475,13 +455,13 @@ Import MyEnsemble.
 
 Class TopologicalSpace (X : Set) : Type :=
   { isOpen : ensemble X -> Prop
-  ; open_set_for_full :
+  ; open_for_full :
     isOpen full
-  ; open_set_for_unions :
+  ; open_for_unions :
     forall xss : ensemble (ensemble X),
     (forall xs : ensemble X, member xs xss -> isOpen xs) ->
     isOpen (unions xss)
-  ; open_set_for_intersection :
+  ; open_for_intersection :
     forall xs1 : ensemble X,
     forall xs2 : ensemble X,
     isOpen xs1 ->
@@ -490,11 +470,11 @@ Class TopologicalSpace (X : Set) : Type :=
   }
 .
 
-Global Hint Resolve open_set_for_full : my_hints.
+Global Hint Resolve open_for_full : my_hints.
 
-Global Hint Resolve open_set_for_unions : my_hints.
+Global Hint Resolve open_for_unions : my_hints.
 
-Global Hint Resolve open_set_for_intersection : my_hints.
+Global Hint Resolve open_for_intersection : my_hints.
 
 Definition isContinuousMap {X : Set} {Y : Set} `{X_isTopologicalSpace : TopologicalSpace X} `{Y_isTopologicalSpace : TopologicalSpace Y} : (X -> Y) -> Prop :=
   fun f : X -> Y => forall ys : ensemble Y, isOpen ys -> isOpen (preimage f ys)
@@ -502,10 +482,138 @@ Definition isContinuousMap {X : Set} {Y : Set} `{X_isTopologicalSpace : Topologi
 
 Global Hint Unfold isContinuousMap : my_hints.
 
-Definition isDirected {D : Set} `{D_isPoset : Poset D} : ensemble D -> Prop :=
-  fun X : ensemble D => (exists x0 : D, member x0 X) /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ (x1 =< x3 /\ x2 =< x3))
+Definition isDirected {D : Type} `{D_isPoset : Poset D} : ensemble D -> Prop :=
+  fun X : ensemble D => nonempty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ x1 =< x3 /\ x2 =< x3)
 .
 
 Global Hint Unfold isDirected : my_hints.
+
+Class CompletePartialOrder (D : Set) : Type :=
+  { CompletePartialOrder_requiresPoset :> Poset D
+  ; bottom : D
+  ; bottom_least :
+    forall x : D,
+    bottom =< x
+  ; supremum_exists :
+    forall xs : ensemble D,
+    isDirected xs ->
+    {sup_xs : D | isSupremum sup_xs xs}
+  }
+.
+
+Global Hint Resolve bottom_least : my_hints.
+
+Global Hint Resolve supremum_exists : my_hints.
+
+Class CompleteLattice (D : Set) : Type :=
+  { CompleteLattice_requiresPoset :> Poset D
+  ; supremum_always_exists :
+    forall xs : ensemble D,
+    {sup_xs : D | isSupremum sup_xs xs}
+  }
+.
+
+Global Hint Resolve supremum_always_exists : my_hints.
+
+Global Program Instance each_complete_lattice_is_a_cpo (D : Set) (D_requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
+  { CompletePartialOrder_requiresPoset := CompleteLattice_requiresPoset
+  ; bottom := supremum_always_exists empty
+  }
+.
+
+Next Obligation with eauto with *.
+  assert (H := proj2_sig (supremum_always_exists empty)).
+  simpl in H.
+  apply H.
+  intros x' H0.
+  inversion H0; subst.
+  inversion H1.
+Qed.
+
+Next Obligation with eauto with *.
+  apply supremum_always_exists.
+Qed.
+
+Global Program Instance scott_topology (D : Set) (D_requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
+  { isOpen := fun O : ensemble D => (forall x : D, forall y : D, member x O -> x =< y -> member y O) /\ (forall X : ensemble D, isDirected X -> forall sup_X : D, isSupremum sup_X X -> member sup_X O -> nonempty (intersection X O))
+  }
+.
+
+Next Obligation with eauto with *.
+  split...
+  intros.
+  destruct H as [[x H] H2].
+  exists x...
+Qed.
+
+Next Obligation with eauto with *.
+  split.
+  - intros.
+    destruct H0.
+    apply (mk1unions xs)...
+    apply (proj1 (H xs H2) x y)...
+  - intros.
+    inversion H0; subst.
+    inversion H2; subst. 
+    destruct (proj2 (H xs H6) X H0 sup_X H1 H5) as [x].
+    inversion H7; subst.
+    exists x...
+Qed.
+
+Next Obligation with eauto with *.
+  split.
+  - intros.
+    destruct H3...
+  - intros.
+    inversion H5; subst.
+    destruct (H2 X H3 sup_X H4 H6) as [x1].
+    destruct (H1 X H3 sup_X H4 H7) as [x2].
+    inversion H3; subst.
+    inversion H8; inversion H9; subst.
+    destruct (H11 x1 H12 x2 H17) as [x].
+    destruct H14.
+    destruct H15.
+    exists x...
+Qed.
+
+Definition U_x {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} : D -> ensemble D :=
+  fun x : D => fun z : D => ~ z =< x
+.
+
+Lemma U_x_is_open {D : Set} `{D_isCompletePartialOrder : CompletePartialOrder D} :
+  forall x : D,
+  isOpen (U_x x).
+Proof with eauto with *.
+  intros x.
+  enough ( claim1 :
+    forall y : D,
+    forall z : D,
+    member y (U_x x) ->
+    y =< z ->
+    member z (U_x x)
+  ).
+  { split...
+    intros.
+    inversion H; subst...
+    assert (claim2 : ~ (forall x0 : D, x0 =< x \/ ~ member x0 X)).
+    { intros H4.
+      contradiction H1.
+      apply (proj2 (H0 x)).
+      intros x0 H5.
+      destruct (H4 x0)...
+      contradiction.
+    }
+    apply not_all_ex_not in claim2.
+    destruct claim2 as [x1].
+    exists x1.
+    apply not_or_and in H4.
+    destruct H4.
+    apply NNPP in H5.
+    constructor...
+  }
+  intros y z H H0 H1.
+  contradiction H.
+  transitivity z...
+Qed.
 
 End DomainTheory.
