@@ -18,7 +18,7 @@ Class Setoid (A : Type) : Type :=
 
 Global Notation "x == y" := (eqProp x y) (at level 70, no associativity) : type_scope.
 
-Lemma Setoid_refl {A : Type} `{A_requiresSetoid : Setoid A} :
+Lemma Setoid_refl {A : Type} `{A_isSetoid : Setoid A} :
   forall x1 : A,
   x1 == x1.
 Proof.
@@ -28,7 +28,7 @@ Defined.
 
 Global Hint Resolve Setoid_refl : my_hints.
 
-Lemma Setoid_sym {A : Type} `{A_requiresSetoid : Setoid A} :
+Lemma Setoid_sym {A : Type} `{A_isSetoid : Setoid A} :
   forall x1 : A,
   forall x2 : A,
   x1 == x2 ->
@@ -41,7 +41,7 @@ Defined.
 
 Global Hint Resolve Setoid_sym : my_hints.
 
-Lemma Setoid_trans {A : Type} `{A_requiresSetoid : Setoid A} :
+Lemma Setoid_trans {A : Type} `{A_iSetoid : Setoid A} :
   forall x1 : A,
   forall x2 : A,
   forall x3 : A,
@@ -78,7 +78,7 @@ Next Obligation with eauto with *.
   - intros f1 f2 f3 H H0 x...
 Qed.
 
-Definition isSetoidHomomorphism {A : Type} {B : Type} `{X : Setoid A} `{Y : Setoid B} : (A -> B) -> Prop :=
+Definition isSetoidHomomorphism {A : Type} {B : Type} (A_requiresSetoid : Setoid A) (B_requiresSetoid : Setoid B) : (A -> B) -> Prop :=
   fun f : A -> B =>
   forall x1 : A,
   forall x2 : A,
@@ -88,10 +88,10 @@ Definition isSetoidHomomorphism {A : Type} {B : Type} `{X : Setoid A} `{Y : Seto
 
 Global Hint Unfold isSetoidHomomorphism : my_hints.
 
-Class WindBlowsBetweenSetoids {A : Type} {B : Type} (X : Setoid A) (Y : Setoid B) : Prop :=
+Class WindBlowsBetweenSetoids {A : Type} {B : Type} (A_requiresSetoid : Setoid A) (B_requiresSetoid : Setoid B) : Prop :=
   { every_map_isSetoidHomomorphism :
     forall f : A -> B,
-    isSetoidHomomorphism f
+    isSetoidHomomorphism A_requiresSetoid B_requiresSetoid f
   }
 .
 
@@ -107,7 +107,7 @@ Class Poset (A : Type) : Type :=
 
 Global Notation "x1 =< x2" := (leProp x1 x2) (at level 70, no associativity) : type_scope.
 
-Lemma Poset_refl {A : Type} `{A_requiresPoset : Poset A} :
+Lemma Poset_refl {A : Type} `{A_isPoset : Poset A} :
   forall x1 : A,
   x1 =< x1.
 Proof.
@@ -117,13 +117,13 @@ Defined.
 
 Global Hint Resolve Poset_refl : my_hints.
 
-Lemma Poset_refl1 {A : Type} `{A_requiresPoset : Poset A} :
+Lemma Poset_refl1 {A : Type} `{A_isPoset : Poset A} :
   forall x1 : A,
   forall x2 : A,
   x1 == x2 ->
   x1 =< x2.
 Proof.
-  destruct A_requiresPoset as [leProp_A A_isSetoid A_isPreOrder A_isPartialOrder].
+  destruct A_isPoset as [leProp_A A_isSetoid A_isPreOrder A_isPartialOrder].
   intros x1 x2 H.
   destruct (A_isPartialOrder x1 x2) as [H0 H1].
   destruct (H0 H) as [H2 H3].
@@ -132,13 +132,13 @@ Defined.
 
 Global Hint Resolve Poset_refl1 : my_hints.
 
-Lemma Poset_refl2 {A : Type} `{A_requiresPoset : Poset A} :
+Lemma Poset_refl2 {A : Type} `{A_isPoset : Poset A} :
   forall x1 : A,
   forall x2 : A,
   x1 == x2 ->
   x2 =< x1.
 Proof.
-  destruct A_requiresPoset as [leProp_A A_isSetoid A_isPreOrder A_isPartialOrder].
+  destruct A_isPoset as [leProp_A A_isSetoid A_isPreOrder A_isPartialOrder].
   intros x1 x2 H.
   destruct (A_isPartialOrder x1 x2) as [H0 H1].
   destruct (H0 H) as [H2 H3].
@@ -147,7 +147,7 @@ Defined.
 
 Global Hint Resolve Poset_refl2 : my_hints.
 
-Lemma Poset_asym {A : Type} `{A_requiresPoset : Poset A} :
+Lemma Poset_asym {A : Type} `{A_isPoset : Poset A} :
   forall x1 : A,
   forall x2 : A,
   x1 =< x2 ->
@@ -162,7 +162,7 @@ Defined.
 
 Global Hint Resolve Poset_asym : my_hints.
 
-Lemma Poset_trans {A : Type} `{A_requiresPoset : Poset A} :
+Lemma Poset_trans {A : Type} `{A_isPoset : Poset A} :
   forall x1 : A,
   forall x2 : A,
   forall x3 : A,
@@ -186,10 +186,8 @@ Import MyStructures.
 
 Import ListNotations.
 
-Definition ensemble : Type -> Type :=
-  fun A : Type =>
-  A ->
-  Prop
+Definition ensemble (A : Type) : Type :=
+  A -> Prop
 .
 
 Definition member {A : Type} : A -> ensemble A -> Prop :=
@@ -220,6 +218,7 @@ Global Instance ensemble_is_Setoid {A : Type} : Setoid (ensemble A) :=
 
 Global Program Instance ensemble_is_Poset {A : Type} : Poset (ensemble A) :=
   { leProp := isSubsetOf
+  ; Poset_requiresSetoid := ensemble_is_Setoid
   }
 .
 
@@ -238,13 +237,13 @@ Inductive full {A : Type} : ensemble A :=
 
 Global Hint Constructors full : my_hints.
 
-Inductive finiteensemble {A : Type} : list A -> ensemble A :=
-| in_finiteensemble {xs : list A} {x : A} :
+Inductive finite_ensemble {A : Type} : list A -> ensemble A :=
+| in_finite_ensemble {xs : list A} {x : A} :
   In x xs ->
-  member x (finiteensemble xs)
+  member x (finite_ensemble xs)
 .
 
-Global Hint Constructors finiteensemble : my_hints.
+Global Hint Constructors finite_ensemble : my_hints.
 
 Inductive unions {A : Type} : ensemble (ensemble A) -> ensemble A :=
 | in_unions {xss : ensemble (ensemble A)} {x : A} :
@@ -286,20 +285,21 @@ Inductive preimage {A : Type} {B : Type} : (A -> B) -> ensemble B -> ensemble A 
 Global Hint Constructors preimage : my_hints.
 
 Definition nonempty {A : Type} : ensemble A -> Prop :=
-  fun xs : ensemble A => exists x : A, member x xs
+  fun xs : ensemble A =>
+  exists x : A, member x xs
 .
 
 Global Hint Unfold nonempty : my_hints.
 
 Definition empty {A : Type} : ensemble A :=
-  finiteensemble []
+  finite_ensemble []
 .
 
 Global Hint Unfold empty : my_hints.
 
 Definition singleton {A : Type} : A -> ensemble A :=
   fun x : A =>
-  finiteensemble [x]
+  finite_ensemble [x]
 .
 
 Global Hint Unfold singleton : my_hints.
@@ -307,7 +307,7 @@ Global Hint Unfold singleton : my_hints.
 Definition union {A : Type} : ensemble A -> ensemble A -> ensemble A :=
   fun xs1 : ensemble A =>
   fun xs2 : ensemble A =>
-  unions (finiteensemble [xs1; xs2])
+  unions (finite_ensemble [xs1; xs2])
 .
 
 Global Hint Unfold union : my_hints.
@@ -537,7 +537,7 @@ Proof with eauto with *.
     apply (H xs)...
 Qed.
 
-Global Instance ensemble_is_CompleteLattice {A : Type} : CompleteLattice (ensemble A) :=
+Global Instance ensemble_isCompleteLattice {A : Type} : CompleteLattice (ensemble A) :=
   { CompleteLattice_requiresPoset := ensemble_is_Poset
   ; supremum_always_exists :=
     fun Xs : ensemble (ensemble A) =>
@@ -554,30 +554,27 @@ Global Hint Unfold isDirected : my_hints.
 
 Class CompletePartialOrder (D : Type) : Type :=
   { CompletePartialOrder_requiresPoset :> Poset D
-  ; bottom : D
-  ; bottom_least :
-    forall x : D,
-    bottom =< x
-  ; supremum_exists :
+  ; bottom_exists : {bot : D | forall x : D, bot =< x}
+  ; square_up_exists :
     forall X : ensemble D,
     isDirected X ->
     {sup_X : D | isSupremum sup_X X}
   }
 .
 
-Global Hint Resolve bottom_least : my_hints.
+Global Hint Resolve bottom_exists : my_hints.
 
-Global Hint Resolve supremum_exists : my_hints.
+Global Hint Resolve square_up_exists : my_hints.
 
-Global Program Instance each_complete_lattice_is_a_cpo {D : Type} (D_requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
+Global Program Instance CompleteLattice_isCompletePartialOrder {D : Type} (D_requiresCompleteLattice : CompleteLattice D) : CompletePartialOrder D :=
   { CompletePartialOrder_requiresPoset := CompleteLattice_requiresPoset
-  ; bottom := supremum_always_exists empty
   }
 .
 
 Next Obligation with eauto with *.
-  assert (H := proj2_sig (supremum_always_exists empty)).
-  simpl in H.
+  destruct (supremum_always_exists empty) as [bot H].
+  exists bot.
+  intros x.
   apply H.
   intros x' H0.
   inversion H0; subst.
@@ -588,7 +585,7 @@ Next Obligation with eauto with *.
   apply supremum_always_exists.
 Qed.
 
-Global Program Instance ScottTopology {D : Type} (D_requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
+Global Program Instance ScottTopology_isTopologicalSpace {D : Type} (D_requiresCompletePartialOrder : CompletePartialOrder D) : TopologicalSpace D :=
   { isOpen :=
     fun O : ensemble D =>
     (forall x : D, forall y : D, member x O -> x =< y -> member y O) /\ (forall X : ensemble D, isDirected X -> forall sup_X : D, isSupremum sup_X X -> member sup_X O -> nonempty (intersection X O))
