@@ -1084,6 +1084,77 @@ Next Obligation with eauto with *.
       apply (H4 (x0, y0))...
 Defined.
 
+Lemma cartesian_supremum  {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
+  forall X : Ensemble (D * D'),
+  directed X ->
+  exists sup_X : D * D', is_supremum sup_X X /\ is_supremum (fst sup_X) (getFsts X) /\ is_supremum (snd sup_X) (getSnds X).
+Proof with eauto with *.
+  intros xs H.
+  assert (H0 : directed (getFsts xs)).
+  { destruct H.
+    split.
+    - destruct H.
+      exists (fst x).
+      apply (In_getFsts (fst x) (snd x)).
+      rewrite <- surjective_pairing...
+    - intros x1 H1 x2 H2.
+      inversion H1; subst.
+      rename x' into y1.
+      inversion H2; subst.
+      rename x' into y2.
+      destruct (H0 (x1, y1) H3 (x2, y2) H4) as [p].
+      destruct p as [x3 y3].
+      exists x3.
+      destruct H5.
+      destruct H6.
+      repeat split...
+      + apply H6.
+      + apply H7. 
+  }
+  assert (H1 : directed (getSnds xs)).
+  { destruct H.
+    split.
+    - destruct H.
+      exists (snd x).
+      apply (In_getSnds (fst x) (snd x)).
+      rewrite <- surjective_pairing...
+    - intros y1 H2 y2 H3.
+      inversion H2; subst.
+      rename x into x1.
+      inversion H3; subst.
+      rename x into x2.
+      destruct (H1 (x1, y1) H4 (x2, y2) H5) as [p].
+      destruct p as [x3 y3].
+      exists y3.
+      destruct H6.
+      destruct H7.
+      repeat split...
+      + apply H7.
+      + apply H8. 
+  }
+  destruct (supremum_exists (getFsts xs) H0) as [sup_fst_xs H2].
+  destruct (supremum_exists (getSnds xs) H1) as [sup_snd_xs H3].
+  exists (sup_fst_xs, sup_snd_xs).
+  simpl.
+  split...
+  intros p.
+  destruct p as [x y].
+  split.
+  - intros H4 p0 H5.
+    destruct p0 as [x0 y0].
+    split; [apply H2 | apply H3]...
+    all: apply H4.
+  - intros H4.
+    split; [apply H2 | apply H3]...
+    + intros x0 H5.
+      inversion H5; subst.
+      rename x' into y0.
+      apply (H4 (x0, y0))...
+    + intros y0 H5.
+      inversion H5; subst.
+      apply (H4 (x0, y0))...
+Qed.
+
 Local Notation "D1 ~> D2" := ({f : D1 -> D2 | is_continuous_map f}) (at level 15, right associativity) : type_scope.
 
 Lemma continuous_maps_are_continuous {D : Set} {D' : Set} `{D_is_cpo : CompletePartialOrder D} `{D'_is_cpo : CompletePartialOrder D'} :
@@ -1327,44 +1398,309 @@ Next Obligation with eauto with *.
     apply (H0 f0 H3 x).
 Defined.
 
-(* [PROVE ME] 2021-06-27:
-
-\begin{lstlisting}
 Lemma separately_continuous_iff {D1 : Set} {D2 : Set} {D3 : Set} `{D1_is_cpo : CompletePartialOrder D1} `{D2_is_cpo : CompletePartialOrder D2} `{D3_is_cpo : CompletePartialOrder D3} :
   forall f : D1 * D2 -> D3,
   is_continuous_map f <-> ((forall x1 : D1, is_continuous_map (fun x2 : D2 => f (x1, x2))) /\ (forall x2 : D2, is_continuous_map (fun x1 : D1 => f (x1, x2)))).
-\end{lstlisting}
-
-1.2.12 Lemma
-Let $f : D_1 \times D_2 \to D_3$.
-Then $f$ is continuous iff $f$ is continuous of its arguments separately.
-
-\begin{proof}
-  ($\Rightarrow$) Let $g = x_1 \mapsto f \left(x_1 , x_2 \right)$.
-    Then for directed $X \subseteq D_1$,
-    \begin{align*}
-      g \left( \sup X \right) 
-      & = f \left( \sup X , x_2 \right) \\
-      & = f \left( \sup \left\{ \left( x_1 , x_2 \right) | x_1 \in X \right\} \right) \\
-      & = \sup f \left( \left\{ \left( x_1 , x_2 \right) | x_1 \in X \right\} \right) \\
-      & = \sup g \left( X \right) .
-    \end{align*}
-    Hence $g$ is continuous and similarly $x_2 \mapsto f \left( x_1 , x_2 \right)$.
-  ($\Leftarrow$) Let $X \subseteq D_1 \times D_2$ be directed.
-    Then
-    \begin{align*}
-      f \left( \sup X \right)
-      & = f \left( \sup X_1 , \sup X_2 \right) \\
-      & = \sup_{x_1 \in X_1} f \left( x_1, X_2 \right) \\
-      & = \sup_{x_1 \in X_1} \sup_{x_2 \in X_2} f \left( x_1 , x_2 \right) \\
-      & = \sup_{\left( x_1 , x_2 \right) \in X} f \left( x_1 , x_2 \right) \\
-      & = \sup f \left( X \right)
-    \end{align*}
-    and so $f$ is continuous,
-    where $$ X_1 := \left\{ x_1 \in D_1 | \left( \exists x_2 \in D_2 \right) \left[ \left( x_1 , x_2 \right) \in X \right] \right\} ; $$ and $$ X_2 := \left\{ x_2 \in D_2 | \left( \exists x_1 \in D_1 \right) \left[ \left( x_1 , x_2 \right) \in X \right] \right\} . $$
-\end{proof}
-
-*)
+Proof with eauto with *.
+  intros f.
+  split.
+  - intros H.
+    split.
+    + intros x1_0.
+      apply the_main_reason_for_introducing_the_Scott_topology.
+      intros X H0 Y.
+      destruct (supremum_exists X H0) as [sup_X H1].
+      set (sup_Y := f (x1_0, sup_X)).
+      exists sup_X, sup_Y.
+      enough (is_supremum (f (x1_0, sup_X)) Y)...
+      set (x1_x2 := fun p : D1 * D2 => x1_0 = fst p /\ member (snd p) X).
+      assert (H2 : is_supremum (x1_0, sup_X) x1_x2).
+      { intros [x1 x2].
+        split.
+        - intros [H2 H3] [x1' x2'] [H4 H5].
+          simpl in *.
+          subst x1'.
+          split...
+          apply H1...
+        - intros H3.
+          simpl.
+          split...
+          + destruct H0 as [[x2_0 H4] H5].
+            apply (H3 (x1_0, x2_0)).
+            split...
+          + apply H1...
+            intros x2' H4.
+            apply (H3 (x1_0, x2'))...
+            split...
+      }
+      assert (H3 : characterization_of_continuous_map_on_cpos f) by now apply the_main_reason_for_introducing_the_Scott_topology.
+      assert (H4 : directed x1_x2).
+      { destruct H0 as [[x2_0 H0] H4].
+        split.
+        - exists (x1_0, x2_0).
+          split...
+        - intros [x1_1 x2_1] [H7 H5] [x1_2 x2_2] [H8 H6]...
+          simpl in *.
+          subst x1_1 x1_2.
+          destruct (H4 x2_1 H5 x2_2 H6) as [x3_2 [H7 [H8 H9]]].
+          exists (x1_0, x3_2).
+          simpl.
+          repeat split...
+      }
+      assert (H5 : is_supremum (f (x1_0, sup_X)) (image f x1_x2)).
+      { destruct (H3 x1_x2 H4) as [[x1_0' sup_X'] [sup_Y' [H5 [H6 H7]]]].
+        assert (H8 : (x1_0, sup_X) =-= (x1_0', sup_X')) by now apply (supremum_unique x1_x2).
+        assert (H9 : sup_Y =-= sup_Y').
+        { transitivity (f (x1_0', sup_X'))...
+        }
+        apply (supremum_unique (image f x1_x2) _ _ H6)...
+      }
+      assert (H6 : isSubsetOf (image f x1_x2) Y).
+      { intros y H6.
+        inversion H6; subst.
+        destruct H7 as [H7 H8].
+        destruct x as [x1 x2].
+        simpl in *.
+        subst x1.
+        apply (In_image x2)...
+      }
+      assert (H7 : isSubsetOf Y (image f x1_x2)).
+      { intros y H7.
+        inversion H7; subst.
+        rename x into x2.
+        apply (In_image (x1_0, x2))...
+        split...
+      }
+      apply (supremum_ext (image f x1_x2) Y H6 H7 _ _ H5)...
+    + intros x2_0.
+      apply the_main_reason_for_introducing_the_Scott_topology.
+      intros X H0 Y.
+      destruct (supremum_exists X H0) as [sup_X H1].
+      set (sup_Y := f (sup_X, x2_0)).
+      exists sup_X, sup_Y.
+      enough (is_supremum (f (sup_X, x2_0)) Y)...
+      set (x1_x2 := fun p : D1 * D2 => x2_0 = snd p /\ member (fst p) X).
+      assert (H2 : is_supremum (sup_X, x2_0) x1_x2).
+      { intros [x1 x2].
+        split.
+        - intros [H2 H3] [x1' x2'] [H4 H5].
+          simpl in *.
+          subst x2'.
+          split...
+          apply H1...
+        - intros H3.
+          simpl.
+          split...
+          + apply H1...
+            intros x1' H4.
+            apply (H3 (x1', x2_0))...
+            split...
+          + destruct H0 as [[x1_0 H4] H5].
+            apply (H3 (x1_0, x2_0)).
+            split...
+      }
+      assert (H3 : characterization_of_continuous_map_on_cpos f) by now apply the_main_reason_for_introducing_the_Scott_topology.
+      assert (H4 : directed x1_x2).
+      { destruct H0 as [[x1_0 H0] H4].
+        split.
+        - exists (x1_0, x2_0).
+          split...
+        - intros [x1_1 x2_1] [H7 H5] [x1_2 x2_2] [H8 H6]...
+          simpl in *.
+          subst x2_1 x2_2.
+          destruct (H4 x1_1 H5 x1_2 H6) as [x1_3 [H7 [H8 H9]]].
+          exists (x1_3, x2_0).
+          simpl.
+          repeat split...
+      }
+      assert (H5 : is_supremum (f (sup_X, x2_0)) (image f x1_x2)).
+      { destruct (H3 x1_x2 H4) as [[sup_X' x2_0'] [sup_Y' [H5 [H6 H7]]]].
+        assert (H8 : (sup_X, x2_0) =-= (sup_X', x2_0')) by now apply (supremum_unique x1_x2).
+        assert (H9 : sup_Y =-= sup_Y').
+        { transitivity (f (sup_X', x2_0'))...
+        }
+        apply (supremum_unique (image f x1_x2) _ _ H6)...
+      }
+      assert (H6 : isSubsetOf (image f x1_x2) Y).
+      { intros y H6.
+        inversion H6; subst.
+        destruct H7 as [H7 H8].
+        destruct x as [x1 x2].
+        simpl in *.
+        subst x2.
+        apply (In_image x1)...
+      }
+      assert (H7 : isSubsetOf Y (image f x1_x2)).
+      { intros y H7.
+        inversion H7; subst.
+        rename x into x1.
+        apply (In_image (x1, x2_0))...
+        split...
+      }
+      apply (supremum_ext (image f x1_x2) Y H6 H7 _ _ H5)...
+  - intros [H H0].
+    apply the_main_reason_for_introducing_the_Scott_topology.
+    intros X H1 Y.
+    destruct (cartesian_supremum X H1) as [[sup_X1 sup_X2] [H2 [H3 H4]]].
+    set (X1 := getFsts X).
+    set (X2 := getSnds X).
+    set (sup_Y := f (sup_X1, sup_X2)).
+    exists (sup_X1, sup_X2), sup_Y.
+    simpl in *.
+    enough (is_supremum sup_Y Y)...
+    assert (H5 : forall x1 : D1, characterization_of_continuous_map_on_cpos (fun x2 : D2 => f (x1, x2))).
+    { intros x1.
+      apply the_main_reason_for_introducing_the_Scott_topology...
+    }
+    assert (H6 : forall x2 : D2, characterization_of_continuous_map_on_cpos (fun x1 : D1 => f (x1, x2))).
+    { intros x2.
+      apply the_main_reason_for_introducing_the_Scott_topology...
+    }
+    assert (H7 : directed X2).
+    { destruct H1 as [[[x1_0 x2_0] H1] H7].
+      split.
+      - exists x2_0...
+      - intros x2_1 H8 x2_2 H9.
+        inversion H8; subst.
+        rename x into x1_1.
+        inversion H9; subst.
+        rename x into x1_2.
+        destruct (H7 (x1_1, x2_1) H10 (x1_2, x2_2) H11) as [[x3_1 x3_2] [H12 [[H13 H14] [H15 H16]]]].
+        exists x3_2.
+        simpl in *...
+    }
+    set (sup_X1_x2 := fun p : D1 * D2 => member (snd p) X2 /\ fst p = sup_X1).
+    assert (H8 : is_supremum (f (sup_X1, sup_X2)) (image f sup_X1_x2)).
+    { destruct (H5 sup_X1 X2 H7) as [sup_X2' [sup_Y' [H8 [H9 H10]]]].
+      assert (H11 : sup_X2 =-= sup_X2') by now apply (supremum_unique X2).
+      assert (H12 : sup_Y =-= sup_Y').
+      { transitivity (f (sup_X1, sup_X2'))...
+      }
+      assert (H13 : isSubsetOf (image (fun x2 : D2 => f (sup_X1, x2)) X2) (image f sup_X1_x2)).
+      { intros y H13.
+        inversion H13; subst.
+        rename x into x2.
+        apply (In_image (sup_X1, x2)).
+        split...
+      }
+      assert (H14 : isSubsetOf (image f sup_X1_x2) (image (fun x2 : D2 => f (sup_X1, x2)) X2)).
+      { intros y H14.
+        inversion H14; subst.
+        destruct H15 as [H15 H16].
+        destruct x as [x1 x2].
+        simpl in *.
+        subst x1.
+        apply (In_image x2)...
+      }
+      apply (supremum_ext _ _ H13 H14 sup_Y' (f (sup_X1, sup_X2)))...
+    }
+    set (sup_X1_f_x1_x2 := fun y : D3 => exists x2 : D2, member x2 X2 /\ is_supremum y (image (fun x1 : D1 => f (x1, x2)) X1)).
+    assert (H9 : directed X1).
+    { destruct H1 as [[[x1_0 x2_0] H1] H9].
+      split.
+      - exists x1_0...
+      - intros x1_1 H10 x1_2 H11.
+        inversion H10; subst.
+        rename x' into x2_1.
+        inversion H11; subst.
+        rename x' into x2_2.
+        destruct (H9 (x1_1, x2_1) H12 (x1_2, x2_2) H13) as [[x3_1 x3_2] [H14 [[H15 H16] [H17 H18]]]].
+        exists x3_1.
+        simpl in *...
+    }
+    assert ( claim1 :
+      forall x2 : D2,
+      member x2 X2 ->
+      is_supremum (f (sup_X1, x2)) (image (fun x1 : D1 => f (x1, x2)) X1)
+    ).
+    { intros x2 H10.
+      destruct (H6 x2 X1 H9) as [sup_X_ [sup_Y_ [H11 [H12 H13]]]].
+      assert (H14 : sup_X_ =-= sup_X1) by now apply (supremum_unique X1).
+      assert (H15 : sup_Y_ =-= f (sup_X1, x2)).
+      { transitivity (f (sup_X_, x2))...
+        apply (substitutablity _ _ H14 (fun x' : D1 => f (x', x2)))...
+      }
+      apply (supremum_unique (image (fun x1 : D1 => f (x1, x2)) X1) sup_Y_ (f (sup_X1, x2)) H12)...
+    }
+    assert (H10 : is_supremum (f (sup_X1, sup_X2)) sup_X1_f_x1_x2).
+    { intros y.
+      split.
+      - intros H10 y' [x2 [H11 H12]].
+        assert (H13 := claim1 x2 H11).
+        assert (y' =-= f (sup_X1, x2)) by now apply (supremum_unique (image (fun x1 : D1 => f (x1, x2)) X1)).
+        transitivity (f (sup_X1, x2))...
+        transitivity (f (sup_X1, sup_X2))...
+        apply (continuous_maps_on_cpos_are_always_monotonic (fun x2 : D2 => f (sup_X1, x2)))...
+        apply H4...
+      - intros H10.
+        apply H8...
+        intros y' H11.
+        inversion H11; subst.
+        destruct x as [x1 x2].
+        destruct H12 as [H12 H13].
+        simpl in *.
+        subst x1.
+        apply H10...
+        exists x2...
+    }
+    set (x1_x2 := fun p : D1 * D2 => member (fst p) X1 /\ member (snd p) X2).
+    assert (H11 : is_supremum (f (sup_X1, sup_X2)) (image f x1_x2)).
+    { intros y.
+      split.
+      - intros H11 y' H12.
+        inversion H12; subst.
+        destruct x as [x1 x2].
+        destruct H13 as [H13 H14].
+        simpl in *.
+        transitivity (f (sup_X1, x2))...
+        + apply (continuous_maps_on_cpos_are_always_monotonic (fun x1' : D1 => f (x1', x2)))...
+          apply H3...
+        + apply H10...
+          exists x2...
+      - intros H11.
+        apply NNPP.
+        intros H12.
+        assert (H13 : member (f (sup_X1, sup_X2)) (U_x y)) by now (unfold U_x).
+        assert (H14 : is_open_set (U_x y)) by now apply U_x_is_open.
+        destruct (H sup_X1 (U_x y) H14) as [H15 H16].
+        assert (H17 : member sup_X2 (inverse_image (fun x2 : D2 => f (sup_X1, x2)) (U_x y))) by now constructor.
+        destruct (H16 X2 H7 sup_X2 H4 H17) as [x2 H18].
+        inversion H18; subst.
+        inversion H20; subst.
+        contradiction H21.
+        assert (H22 := claim1 x2 H19).
+        apply H22.
+        intros y' H23.
+        apply H11.
+        inversion H23; subst.
+        constructor.
+        split...
+    }
+    intros y.
+    split.
+    + intros H12 y' H13.
+      apply H11...
+      inversion H13; subst.
+      destruct x as [x1 x2].
+      repeat econstructor...
+    + intros H12.
+      apply H11.
+      intros y' H13.
+      inversion H13; subst.
+      destruct x as [x1_1 x2_2].
+      destruct H14 as [H14 H15].
+      simpl in *.
+      inversion H14; subst.
+      inversion H15; subst.
+      rename x' into x2_1, x into x1_2.
+      inversion H1.
+      destruct (H19 (x1_1, x2_1) H16 (x1_2, x2_2) H17) as [[x3_1 x3_2] [H20 [[H21 H22] [H23 H24]]]].
+      transitivity (f (x3_1, x3_2))...
+      simpl in H21, H22, H23, H24.
+      transitivity (f (x1_1, x3_2)).
+      * apply (continuous_maps_on_cpos_are_always_monotonic (fun x2' : D2 => f (x1_1, x2')))...
+      * apply (continuous_maps_on_cpos_are_always_monotonic (fun x1' : D1 => f (x1', x3_2)))...
+Qed.
 
 End DomainTheory.
 
@@ -2272,8 +2608,9 @@ Qed.
 
 End PreLambdaStructure.
 
-Class isLambdaStructure (Dom : Set) `{requiresPreLambdaStructure : isPreLambdaStructure Dom} : Type :=
-  { respect_beta : forall vv : Dom -> Dom, forall v0 : Dom, runApp (runLam vv) v0 =-= vv v0
+Class isLambdaStructure (Dom : Set) : Type :=
+  { requiresPreLambdaStructure :> isPreLambdaStructure Dom
+  ; respect_beta : forall vv : Dom -> Dom, forall v0 : Dom, runApp (runLam vv) v0 =-= vv v0
   ; respect_eta : forall v : Dom, runLam (runApp v) =-= v
   }
 .
