@@ -58,7 +58,10 @@ Defined.
 Global Hint Resolve Setoid_trans : my_hints.
 
 Global Program Instance Prop_isSetoid : Setoid Prop :=
-  { eqProp := fun p : Prop => fun q : Prop => p <-> q
+  { eqProp :=
+    fun p : Prop =>
+    fun q : Prop =>
+    p <-> q
   }
 .
 
@@ -67,7 +70,11 @@ Next Obligation with tauto.
 Qed.
 
 Global Program Instance arrow_isSetoid {A : Type} {B : Type} (B_requiresSetoid : Setoid B) : Setoid (arrow A B) :=
-  { eqProp := fun f : A -> B => fun g : A -> B => forall x : A, f x == g x
+  { eqProp :=
+    fun f : A -> B =>
+    fun g : A -> B =>
+    forall x : A,
+    f x == g x
   }
 .
 
@@ -78,12 +85,29 @@ Next Obligation with eauto with *.
   - intros f1 f2 f3 H H0 x...
 Qed.
 
-Definition isSetoidHomomorphism {A : Type} {B : Type} (A_requiresSetoid : Setoid A) (B_requiresSetoid : Setoid B) : (A -> B) -> Prop :=
+Global Program Instance pair_isSetoid {A : Type} {B : Type} (A_requiresSetoid : Setoid A) (B_requiresSetoid : Setoid B) : Setoid (A * B) :=
+  { eqProp :=
+    fun p1 : (A * B) =>
+    fun p2 : (A * B) =>
+    fst p1 == fst p2 /\ snd p1 == snd p2
+  }
+.
+
+Next Obligation with eauto with *.
+  split.
+  - intros p1...
+  - intros p1 p2 [H H0]...
+  - intros p1 p2 p3 [H H0] [H1 H2]...
+Qed.
+
+Definition isSetoidHomomorphism {A : Type} {B : Type} : Setoid A -> Setoid B -> (A -> B) -> Prop :=
+  fun A_isSetoid : Setoid A =>
+  fun B_isSetoid : Setoid B =>
   fun f : A -> B =>
   forall x1 : A,
   forall x2 : A,
-  x1 == x2 ->
-  f x1 == f x2
+  @eqProp A A_isSetoid x1 x2 ->
+  @eqProp B B_isSetoid (f x1) (f x2)
 .
 
 Global Hint Unfold isSetoidHomomorphism : my_hints.
@@ -186,8 +210,9 @@ Import MyStructures.
 
 Import ListNotations.
 
-Definition ensemble (A : Type) : Type :=
-  A -> Prop
+Definition ensemble : Type -> Type :=
+  fun A : Type =>
+  arrow A Prop
 .
 
 Definition member {A : Type} : A -> ensemble A -> Prop :=
@@ -382,16 +407,23 @@ Proof with eauto with *.
   apply (isSupremum_ext X X)...
 Qed.
 
-Lemma sup_unions_Xs_is_sup_image_sup_Xs {D : Type} `{D_isPoset : Poset D} :
+Definition image_sup {D : Type} `{D_isPoset : Poset D} : ensemble (ensemble D) -> ensemble D :=
+  fun Xs : ensemble (ensemble D) =>
+  fun sup_X : D =>
+  exists X : ensemble D, member X Xs /\ isSupremum sup_X X
+.
+
+Global Hint Unfold image_sup : my_hints.
+
+Theorem sup_unions_Xs_is_sup_image_sup_Xs {D : Type} `{D_isPoset : Poset D} :
   forall Xs : ensemble (ensemble D),
   (forall X : ensemble D, member X Xs -> exists sup_X : D, isSupremum sup_X X) ->
   forall sup1 : D,
   isSupremum sup1 (unions Xs) ->
   forall sup2 : D,
-  isSupremum sup2 (fun sup_X : D => exists X : ensemble D, member X Xs /\ isSupremum sup_X X) <-> sup1 == sup2.
+  isSupremum sup2 (image_sup Xs) <-> sup1 == sup2.
 Proof with eauto with *.
   intros Xs H sup1 H0 sup2.
-  set (sup_Xs := fun sup_X : D => exists X : ensemble D, member X Xs /\ isSupremum sup_X X).
   split.
   - intros H1.
     apply Poset_asym.
@@ -406,7 +438,7 @@ Proof with eauto with *.
       destruct H3 as [d0].
       apply not_and_or in H3.
       destruct H3.
-      { apply imply_to_and in H3.
+      * apply imply_to_and in H3.
         destruct H3.
         apply not_all_ex_not in H4.
         destruct H4 as [x H4].
@@ -415,12 +447,8 @@ Proof with eauto with *.
         inversion H4; subst.
         destruct (H xs H7) as [sup_xs H8].
         contradiction H5.
-        transitivity sup_xs.
-        - apply H8...
-        - apply H1...
-          exists xs...
-      }
-      { apply imply_to_and in H3.
+        transitivity sup_xs; [apply H8 | apply H1]...
+      * apply imply_to_and in H3.
         destruct H3.
         contradiction H2. 
         apply H0.
@@ -432,17 +460,14 @@ Proof with eauto with *.
         { transitivity sup_xs.
           - apply H9...
           - apply H1...
-            exists xs...
         }
         apply H9...
-      }
     + apply H1.
       intros x [X [H3 H4]].
       apply H4.
       intros x' H5.
       apply H0...
-  - intros H1.
-    intros d.
+  - intros H1 d.
     split.
     + intros H2 x [X [H3 H4]].
       apply H4.
@@ -454,10 +479,35 @@ Proof with eauto with *.
       intros x' H3.
       inversion H3; subst.
       destruct (H xs H5) as [sup_xs H6].
-      transitivity sup_xs.
-      * apply H6...
-      * apply H2...
-        exists xs...
+      transitivity sup_xs; [apply H6 | apply H2]...
+Qed.
+
+Corollary sup_image_sup_Xs_is_sup_unions_Xs {D : Type} `{D_isPoset : Poset D} :
+  forall Xs : ensemble (ensemble D),
+  (forall X : ensemble D, member X Xs -> exists sup_X : D, isSupremum sup_X X) ->
+  forall sup1 : D,
+  isSupremum sup1 (image_sup Xs) ->
+  forall sup2 : D,
+  isSupremum sup2 (unions Xs) <-> sup1 == sup2.
+Proof with eauto with *.
+  intros Xs H sup1 H0 sup2.
+  split.
+  - intros H1.
+    symmetry.
+    apply (sup_unions_Xs_is_sup_image_sup_Xs Xs)...
+  - intros H1 d.
+    split.
+    + intros H2 x H3.
+      inversion H3; subst.
+      destruct (H xs H5) as [sup_xs H6].
+      transitivity sup_xs; [apply H6 | apply H0]...
+    + intros H2.
+      transitivity sup1...
+      apply H0...
+      intros x [xs [H3 H4]].
+      apply H4.
+      intros x' H5.
+      apply H2...
 Qed.
 
 End Supremum.
@@ -635,7 +685,7 @@ Definition U {D : Type} `{D_isCompletePartialOrder : CompletePartialOrder D} : D
 
 Global Hint Unfold U : my_hints.
 
-Lemma U_isOpen {D : Type} `{D_isCompletePartialOrder : CompletePartialOrder D} :
+Lemma U_x_isOpen {D : Type} `{D_isCompletePartialOrder : CompletePartialOrder D} :
   forall x : D,
   isOpen (U x).
 Proof with eauto with *.
