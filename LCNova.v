@@ -1285,17 +1285,6 @@ Module DomainTheory.
     apply (proj2_sig f1)...
   Qed.
 
-  Lemma supremum_isCompatibleFor {D : Type} `{D_isPoset : isPoset D} (b : D >=> D) :
-    forall F : ensemble (D >=> D),
-    (forall f_i : D >=> D, member f_i F -> f_i is-compatible-for b) ->
-    forall sup_F : D >=> D,
-    isSupremum sup_F F ->
-    sup_F is-compatible-for b.
-  Proof with eauto with *.
-    intros F H sup_F H0.
-    enough (it_is_sufficient_to_show : compose_m sup_F b =< compose_m b sup_F)...
-  Qed.
-
   Definition isDirected {D : Type} `{D_isPoset : isPoset D} : ensemble D -> Prop :=
     fun X : ensemble D =>
     nonempty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ x1 =< x3 /\ x2 =< x3)
