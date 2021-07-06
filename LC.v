@@ -780,11 +780,11 @@ Module DomainTheory.
 
   Global Hint Resolve isSupremum_unique : my_hints.
 
-    Definition image_sup {D : Type} `{D_isPoset : isPoset D} : ensemble (ensemble D) -> ensemble D :=
-      fun Xs : ensemble (ensemble D) =>
-      fun sup_X : D =>
-      exists X : ensemble D, member X Xs /\ isSupremum sup_X X
-    .
+  Definition image_sup {D : Type} `{D_isPoset : isPoset D} : ensemble (ensemble D) -> ensemble D :=
+    fun Xs : ensemble (ensemble D) =>
+    fun sup_X : D =>
+    exists X : ensemble D, member X Xs /\ isSupremum sup_X X
+  .
 
   Global Hint Unfold image_sup : my_hints.
 
