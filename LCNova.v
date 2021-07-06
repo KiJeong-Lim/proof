@@ -478,11 +478,11 @@ Module DomainTheory.
 
   Global Hint Resolve isSupremum_unique : my_hints.
 
-    Definition image_sup {D : Type} `{D_isPoset : isPoset D} : ensemble (ensemble D) -> ensemble D :=
-      fun Xs : ensemble (ensemble D) =>
-      fun sup_X : D =>
-      exists X : ensemble D, member X Xs /\ isSupremum sup_X X
-    .
+  Definition image_sup {D : Type} `{D_isPoset : isPoset D} : ensemble (ensemble D) -> ensemble D :=
+    fun Xs : ensemble (ensemble D) =>
+    fun sup_X : D =>
+    exists X : ensemble D, member X Xs /\ isSupremum sup_X X
+  .
 
   Global Hint Unfold image_sup : my_hints.
 
@@ -545,6 +545,24 @@ Module DomainTheory.
 
   Global Hint Resolve CompleteLattice_requiresPoset : my_hints.
 
+  Lemma isInfimum_unique {A : Type} `{A_isPoset : isPoset A} :
+    forall X : ensemble A,
+    forall inf1 : A,
+    isInfimum inf1 X ->
+    forall inf2 : A,
+    isInfimum inf2 X ->
+    inf1 == inf2.
+  Proof with eauto with *.
+    intros X inf1 H inf2 H0.
+    apply Poset_asym.
+    - apply H0.
+      intros x H1.
+      apply H...
+    - apply H.
+      intros x H1.
+      apply H0...
+  Qed.
+
   Lemma compute_Infimum_in_CompleteLattice {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
     forall X : ensemble D,
     forall inf_X : D,
@@ -558,6 +576,22 @@ Module DomainTheory.
       apply H...
     - intros H0.
       apply H...
+  Qed.
+
+  Lemma make_Supremum_to_Infimum {D : Type} `{D_is_Poset : isPoset D} :
+    forall X : ensemble D,
+    forall sup_X : D,
+    isSupremum sup_X X ->
+    isInfimum sup_X (fun x : D => sup_X =< x).
+  Proof with eauto with *.
+    intros X sup_X H d.
+    split.
+    - intros H0 x H1.
+      transitivity sup_X.
+      + apply H0.
+      + apply H...
+    - intros H0.
+      apply H0...
   Qed.
 
   Global Hint Resolve compute_Infimum_in_CompleteLattice : my_hints.
@@ -686,7 +720,7 @@ Module DomainTheory.
     }
   .
 
-  Definition fixed_points {D : Type} `{D_isPoset : isPoset D} : (D -> D) -> ensemble D :=
+  Definition fixed_points {D : Type} `{D_isSetoid : isSetoid D} : (D -> D) -> ensemble D :=
     fun f : D -> D =>
     fun fix_f : D =>
     fix_f == f fix_f
@@ -702,7 +736,7 @@ Module DomainTheory.
 
   Global Hint Unfold isLeastFixedPoint : my_hints.
 
-  Lemma LeastFixedPointOfPoset {D : Type} `{D_isPoset : isPoset D} :
+  Lemma LeastFixedPointOfMonotonicMaps {D : Type} `{D_isPoset : isPoset D} :
     forall f : D -> D,
     isMonotonicMap f ->
     forall lfp : D,
@@ -726,7 +760,7 @@ Module DomainTheory.
       apply H0...
   Qed.
 
-  Lemma LeastFixedPointOfCompleteLattice {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
+  Lemma LeastFixedPointInCompleteLattice {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
     forall f : D -> D,
     isMonotonicMap f ->
     exists lfp : D, isInfimum lfp (fun x : D => f x =< x) /\ isLeastFixedPoint lfp f.
@@ -735,7 +769,7 @@ Module DomainTheory.
     destruct (infimum_always_exists_in_CompleteLattice (fun x : D => f x =< x)) as [lfp H0].
     exists lfp.
     split...
-    apply LeastFixedPointOfPoset...
+    apply LeastFixedPointOfMonotonicMaps...
   Qed.
 
   Definition isGreatestFixedPoint {D : Type} `{D_isPoset : isPoset D} : D -> (D -> D) -> Prop :=
@@ -746,7 +780,7 @@ Module DomainTheory.
 
   Global Hint Unfold isGreatestFixedPoint : my_hints.
 
-  Lemma GreatestFixedPointOfPoset {D : Type} `{D_isPoset : isPoset D} :
+  Lemma GreatestFixedPointOfMonotonicMaps {D : Type} `{D_isPoset : isPoset D} :
     forall f : D -> D,
     isMonotonicMap f ->
     forall gfp : D,
@@ -767,7 +801,7 @@ Module DomainTheory.
       apply H0...
   Qed.
 
-  Lemma GreatestFixedPointOfCompleteLattice {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
+  Lemma GreatestFixedPointInCompleteLattice {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
     forall f : D -> D,
     isMonotonicMap f ->
     exists gfp : D, isSupremum gfp (fun x : D => x =< f x) /\ isGreatestFixedPoint gfp f.
@@ -776,13 +810,13 @@ Module DomainTheory.
     destruct (supremum_always_exists_in_CompleteLattice (fun x : D => x =< f x)) as [gfp H0].
     exists gfp.
     split...
-    apply GreatestFixedPointOfPoset...
+    apply GreatestFixedPointOfMonotonicMaps...
   Qed.
 
   Definition nu {D : Type} `{D_isCompleteLattice : isCompleteLattice D} : forall f : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice), {gfp : D | isGreatestFixedPoint gfp (proj1_sig f)} :=
     fun f : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice) =>
     match supremum_always_exists_in_CompleteLattice (fun x : D => x =< proj1_sig f x) with
-    | exist _ gfp H => exist _ gfp (GreatestFixedPointOfPoset (proj1_sig f) (proj2_sig f) gfp H)
+    | exist _ gfp H => exist _ gfp (GreatestFixedPointOfMonotonicMaps (proj1_sig f) (proj2_sig f) gfp H)
     end
   .
 
@@ -996,7 +1030,7 @@ Module DomainTheory.
     simpl.
     destruct (supremum_always_exists_in_CompleteLattice (fun y : D => y =< proj1_sig f (or_plus x y))) as [gfp1 H].
     simpl.
-    assert (claim1 := GreatestFixedPointOfPoset (fun y : D => proj1_sig f (or_plus x y)) (G_f_aux_isMonotonic f x) gfp1 H).
+    assert (claim1 := GreatestFixedPointOfMonotonicMaps (fun y : D => proj1_sig f (or_plus x y)) (G_f_aux_isMonotonic f x) gfp1 H).
     apply claim1.
   Qed.
 
@@ -1031,23 +1065,139 @@ Module DomainTheory.
       transitivity (G_f f (or_plus x y))...
   Qed.
 
-(* [PROVE ME] 2021-07-05
-\begin{lstlisting}
-  Theorem KnasterTarski {D : Type} `{D_isPoset : isPoset D} :
-    forall f : D -> D,
-    isMonotonic f ->
+  Theorem Compositionality_of_ParameterizedCoinduction {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
+    forall f : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice),
+    forall r : D,
+    forall r1 : D,
+    forall r2 : D,
+    forall g1 : D,
+    forall g2 : D,
+    g1 =< G_f f r1 ->
+    g2 =< G_f f r2 ->
+    r1 =< or_plus r g2 ->
+    r2 =< or_plus r g1 ->
+    or_plus g1 g2 =< G_f f r.
+  Proof with eauto with *.
+    intros f r r1 r2 g1 g2 H H0 H1 H2.
+    assert (H3 : g1 =< G_f f (or_plus r (or_plus g1 g2))).
+    { transitivity (G_f f r1).
+      - apply H.
+      - apply G_f_isMonotoinc.
+        transitivity (or_plus r g2).
+        + apply H1.
+        + apply or_plus_le_iff...
+    }
+    assert (H4 : g2 =< G_f f (or_plus r (or_plus g1 g2))).
+    { transitivity (G_f f r2).
+      - apply H0.
+      - apply G_f_isMonotoinc.
+        transitivity (or_plus r g1).
+        + apply H2.
+        + apply or_plus_le_iff...
+    }
+    assert (H5 : or_plus g1 g2 =< G_f f (or_plus r (or_plus g1 g2))) by now apply or_plus_le_iff.
+    apply accumulate_cofixpoint...
+  Qed.
+
+  Lemma FullCharacterization_of_ParameterizedGreatestFixedPoint {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
+    forall f : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice),
+    forall G_f' : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice),
+    (forall x : D, proj1_sig G_f' x == proj1_sig f (or_plus x (proj1_sig G_f' x))) ->
+    (forall x : D, forall y : D, y =< proj1_sig G_f' (or_plus x y) -> y =< proj1_sig G_f' x) ->
+    (G_f' == ParameterizedGreatestFixedpoint f).
+  Proof with eauto with *. (* Thanks to SoonWon *)
+    intros f G_f' H H0.
+    assert (claim1 : forall x : D, proj1_sig G_f' x =< proj1_sig (ParameterizedGreatestFixedpoint f) x).
+    { intros x.
+      apply PrincipleOfTarski.
+      simpl...
+    }
+    assert (claim2 := unfold_cofixpoint f).
+    assert (claim3 : forall x : D, proj1_sig (ParameterizedGreatestFixedpoint f) x =< proj1_sig G_f' (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))).
+    { intros x.
+      transitivity (proj1_sig f (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))).
+      - apply Poset_refl1.
+        apply unfold_cofixpoint.
+      - assert (H1 := H (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))).
+        transitivity (proj1_sig f (or_plus (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x)) (proj1_sig G_f' (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))))).
+        + apply (proj2_sig f).
+          apply or_plus_le_iff.
+          split.
+          * transitivity (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))...
+          * transitivity (or_plus x (proj1_sig (ParameterizedGreatestFixedpoint f) x))...
+        + apply Poset_refl2...
+    }
+    intros x.
+    apply Poset_asym...
+  Qed.
+
+  Theorem KnasterTarski {D : Type} `{D_isCompleteLattice : isCompleteLattice D} :
+    forall f : monotonic_map (@CompleteLattice_requiresPoset D D_isCompleteLattice) (@CompleteLattice_requiresPoset D D_isCompleteLattice),
     forall fps : ensemble D,
-    isSubsetOf fps (fixed_points f) ->
-    {sup_fps : D | isSupremum sup_fps fps}.
-\end{lstlisting}
-*)
+    isSubsetOf fps (fixed_points (proj1_sig f)) ->
+    {fix_f : D | member fix_f (fixed_points (proj1_sig f)) /\ (forall x : D, member x (fixed_points (proj1_sig f)) -> (fix_f =< x <-> (forall fp : D, member fp fps -> fp =< x)))}.
+  Proof with eauto with *. (* Referring to "https://www.cs.utexas.edu/users/misra/Notes.dir/KnasterTarski.pdf" written by Jayadev Misra *)
+    intros f W W_is_a_subset_of_the_fixed_points.
+    destruct (supremum_always_exists_in_CompleteLattice W) as [q q_is_lub_of_W].
+    simpl.
+    set (W_hat := fun w : D => q =< w).
+    assert (claim1 := make_Supremum_to_Infimum W q q_is_lub_of_W).
+    assert (claim2 : member q W_hat) by apply Poset_refl.
+    assert ( claim3 :
+      forall x : D,
+      member x W_hat ->
+      member (proj1_sig f x) W_hat
+    ).
+    { intros x H.
+      apply q_is_lub_of_W.
+      intros w H0.
+      transitivity (proj1_sig f w).
+      - apply Poset_refl1, W_is_a_subset_of_the_fixed_points...
+      - apply (proj2_sig f).
+        transitivity q...
+    }
+    assert (H : q =< proj1_sig f q) by apply (claim3 q claim2).
+    destruct (infimum_always_exists_in_CompleteLattice (fun x : D => proj1_sig f x =< x /\ member x W_hat)) as [fix_f H0].
+    assert (claim4 : proj1_sig f fix_f =< fix_f).
+    { apply H0.
+      intros x [H1 H2].
+      transitivity (proj1_sig f x).
+      + apply (proj2_sig f).
+        apply H0...
+      + apply H1.
+    }
+    assert (claim5 : q =< fix_f).
+    { apply H0.
+      intros x [H1 H2].
+      apply H2.
+    }
+    assert (claim6 : fix_f == proj1_sig f fix_f).
+    { apply Poset_asym.
+      - apply H0...
+        split.
+        + apply (proj2_sig f)...
+        + apply claim3...
+      - apply claim4.
+    }
+    exists fix_f.
+    split.
+    - apply claim6.
+    - intros x H1.
+      split.
+      + intros H2 x' H3.
+        transitivity q...
+      + intros H2.
+        apply H0...
+        split...
+        apply q_is_lub_of_W...
+  Qed.
+
+  Definition isCompatible {D : Type} `{D_isPoset : isPoset D} :  := .
 
   Definition isDirected {D : Type} `{D_isPoset : isPoset D} : ensemble D -> Prop :=
     fun X : ensemble D =>
     nonempty X /\ (forall x1 : D, member x1 X -> forall x2 : D, member x2 X -> exists x3 : D, member x3 X /\ x1 =< x3 /\ x2 =< x3)
   .
-
-  Global Hint Unfold isDirected : my_hints.
 
   Class isCompletePartialOrder (D : Type) : Type :=
     { CompletePartialOrder_requiresPoset :> isPoset D
